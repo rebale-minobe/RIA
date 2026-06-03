@@ -1,0 +1,47 @@
+{
+  "name": "見延 莉亜",
+  "grade": "中学2年",
+  "class": "1組",
+  "school": "公立中学（横浜市）",
+  "club": "吹奏楽部",
+  "dream": "CA（キャビンアテンダント）",
+  "baseline": {
+    "year": "中1",
+    "summary": "9教科平均約3.78、ほぼ皆勤(欠席1日)",
+    "subjects": {
+      "japanese": {"knowledge": "B", "thinking": "B", "attitude": "A", "grade": 3},
+      "social": {"knowledge": "A", "thinking": "B", "attitude": "A", "grade": 4},
+      "math": {"knowledge": "B", "thinking": "C°", "attitude": "B", "grade": 3},
+      "science": {"knowledge": "A", "thinking": "B", "attitude": "A", "grade": 4},
+      "english": {"knowledge": "A", "thinking": "B", "attitude": "A", "grade": 4},
+      "music": {"knowledge": "A", "thinking": "A", "attitude": "A", "grade": 4},
+      "art": {"knowledge": "A°", "thinking": "A", "attitude": "A°", "grade": 5},
+      "pe": {"knowledge": "A°", "thinking": "A", "attitude": "A", "grade": 4},
+      "tech_home": {"knowledge": "B", "thinking": "A", "attitude": "B", "grade": 3}
+    }
+  },
+  "type_diagnosis": "真面目に積み上げる暗記型 / 表現の翼を広げる段階",
+  "strengths": [
+    "態度オールAレベルの真面目さ・継続力",
+    "知識・技能は6/9教科でA以上（暗記が得意）",
+    "感性・表現系が強い（美術5、音楽4、保健体育4）",
+    "ほぼ皆勤の健康と勤勉さ"
+  ],
+  "growth_areas": [
+    "思考・判断・表現が7/9教科でB以下（共通課題）",
+    "数学の応用思考（C°、最大ボトルネック）",
+    "国語の説明文・記述（物語文は得意）",
+    "英語の英作文・スピーキング表現"
+  ],
+  "english": {
+    "level": "英検3級保有",
+    "next_goal": "英検準2級",
+    "ca_relevance": "CA志望と直結、最重要科目"
+  },
+  "learning_principles": [
+    "答えを教えるより、自分の言葉で説明させる",
+    "間違いは「発見」として扱う",
+    "厳しさより伴走、温かいトーン",
+    "本人の自走を奪わない（紙の学習計画表のデジタル拡張）"
+  ]
+}

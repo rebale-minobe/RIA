@@ -1,0 +1,203 @@
+{
+  "current_test_id": "2026-06-18-期末",
+  "tests": [
+    {
+      "id": "2026-06-18-期末",
+      "name": "2学年 1学期期末テスト",
+      "type": "期末",
+      "start_date": "2026-06-18",
+      "end_date": "2026-06-19",
+      "subjects": [
+        {
+          "date": "2026-06-18",
+          "period": 1,
+          "time": "9:00-9:30",
+          "subject_key": "tech_home",
+          "subject_name": "技術・家庭",
+          "range": "[技術分野] ワーク・ノートC P2-6 / [家庭分野] 教科書 P234-247, 264-267, 270-273, 280-281。ワーク・ノート衣生活・住生活 P36-38, 40-44。消費生活・環境 P3-14",
+          "points": "教科書の太字や学習ノートの内容を確認しましょう。授業で特におさえた内容はしっかりと確認するようにしましょう。",
+          "submission": "振り返りカード提出（試験前最後の授業日）"
+        },
+        {
+          "date": "2026-06-18",
+          "period": 2,
+          "time": "9:45-10:30",
+          "subject_key": "japanese",
+          "subject_name": "国語",
+          "range": "国語I「見えないだけ」「アイスプラネット」「枕草子」「クマゼミが増加の原因を探る」 / 国語II 教科書P308-310 / 漢字P4-39(P29除く)、文法プリント①-⑤、熟語プリント⑤ / ワークP4-39(P29除く)、P41-42",
+          "points": "放送による聞き取り試験あり。ノート・学習プリント(小テスト)をよく見直しておきましょう。学んだことを自分の言葉で説明できるように。問題形式に慣れるためワークを解いて丁寧に答え合わせを。",
+          "submission": "ワーク提出 6/18(木)、ノート国語I,IIは授業中に指示"
+        },
+        {
+          "date": "2026-06-18",
+          "period": 3,
+          "time": "10:45-11:30",
+          "subject_key": "social",
+          "subject_name": "社会",
+          "range": "[歴史] 教科書 P105-160 / 資料集 P80-115 / プリント No.1-15 / ワーク P2-23",
+          "points": "教科書を何回も読みましょう。基本知識を確認し、その知識を利用してワークを解きましょう。テスト勉強と並行してノート整理を進め、思考力を高める問題にも取り組みましょう。",
+          "submission": "テスト日での提出はありません。ノート提出の日程は再度連絡。"
+        },
+        {
+          "date": "2026-06-18",
+          "period": 4,
+          "time": "11:45-12:15",
+          "subject_key": "pe",
+          "subject_name": "保健体育",
+          "range": "[体育] 器械運動(教科書P30-41)、陸上競技(教科書P60-61, P74-85) / [体育理論](教科書P74-79) スポーツが心身および社会性に及ぼす効果、スポーツの学び方、スポーツの安全な行い方",
+          "points": "教科書、オリエンテーション資料、授業で扱った内容をしっかり復習。技能の名称やポイントを確認しておきましょう。",
+          "submission": ""
+        },
+        {
+          "date": "2026-06-19",
+          "period": 1,
+          "time": "9:00-9:45",
+          "subject_key": "math",
+          "subject_name": "数学",
+          "range": "1年教科書 P225-248 / 1年ワーク P134-141 / 2年教科書 P11-34 / 2年ワーク P4-27 ※定規が必要",
+          "points": "解答は授業で教わった通りの書き方をしなくてはなりません。教科書、ノート、ワーク、配布されたプリントをよく復習しましょう。",
+          "submission": "試験日までの近い日にノートとワークを提出。詳細は授業で提示。"
+        },
+        {
+          "date": "2026-06-19",
+          "period": 2,
+          "time": "10:00-10:45",
+          "subject_key": "english",
+          "subject_name": "英語",
+          "range": "英作文ノート / 教科書 Round1 Unit1-8、Round2 Unit1-5 / 文法: ①過去形p.11 ②未来形p.13,37 ③when,if p.33 ④動名詞p.21 ④その他p.17,23,27,61 / Daily Life p.18,69 / 基礎の教科 p.2-5,18,19,22-27,30,31,42,43",
+          "points": "聞き取りの問題、選択問題、英作文があります。5Rワークを繰り返し開きましょう。英作文ノートを活用して発想力を養い、スピードを意識する練習を。当日は時間配分を意識して解きましょう。",
+          "submission": "英作文ノートを集めます。基礎の強化(文法ワーク)は集めません。"
+        },
+        {
+          "date": "2026-06-19",
+          "period": 3,
+          "time": "10:55-11:45",
+          "subject_key": "science",
+          "subject_name": "理科",
+          "range": "教科書(1年) p161-189 / 教科書(2年) p4-32 / 教科書(2年地学) p68-79 / 積み上げNo.12",
+          "points": "積み上げプリントを繰り返しやってみましょう。",
+          "submission": "試験当日に帰りの学活で集めます。ノートは理科係に持ってきてもらってください。"
+        }
+      ],
+      "study_plan": [
+        {
+          "date": "2026-06-03",
+          "tasks": [
+            {"subject_key": "social", "subject_name": "社会", "topic": "歴史 P105-130 教科書通読", "duration_min": 60, "done": false},
+            {"subject_key": "math", "subject_name": "数学", "topic": "1年範囲 P225-248 復習", "duration_min": 30, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-04",
+          "tasks": [
+            {"subject_key": "social", "subject_name": "社会", "topic": "歴史 P131-160 教科書通読", "duration_min": 60, "done": false},
+            {"subject_key": "math", "subject_name": "数学", "topic": "2年範囲 P11-34 予習", "duration_min": 30, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-05",
+          "tasks": [
+            {"subject_key": "social", "subject_name": "社会", "topic": "資料集 P80-115 + プリント1-7", "duration_min": 50, "done": false},
+            {"subject_key": "japanese", "subject_name": "国語", "topic": "漢字 P4-20 練習", "duration_min": 25, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-06",
+          "tasks": [
+            {"subject_key": "social", "subject_name": "社会", "topic": "ワーク P2-23 一周", "duration_min": 60, "done": false},
+            {"subject_key": "math", "subject_name": "数学", "topic": "1年ワーク P134-141", "duration_min": 45, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-07",
+          "tasks": [
+            {"subject_key": "social", "subject_name": "社会", "topic": "2周目: 弱点抽出", "duration_min": 40, "done": false},
+            {"subject_key": "math", "subject_name": "数学", "topic": "2年ワーク P4-15", "duration_min": 45, "done": false},
+            {"subject_key": "japanese", "subject_name": "国語", "topic": "アイスプラネット 読み直し", "duration_min": 20, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-08",
+          "tasks": [
+            {"subject_key": "math", "subject_name": "数学", "topic": "応用問題に挑戦", "duration_min": 60, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "10分タッチ(暗記維持)", "duration_min": 10, "done": false},
+            {"subject_key": "english", "subject_name": "英語", "topic": "過去形・未来形 復習", "duration_min": 25, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-09",
+          "tasks": [
+            {"subject_key": "japanese", "subject_name": "国語", "topic": "枕草子 + 古文文法", "duration_min": 45, "done": false},
+            {"subject_key": "science", "subject_name": "理科", "topic": "積み上げプリント1周目", "duration_min": 30, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "10分タッチ", "duration_min": 10, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-10",
+          "tasks": [
+            {"subject_key": "math", "subject_name": "数学", "topic": "文章題・応用反復", "duration_min": 60, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "10分タッチ", "duration_min": 10, "done": false},
+            {"subject_key": "science", "subject_name": "理科", "topic": "2年範囲 P4-32 復習", "duration_min": 30, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-11",
+          "tasks": [
+            {"subject_key": "japanese", "subject_name": "国語", "topic": "クマゼミ 説明文 要約練習", "duration_min": 45, "done": false},
+            {"subject_key": "english", "subject_name": "英語", "topic": "英作文ノート 復習・添削", "duration_min": 30, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "10分タッチ", "duration_min": 10, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-12",
+          "tasks": [
+            {"subject_key": "math", "subject_name": "数学", "topic": "過去問形式で時間計測", "duration_min": 60, "done": false},
+            {"subject_key": "science", "subject_name": "理科", "topic": "地学 p68-79", "duration_min": 30, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "10分タッチ", "duration_min": 10, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-13",
+          "tasks": [
+            {"subject_key": "math", "subject_name": "数学", "topic": "総仕上げ・弱点反復", "duration_min": 60, "done": false},
+            {"subject_key": "english", "subject_name": "英語", "topic": "英作文 仕上げ", "duration_min": 30, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "全体総復習", "duration_min": 30, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-14",
+          "tasks": [
+            {"subject_key": "japanese", "subject_name": "国語", "topic": "ワーク総ざらい", "duration_min": 45, "done": false},
+            {"subject_key": "science", "subject_name": "理科", "topic": "積み上げプリント 2周目", "duration_min": 30, "done": false},
+            {"subject_key": "math", "subject_name": "数学", "topic": "苦手部分のみ反復", "duration_min": 30, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-15",
+          "tasks": [
+            {"subject_key": "math", "subject_name": "数学", "topic": "最終確認", "duration_min": 45, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "暗記の最終仕上げ", "duration_min": 30, "done": false},
+            {"subject_key": "english", "subject_name": "英語", "topic": "文法ポイント総点検", "duration_min": 25, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-16",
+          "tasks": [
+            {"subject_key": "tech_home", "subject_name": "技術・家庭", "topic": "教科書太字確認", "duration_min": 30, "done": false},
+            {"subject_key": "japanese", "subject_name": "国語", "topic": "前日確認(6/18科目)", "duration_min": 30, "done": false},
+            {"subject_key": "social", "subject_name": "社会", "topic": "前日確認(6/18科目)", "duration_min": 30, "done": false},
+            {"subject_key": "pe", "subject_name": "保健体育", "topic": "体育理論 確認", "duration_min": 20, "done": false}
+          ]
+        },
+        {
+          "date": "2026-06-17",
+          "tasks": [
+            {"subject_key": "math", "subject_name": "数学", "topic": "前日確認(6/19科目)", "duration_min": 40, "done": false},
+            {"subject_key": "english", "subject_name": "英語", "topic": "前日確認(6/19科目)", "duration_min": 30, "done": false},
+            {"subject_key": "science", "subject_name": "理科", "topic": "前日確認(6/19科目)", "duration_min": 30, "done": false}
+          ]
+        }
+      ]
+    }
+  ]
+}
