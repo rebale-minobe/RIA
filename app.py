@@ -1,12 +1,12 @@
 """
-RIA TOP ページ v1.0
-更新点 (v1.0):
-- 今日の時間割を expander 形式に戻す（明日の予習と同じ表記）
-- 各 expander の下に「✅ 全部記録する」ボタンで一気に記録
-- TOC の 💡 ポイントボタンを左へ移動
-- 「目次を見る」ボタンの横幅を 240px に制限（教科書カバー幅とほぼ揃える）
-- セクションタイトルを全て 30px に統一
-- 教科書/ワークの教科 segmented control を大きく（font-size + padding）
+RIA TOP ページ v1.1
+更新点 (v1.1):
+- ToDo: task と duration を編集可能に（text_input + selectbox）
+- ToDo カードを境界線全周でカラー（border: 2px solid {color}）
+- セクションタイトルを 24px / iPad 28px に縮小
+- 起動時デフォルト: 社会 → 歴史 → 目次オープン
+- 「📆 期末テストまでのスケジュール」→「📆 Schedule」
+- 「📌 To Do TODAY」→「📌 Today's To Do」
 """
 
 import streamlit as st
@@ -54,11 +54,11 @@ st.markdown("""
         background: #fafafa;
     }
 
-    /* ===== セクションタイトル (全部 30px に統一) ===== */
+    /* ===== セクションタイトル (24px) ===== */
     .section-title {
-        font-size: 30px; font-weight: 700;
-        margin: 32px 0 14px 0;
-        color: #1c1c1e; letter-spacing: -0.02em;
+        font-size: 24px; font-weight: 700;
+        margin: 28px 0 12px 0;
+        color: #1c1c1e; letter-spacing: -0.01em;
     }
 
     .test-card {
@@ -140,27 +140,32 @@ st.markdown("""
         font-weight: 700; border: none !important;
     }
 
-    /* ===== ToDo グリッド ===== */
-    .todo-card {
-        background: white;
-        border-radius: 12px; padding: 14px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
-        border: 1px solid rgba(0,0,0,0.04);
-        border-left-width: 4px;
+    /* ===== ToDo カード (全周カラーボーダー) ===== */
+    [class*="st-key-todo_card_"] {
+        border-radius: 14px !important;
+        padding: 14px !important;
+        background: white !important;
+        margin: 8px 0 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
-        min-height: 110px;
     }
-    .todo-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-    .todo-head {
-        display: flex; justify-content: space-between; align-items: center; gap: 8px;
-        margin-bottom: 8px;
+    [class*="st-key-todo_card_"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
     }
-    .todo-subj { font-size: 16px; font-weight: 700; }
-    .todo-time {
-        color: white; padding: 4px 10px; border-radius: 10px;
-        font-size: 11px; font-weight: 700; white-space: nowrap;
+    .todo-subj-header {
+        font-size: 16px; font-weight: 700; margin-bottom: 6px;
     }
-    .todo-task { font-size: 13px; color: #3a3a3c; line-height: 1.5; }
+    /* カード内 input をミニマルに */
+    [class*="st-key-todo_card_"] input[type="text"] {
+        font-size: 13px;
+        background: #FAFAFA;
+        border: 1px solid #E5E5EA;
+        border-radius: 8px;
+    }
+    [class*="st-key-todo_card_"] [data-baseweb="select"] {
+        font-size: 13px;
+    }
 
     /* ===== ポイントボックス ===== */
     .point-box, .point-box-blue {
@@ -209,7 +214,6 @@ st.markdown("""
     .st-key-tb_toc div[data-testid="stHorizontalBlock"]:last-child {
         border-bottom: none;
     }
-    /* TOC 内の 💡 ボタンをコンパクトに */
     .st-key-tb_toc div[data-testid="stButton"] button {
         min-height: 36px !important;
         padding: 4px 8px !important;
@@ -223,13 +227,13 @@ st.markdown("""
         box-shadow: 0 6px 24px rgba(0,0,0,0.12);
     }
 
-    /* 目次を見るボタンを狭く (cover幅とほぼ揃える) */
+    /* 目次を見るボタンを狭く */
     .st-key-tb_open_btn_wrap {
         max-width: 240px !important;
         margin: 4px auto 16px auto !important;
     }
 
-    /* ボタン基本 - Apple っぽく */
+    /* ボタン基本 */
     div.stButton > button {
         min-height: 46px; font-size: 15px;
         border-radius: 12px !important;
@@ -242,7 +246,7 @@ st.markdown("""
 
     div[role="radiogroup"] { justify-content: flex-start; }
 
-    /* ===== 教科書/ワーク - 教科 segmented control を大きく ===== */
+    /* 教科書/ワーク - 教科 segmented control */
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
     div[data-testid="stSegmentedControl"] button,
     div[data-testid="stSegmentedControl"] [role="group"] button {
@@ -258,7 +262,7 @@ st.markdown("""
 
     /* ========== iPad / タブレット以上 (≥768px) ========== */
     @media (min-width: 768px) {
-        .section-title { font-size: 36px; }
+        .section-title { font-size: 28px; }
         .now-badge { font-size: 15px; }
 
         .day-card { width: 110px; min-height: 156px; padding: 14px 10px; }
@@ -266,10 +270,9 @@ st.markdown("""
         .day-wd { font-size: 13px; }
         .chip { font-size: 13px; padding: 4px 6px; }
 
-        .todo-card { padding: 18px; min-height: 130px; }
-        .todo-subj { font-size: 18px; }
-        .todo-task { font-size: 15px; }
-        .todo-time { font-size: 13px; padding: 5px 12px; }
+        .todo-subj-header { font-size: 18px; }
+        [class*="st-key-todo_card_"] input[type="text"] { font-size: 15px; }
+        [class*="st-key-todo_card_"] [data-baseweb="select"] { font-size: 15px; }
 
         .range-item { padding: 16px 20px; }
         .range-item strong { font-size: 18px; }
@@ -281,9 +284,7 @@ st.markdown("""
             font-size: 17px !important; line-height: 1.9 !important;
         }
         .point-box h1, .point-box-blue h1,
-        .point-box h2, .point-box-blue h2 {
-            font-size: 22px !important;
-        }
+        .point-box h2, .point-box-blue h2 { font-size: 22px !important; }
         .point-box h3, .point-box-blue h3 { font-size: 19px !important; }
 
         .toc-sect-title { font-size: 17px; margin: 14px 0 6px; }
@@ -297,16 +298,13 @@ st.markdown("""
         div.stButton > button { font-size: 16px; min-height: 52px; }
         div[data-testid="stCheckbox"] label p { font-size: 16px; }
 
-        /* segmented control iPad bigger */
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [role="group"] button {
             font-size: 22px !important;
             padding: 14px 28px !important;
             min-height: 58px !important;
         }
-        div[data-testid="stSegmentedControl"] button p {
-            font-size: 22px !important;
-        }
+        div[data-testid="stSegmentedControl"] button p { font-size: 22px !important; }
 
         .tb-cover { width: 240px; }
         .st-key-tb_open_btn_wrap { max-width: 260px !important; }
@@ -342,6 +340,8 @@ SUBJECTS = {
 
 DATA_DIR = Path(__file__).parent / "data"
 JP_WD = ["月", "火", "水", "木", "金", "土", "日"]
+
+DURATION_OPTIONS = ["10分", "15分", "20分", "30分", "45分", "60分", "90分", "120分"]
 
 
 def load_textbook(subject_key, genre_key):
@@ -532,9 +532,29 @@ days_until_test = (test_date - today).days
 test_wd = JP_WD[test_date.weekday()]
 today_wd = JP_WD[today.weekday()]
 
+# ===== 初回起動時のデフォルト状態 =====
+# 教科書/ワーク: 社会の歴史を選択、目次を開いた状態に
+if "selected_study" not in st.session_state:
+    st.session_state.selected_study = "social"
+    st.session_state.current_study_subject = "social"
+    st.session_state["genre_radio_social"] = "歴史"
+    st.session_state.detail_subject = "social"
+    st.session_state.detail_genre = "history"
+    st.session_state.detail_type = "textbook"
+
 # ===== ToDo 完了状態 =====
 if "todo_done" not in st.session_state:
     st.session_state.todo_done = {i: t["done"] for i, t in enumerate(TODO_TODAY)}
+
+# ===== ToDo task/duration を session_state にプリセット =====
+for idx, todo in enumerate(TODO_TODAY):
+    if f"todo_task_{idx}" not in st.session_state:
+        st.session_state[f"todo_task_{idx}"] = todo["task"]
+    if f"todo_dur_{idx}" not in st.session_state:
+        # duration を DURATION_OPTIONS に含めておく
+        if todo["duration"] not in DURATION_OPTIONS:
+            DURATION_OPTIONS.insert(0, todo["duration"])
+        st.session_state[f"todo_dur_{idx}"] = todo["duration"]
 
 # ===== 現在日時 =====
 st.markdown(
@@ -556,8 +576,8 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ===== カレンダー =====
-st.markdown('<div class="section-title">📆 期末テストまでのスケジュール</div>', unsafe_allow_html=True)
+# ===== Schedule =====
+st.markdown('<div class="section-title">📆 Schedule</div>', unsafe_allow_html=True)
 st.markdown(render_calendar(STUDY_SCHEDULE, today), unsafe_allow_html=True)
 
 # ===== TEST詳細 トグル =====
@@ -586,8 +606,8 @@ if st.session_state.get("show_test_detail"):
         </div>
         """, unsafe_allow_html=True)
 
-# ===== To Do TODAY (3列グリッド) =====
-st.markdown('<div class="section-title">📌 To Do TODAY</div>', unsafe_allow_html=True)
+# ===== Today's To Do (3列グリッド、編集可能カード) =====
+st.markdown('<div class="section-title">📌 Today\'s To Do</div>', unsafe_allow_html=True)
 done_count = sum(1 for v in st.session_state.todo_done.values() if v)
 st.markdown(f"今日のタスク: **{done_count}/{len(TODO_TODAY)}** 完了 🎯")
 
@@ -604,29 +624,56 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
         is_done = st.session_state.todo_done.get(idx, todo["done"])
         col = subject_color(todo["subject_name"])
 
-        bg = "white" if not is_done else "#F2F2F7"
-        text_deco = "line-through" if is_done else "none"
-        opacity = "0.55" if is_done else "1"
-
         with cols[ci]:
+            # 各カードに動的 CSS でカラーボーダー
+            container_key = f"todo_card_{idx}"
+            opacity = "0.55" if is_done else "1"
+            bg = "#F2F2F7" if is_done else "white"
+            text_deco = "line-through" if is_done else "none"
+
             st.markdown(f"""
-            <div class="todo-card" style="border-left-color:{col['primary']}; background:{bg}; opacity:{opacity};">
-                <div class="todo-head">
-                    <div class="todo-subj" style="color:{col['primary']};">{col['emoji']} {todo['subject_name']}</div>
-                    <div class="todo-time" style="background:{col['primary']};">⏱ {todo['duration']}</div>
-                </div>
-                <div class="todo-task" style="text-decoration:{text_deco};">{todo['task']}</div>
-            </div>
+            <style>
+            .st-key-{container_key} {{
+                border: 2px solid {col['primary']} !important;
+                background: {bg} !important;
+                opacity: {opacity};
+            }}
+            </style>
             """, unsafe_allow_html=True)
 
-            btn_label = "↩️ 戻す" if is_done else "✅ できた！"
-            if st.button(btn_label, key=f"todo_btn_{idx}", use_container_width=True):
-                st.session_state.todo_done[idx] = not is_done
-                st.rerun()
+            with st.container(key=container_key):
+                # 教科ヘッダー
+                st.markdown(
+                    f"<div class='todo-subj-header' style='color:{col['primary']}; text-decoration:{text_deco};'>"
+                    f"{col['emoji']} {todo['subject_name']}</div>",
+                    unsafe_allow_html=True
+                )
 
-st.caption("💡 To Do は RIA が自動生成（予定）")
+                # 編集可能タスク内容
+                st.text_input(
+                    "タスク内容",
+                    key=f"todo_task_{idx}",
+                    label_visibility="collapsed",
+                    placeholder="タスク内容"
+                )
 
-# ===== 今日の時間割（expander 形式）=====
+                # 編集可能時間（selectbox）
+                st.selectbox(
+                    "時間",
+                    DURATION_OPTIONS,
+                    key=f"todo_dur_{idx}",
+                    label_visibility="collapsed"
+                )
+
+                # 完了トグル
+                btn_label = "↩️ 戻す" if is_done else "✅ できた！"
+                if st.button(btn_label, key=f"todo_btn_{idx}", use_container_width=True):
+                    st.session_state.todo_done[idx] = not is_done
+                    st.rerun()
+
+st.caption("💡 タスクや時間をタップして編集できます")
+
+# ===== 今日の時間割 =====
 st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
 
 for p in TODAY_TIMETABLE:
@@ -676,7 +723,6 @@ for p in TODAY_TIMETABLE:
                 key=f"today_range_{pn}", label_visibility="collapsed"
             )
 
-# 全部記録ボタン（expander の下）
 if st.button("✅ 全部記録する", use_container_width=True, type="primary", key="record_today_all"):
     records = []
     for p in TODAY_TIMETABLE:
@@ -776,7 +822,6 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
             </div>
             """, unsafe_allow_html=True)
-        # 目次を見るボタン（横幅 240px に制限）
         with st.container(key="tb_open_btn_wrap"):
             if st.button("📖 目次を見る", key=f"open_tb_{skey}_{gkey}",
                          use_container_width=True, type="primary"):
@@ -814,7 +859,6 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     unsafe_allow_html=True
                                 )
                             for sub in section.get("subsections", []):
-                                # 💡 を左に
                                 c1, c2 = st.columns([1, 6])
                                 with c1:
                                     if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
@@ -836,4 +880,4 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v1.0")
+st.caption("🌟 RIA | TOP ページ v1.1")
