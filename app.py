@@ -467,7 +467,7 @@ def load_textbook(subject_key, genre_key):
         with open(local_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     try:
-        url = f"https://raw.githubusercontent.com/MinobeHiroshi/RIA/main/data/{filename}"
+        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}"
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             return r.json()
@@ -483,7 +483,7 @@ def load_workbook_answers(subject_key, genre_key):
         with open(local_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     try:
-        url = f"https://raw.githubusercontent.com/MinobeHiroshi/RIA/main/data/{filename}"
+        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}"
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             return r.json()

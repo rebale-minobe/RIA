@@ -6,7 +6,7 @@ import base64
 import requests
 import streamlit as st
 
-OWNER = "MinobeHiroshi"
+OWNER = "rebale-minobe"
 REPO = "RIA"
 BRANCH = "main"
 
