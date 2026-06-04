@@ -1,11 +1,11 @@
 """
-RIA TOP ページ v0.5
-更新点:
-- 1カラム縦フローに統一（NEXT TEST → TEST詳細 → TODO → 今日の時間割 → 明日の時間割）
-- カウントダウン「13日」を横並びに
-- テスト範囲はトグル展開（デフォルト非表示）
-- 時間割は各授業タップで登録UIが展開（社会=selectbox、他=text_input）
-- 「(未選択)」プレースホルダ非表示
+RIA TOP ページ v0.6
+更新点 (v0.6):
+- 今日の時間割: 目次登録あり科目は「章 → 項目(複数選択)」UI
+- ポイント生成: Anthropic API で実動作（中2向けの要点解説）
+- 「📚 教科書/ワーク」見出しを拡大
+- 目次フォント縮小（章expander含めて14px統一）
+- 「明日の時間割（予習プレビュー）」→「明日の予習」
 """
 
 import streamlit as st
@@ -30,6 +30,7 @@ st.markdown("""
         color: white; border-radius: 16px; padding: 28px; text-align: center;
     }
     .section-title { font-size: 22px; font-weight: 700; margin: 24px 0 12px 0; color: #2c3e50; }
+    .section-title.big { font-size: 30px; margin-top: 32px; }
     .range-item {
         background: #fff8f8; padding: 12px 16px; border-radius: 8px;
         border-left: 4px solid #ff6b6b; margin: 8px 0;
@@ -47,9 +48,29 @@ st.markdown("""
         text-align: right; color: #888; font-size: 13px;
         margin: -10px 0 10px 0;
     }
+    .point-box {
+        background: #fff8e1; padding: 12px 16px; border-radius: 8px;
+        margin: 6px 0 12px 0; font-size: 14px; line-height: 1.7;
+        border-left: 3px solid #f5c518;
+    }
+    .point-box-blue {
+        background: #f0f7ff; padding: 12px 16px; border-radius: 8px;
+        margin: 8px 0; font-size: 14px; line-height: 1.7;
+        border-left: 3px solid #4a90e2;
+    }
+
     div.stButton > button { min-height: 48px; font-size: 16px; }
     div[role="radiogroup"] { justify-content: center; }
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
+
+    /* TOC コンテナ内の expander ラベルを 14px に縮小 */
+    .st-key-tb_toc div[data-testid="stExpander"] summary,
+    .st-key-tb_toc div[data-testid="stExpander"] summary p {
+        font-size: 14px !important;
+    }
+    .st-key-tb_toc div[data-testid="stExpander"] {
+        margin: 2px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -97,6 +118,48 @@ def load_textbook(subject_key, genre_key):
         pass
     return None
 
+
+def get_genres_with_toc(subject_key):
+    """指定教科で目次登録済みのジャンル一覧を返す。"""
+    if subject_key not in SUBJECTS:
+        return []
+    out = []
+    for gk, ginfo in SUBJECTS[subject_key]["genres"].items():
+        data = load_textbook(subject_key, gk)
+        if data and data.get("textbook", {}).get("chapters"):
+            out.append((gk, ginfo["name"], data))
+    return out
+
+
+def generate_point(title, subject_name, genre_name=""):
+    """Anthropic API でポイント解説を生成（中2向け）。"""
+    try:
+        api_key = st.secrets.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return ("⚠️ `ANTHROPIC_API_KEY` を Streamlit Secrets に登録すると、"
+                    "ここに先生からのポイントが表示されます。")
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        context = subject_name + (f" / {genre_name}" if genre_name else "")
+        msg = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=600,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"中学2年生に向けて、{context} の単元「{title}」のポイントを"
+                    f"3〜5個の箇条書きで簡潔に教えてください。\n"
+                    f"・各項目は1〜2文以内\n"
+                    f"・専門用語は分かりやすい言葉に置き換えて\n"
+                    f"・親しみやすく、わくわくする口調で"
+                )
+            }]
+        )
+        return msg.content[0].text
+    except Exception as e:
+        return f"⚠️ エラー: {e}"
+
+
 # ===== ダミーデータ =====
 
 NEXT_TEST = {
@@ -124,14 +187,7 @@ TODAY_TIMETABLE = [
     {"period": 3, "subject": "社会", "subject_key": "social"},
     {"period": 4, "subject": "理科", "subject_key": "science"},
     {"period": 5, "subject": "英語", "subject_key": "english"},
-    {"period": 6, "subject": "音楽", "subject_key": "music"},
-]
-
-SOCIAL_SECTIONS = [
-    "第3章 第1節 武士の世の始まり",
-    "第4章 第1節 大航海によって結びつく世界",
-    "第4章 第2節 戦乱から全国統一へ",
-    "第4章 第3節 武士による全国支配の完成",
+    {"period": 6, "subject": "音楽", "subject_key": None},
 ]
 
 TOMORROW_TIMETABLE = [
@@ -205,20 +261,54 @@ for i, todo in enumerate(TODO_TODAY):
     )
 st.caption("💡 To Do は RIA が自動生成（予定）")
 
-# ===== 今日の時間割（TODOの下）=====
+# ===== 今日の時間割 =====
 st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
 for p in TODAY_TIMETABLE:
     pn = p['period']
     with st.expander(f"**{pn}**　{p['subject']}", expanded=False):
-        if p.get("subject_key") == "social":
-            sr = st.selectbox(
-                "範囲", SOCIAL_SECTIONS,
-                index=None, placeholder="今日やった範囲を選択...",
-                key=f"today_range_{pn}", label_visibility="collapsed"
+        skey = p.get("subject_key")
+        gtocs = get_genres_with_toc(skey) if skey else []
+
+        if gtocs:
+            # 目次あり: ジャンル選択 → 章選択 → 項目複数選択
+            if len(gtocs) > 1:
+                gnames = [g[1] for g in gtocs]
+                sel_gname = st.radio("ジャンル", gnames, horizontal=True, key=f"today_grad_{pn}")
+                _, _, tdata = next(g for g in gtocs if g[1] == sel_gname)
+            else:
+                _, _, tdata = gtocs[0]
+
+            chapters = tdata["textbook"]["chapters"]
+            chapter_labels = [
+                f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
+                for c in chapters
+            ]
+
+            sel_ch = st.selectbox(
+                "章", chapter_labels,
+                index=None, placeholder="章を選択...",
+                key=f"today_ch_{pn}", label_visibility="collapsed"
             )
-            if sr and st.button("✅ 記録する", key=f"today_rec_{pn}", use_container_width=True):
-                st.success(f"記録: {sr}")
+
+            if sel_ch:
+                ch_idx = chapter_labels.index(sel_ch)
+                chap = chapters[ch_idx]
+                sub_opts = []
+                for sec in chap.get("sections", []):
+                    for sub in sec.get("subsections", []):
+                        sub_opts.append(f"{sub['title']} (p.{sub['page']})")
+
+                if sub_opts:
+                    sel_subs = st.multiselect(
+                        "項目（複数選択可）", sub_opts,
+                        placeholder="やった項目を選択...",
+                        key=f"today_subs_{pn}", label_visibility="collapsed"
+                    )
+
+                    if sel_subs and st.button("✅ 記録する", key=f"today_rec_{pn}", use_container_width=True):
+                        st.success(f"記録: {sel_ch} ／ {len(sel_subs)}項目")
         else:
+            # 目次なし: text_input フォールバック
             sr = st.text_input(
                 "範囲", placeholder="今日やった範囲を入力",
                 key=f"today_range_{pn}", label_visibility="collapsed"
@@ -226,18 +316,26 @@ for p in TODAY_TIMETABLE:
             if sr and st.button("✅ 記録する", key=f"today_rec_{pn}", use_container_width=True):
                 st.success(f"記録: {sr}")
 
-# ===== 明日の時間割（同じデザイン）=====
-st.markdown('<div class="section-title">🔮 明日の時間割（予習プレビュー）</div>', unsafe_allow_html=True)
+# ===== 明日の予習 =====
+st.markdown('<div class="section-title">🔮 明日の予習</div>', unsafe_allow_html=True)
 for p in TOMORROW_TIMETABLE:
     pn = p['period']
     with st.expander(f"**{pn}**　{p['subject']}", expanded=False):
         st.markdown(f"📖 次回学習：**{p['next_chapter']}**（{p['page']}）")
+        point_key = f"tm_point_text_{pn}"
         if st.button("💡 ポイントを見る", key=f"tm_point_{pn}", use_container_width=True):
-            st.info(f"「{p['next_chapter']}」のポイントを RIA が解説（実装予定）")
+            with st.spinner("ポイント生成中..."):
+                st.session_state[point_key] = generate_point(p['next_chapter'], p['subject'])
 
-# ===== Study (教科書/ワーク) — 既存ロジック =====
+        if st.session_state.get(point_key):
+            st.markdown(
+                f"<div class='point-box-blue'>{st.session_state[point_key]}</div>",
+                unsafe_allow_html=True
+            )
 
-st.markdown('<div class="section-title">📚 教科書/ワーク</div>', unsafe_allow_html=True)
+# ===== Study (教科書/ワーク) =====
+
+st.markdown('<div class="section-title big">📚 教科書/ワーク</div>', unsafe_allow_html=True)
 
 subject_keys = list(SUBJECTS.keys())
 subject_labels = [SUBJECTS[k]['name'] for k in subject_keys]
@@ -315,25 +413,55 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         ddata = load_textbook(st.session_state.detail_subject, st.session_state.detail_genre)
         if ddata:
             st.markdown("---")
-            st.markdown(f"### 📄 目次 — {ddata['textbook'].get('name', '')}")
-            st.caption("章を開いて、小節の「💡」でポイントを見られます")
+            st.markdown(
+                f"<div style='font-size:18px; font-weight:700; color:#2c3e50; margin: 8px 0 4px 0;'>"
+                f"📄 目次 — {ddata['textbook'].get('name', '')}</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                "<div style='font-size:12px; color:#888; margin-bottom:10px;'>"
+                "章を開いて、項目の「💡」でポイントを見られます</div>",
+                unsafe_allow_html=True
+            )
 
-            for chapter in ddata["textbook"]["chapters"]:
-                ch_title = f"{chapter.get('chapter_number', '')} {chapter['title']}"
-                with st.expander(f"📖 {ch_title}"):
-                    for section in chapter.get("sections", []):
-                        st.markdown(f"**{section['title']}**")
-                        for sub in section.get("subsections", []):
-                            c1, c2 = st.columns([5, 1])
-                            with c1:
-                                st.markdown(f"　• {sub['title']} (p.{sub['page']})")
-                            with c2:
-                                if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
-                                    st.session_state.show_point = sub["title"]
-
-            if "show_point" in st.session_state:
-                st.info(f"💡「{st.session_state.show_point}」のポイントを RIA が解説します（予習サポートと連携予定）")
+            # TOC コンテナ（CSS で expander ラベルを縮小）
+            with st.container(key="tb_toc"):
+                for chapter in ddata["textbook"]["chapters"]:
+                    ch_title = f"{chapter.get('chapter_number', '')} {chapter['title']}"
+                    with st.expander(f"📖 {ch_title}"):
+                        for section in chapter.get("sections", []):
+                            if section.get("title"):
+                                st.markdown(
+                                    f"<div style='font-size:13px; font-weight:600; "
+                                    f"color:#2c3e50; margin: 8px 0 4px 0;'>"
+                                    f"{section['title']}</div>",
+                                    unsafe_allow_html=True
+                                )
+                            for sub in section.get("subsections", []):
+                                c1, c2 = st.columns([6, 1])
+                                with c1:
+                                    st.markdown(
+                                        f"<div style='font-size:13px; line-height:1.8; "
+                                        f"padding-left:8px;'>　• {sub['title']} "
+                                        f"<span style='color:#888;'>(p.{sub['page']})</span></div>",
+                                        unsafe_allow_html=True
+                                    )
+                                with c2:
+                                    pt_key = f"pt_text_{sub['id']}"
+                                    if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
+                                        with st.spinner("生成中..."):
+                                            st.session_state[pt_key] = generate_point(
+                                                sub["title"],
+                                                subject_name=sinfo['name'],
+                                                genre_name=ginfo['name']
+                                            )
+                                pt_key = f"pt_text_{sub['id']}"
+                                if st.session_state.get(pt_key):
+                                    st.markdown(
+                                        f"<div class='point-box'>{st.session_state[pt_key]}</div>",
+                                        unsafe_allow_html=True
+                                    )
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v0.5（シンプル化）")
+st.caption("🌟 RIA | TOP ページ v0.6")
