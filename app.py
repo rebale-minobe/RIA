@@ -223,19 +223,28 @@ for i, p in enumerate(TOMORROW_TIMETABLE):
 st.markdown('<div class="section-title">📚 Study</div>', unsafe_allow_html=True)
 st.markdown("各教科を選ぶと、教科書・ワークが表示されます")
 
-# 教科タブ（3列・選択中オレンジ下線）
-subject_items = list(SUBJECTS.items())
-for row in range(0, len(subject_items), 3):
-    cols = st.columns(3)
-    for i, (skey, sinfo) in enumerate(subject_items[row:row+3]):
-        with cols[i]:
-            is_sel = st.session_state.get("selected_study") == skey
-            if st.button(f"{sinfo['emoji']} {sinfo['name']}", key=f"study_{skey}", use_container_width=True):
-                st.session_state.selected_study = skey
-                st.session_state.pop("detail_type", None)
-                st.rerun()
-            bar = "#ff8c00" if is_sel else "transparent"
-            st.markdown(f"<div style='height:3px;background:{bar};border-radius:2px;margin-top:-10px;'></div>", unsafe_allow_html=True)
+# 教科選択（segmented control：スマホでも横並び）
+subject_keys = list(SUBJECTS.keys())
+subject_labels = [f"{SUBJECTS[k]['emoji']} {SUBJECTS[k]['name']}" for k in subject_keys]
+
+current_label = None
+if st.session_state.get("selected_study") in SUBJECTS:
+    cs = st.session_state.selected_study
+    current_label = f"{SUBJECTS[cs]['emoji']} {SUBJECTS[cs]['name']}"
+
+selected_label = st.segmented_control(
+    "教科", subject_labels,
+    default=current_label,
+    label_visibility="collapsed",
+    key="subject_seg"
+)
+if selected_label:
+    idx = subject_labels.index(selected_label)
+    new_skey = subject_keys[idx]
+    if st.session_state.get("selected_study") != new_skey:
+        st.session_state.selected_study = new_skey
+        st.session_state.pop("detail_type", None)
+        st.rerun()
 
 if "selected_study" in st.session_state and st.session_state.selected_study in SUBJECTS:
     skey = st.session_state.selected_study
