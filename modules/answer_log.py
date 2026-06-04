@@ -35,6 +35,20 @@ def append_log(entry: dict) -> bool:
         return False
 
 
+def append_logs_batch(entries: list) -> bool:
+    """複数ログをまとめて push（リズム重視のバッファ flush 用）"""
+    if not entries:
+        return True
+    logs = load_logs()
+    logs.extend(entries)
+    body = json.dumps({"logs": logs}, ensure_ascii=False, indent=2).encode("utf-8")
+    try:
+        gh_put(LOG_PATH, body, f"Batch answer logs ({len(entries)} entries)")
+        return True
+    except Exception:
+        return False
+
+
 def _question_key(log: dict) -> tuple:
     """問題の一意キー（教科+ジャンル+ページ+セクション+グループ+問題番号）"""
     return (

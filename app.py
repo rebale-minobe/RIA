@@ -246,12 +246,12 @@ st.markdown("""
         margin-top: 2px;
     }
     .wb-fc-q {
-        font-size: 64px;
+        font-size: 44px;
         font-weight: 800;
         color: #FF9500;
         text-align: center;
         line-height: 1.0;
-        margin: 18px 0 10px 0;
+        margin: 14px 0 8px 0;
     }
     .wb-fc-divider {
         border-top: 1px dashed #e5e5ea;
@@ -259,24 +259,20 @@ st.markdown("""
     }
     .wb-fc-a-area {
         text-align: center;
-        min-height: 90px;
+        min-height: 70px;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 12px 0;
     }
     .wb-fc-a-shown {
-        font-size: 28px;
+        font-size: 30px;
         font-weight: 700;
         color: #1c1c1e;
-        background: linear-gradient(135deg, #E8F8EE, #C8F0D8);
-        padding: 16px 24px;
-        border-radius: 14px;
-        border-left: 4px solid #34C759;
         line-height: 1.4;
-        animation: ansReveal 0.35s ease-out;
         max-width: 100%;
         word-break: break-word;
+        animation: ansReveal 0.25s ease-out;
     }
     .wb-fc-a-hidden {
         font-size: 56px;
@@ -317,7 +313,9 @@ st.markdown("""
     }
     .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(5) button,
     .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(5) button {
-        background: #8E8E93 !important; color: white !important;
+        background: linear-gradient(135deg, #FF9500, #FF7A00) !important;
+        color: white !important;
+        box-shadow: 0 3px 10px rgba(255, 149, 0, 0.35) !important;
     }
     .st-key-wb_nav_row button,
     .st-key-tp_nav_row button {
@@ -419,8 +417,8 @@ st.markdown("""
         .st-key-tb_open_btn_wrap, .st-key-wb_open_btn_wrap { max-width: 260px !important; }
 
         .wb-detail-title { font-size: 24px; }
-        .wb-fc-q { font-size: 88px; }
-        .wb-fc-a-shown { font-size: 36px; padding: 18px 28px; }
+        .wb-fc-q { font-size: 60px; }
+        .wb-fc-a-shown { font-size: 40px; }
         .wb-fc-a-hidden { font-size: 72px; }
         .wb-fc-meta { font-size: 13px; }
         .wb-fc-lesson { font-size: 17px; }
@@ -891,9 +889,7 @@ else:
         """, unsafe_allow_html=True)
         st.progress((tp_pos + 1) / tp_total)
 
-        # フラッシュカード
-        tp_shown_key = f"tp_shown_{tp_pos}"
-        tp_is_shown = st.session_state.get(tp_shown_key, False)
+        # フラッシュカード（答え常時表示）
         tp_result = st.session_state.get(f"tp_result_{tp_pos}")
 
         # 教科バッジ + メタ
@@ -927,32 +923,24 @@ else:
             <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current['q']}</div>
             <div class='wb-fc-divider'></div>
             <div class='wb-fc-a-area'>
+                <div class='wb-fc-a-shown'>{tp_current['a']}</div>
+            </div>
+        </div>
         """
-        if tp_is_shown:
-            tp_card_html += f"<div class='wb-fc-a-shown'>{tp_current['a']}</div>"
-        else:
-            tp_card_html += "<div class='wb-fc-a-hidden'>?</div>"
-        tp_card_html += "</div></div>"
         st.markdown(tp_card_html, unsafe_allow_html=True)
 
-        if tp_is_shown:
-            tp_info_lines = []
-            if tp_current.get('note'):
-                tp_info_lines.append(f"※ {tp_current['note']}")
-            if tp_current.get('context'):
-                tp_info_lines.append(f"💭 {tp_current['context']}")
-            if tp_info_lines:
-                st.caption(" ／ ".join(tp_info_lines))
-            if tp_result == "maru":
-                st.markdown("<div class='wb-result-badge maru'>⭕ 正解として記録</div>", unsafe_allow_html=True)
-            elif tp_result == "batsu":
-                st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>", unsafe_allow_html=True)
-        else:
-            with st.container(key="tp_reveal_wrap"):
-                if st.button("👆 タップで答えを見る", key=f"tp_reveal_{tp_pos}",
-                             use_container_width=True):
-                    st.session_state[tp_shown_key] = True
-                    st.rerun()
+        # 注記と結果バッジ
+        tp_info_lines = []
+        if tp_current.get('note'):
+            tp_info_lines.append(f"※ {tp_current['note']}")
+        if tp_current.get('context'):
+            tp_info_lines.append(f"💭 {tp_current['context']}")
+        if tp_info_lines:
+            st.caption(" ／ ".join(tp_info_lines))
+        if tp_result == "maru":
+            st.markdown("<div class='wb-result-badge maru'>⭕ 覚えた！</div>", unsafe_allow_html=True)
+        elif tp_result == "batsu":
+            st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>", unsafe_allow_html=True)
 
         # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
         with st.container(key="tp_nav_row"):
@@ -964,10 +952,11 @@ else:
                     st.rerun()
             with tp_nav_cols[1]:
                 if st.button("⭕", key=f"tp_maru_{tp_pos}",
-                            disabled=(not tp_is_shown), use_container_width=True,
-                            help="覚えた！"):
+                            use_container_width=True, help="覚えた！"):
                     st.session_state[f"tp_result_{tp_pos}"] = "maru"
-                    # ログ保存（教科横断で記録）
+                    # バッファに追加（5件溜まったら一括 push）
+                    if "tp_pending_logs" not in st.session_state:
+                        st.session_state["tp_pending_logs"] = []
                     try:
                         entry = answer_log.question_to_log_entry(
                             tp_current,
@@ -977,7 +966,10 @@ else:
                             tp_current.get('genre_name', ''),
                             "maru"
                         )
-                        answer_log.append_log(entry)
+                        st.session_state["tp_pending_logs"].append(entry)
+                        if len(st.session_state["tp_pending_logs"]) >= 5:
+                            answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
+                            st.session_state["tp_pending_logs"] = []
                     except Exception:
                         pass
                     if tp_pos < tp_total - 1:
@@ -985,9 +977,10 @@ else:
                     st.rerun()
             with tp_nav_cols[2]:
                 if st.button("❌", key=f"tp_batsu_{tp_pos}",
-                            disabled=(not tp_is_shown), use_container_width=True,
-                            help="まだ覚えてない"):
+                            use_container_width=True, help="まだ覚えてない"):
                     st.session_state[f"tp_result_{tp_pos}"] = "batsu"
+                    if "tp_pending_logs" not in st.session_state:
+                        st.session_state["tp_pending_logs"] = []
                     try:
                         entry = answer_log.question_to_log_entry(
                             tp_current,
@@ -997,7 +990,10 @@ else:
                             tp_current.get('genre_name', ''),
                             "batsu"
                         )
-                        answer_log.append_log(entry)
+                        st.session_state["tp_pending_logs"].append(entry)
+                        if len(st.session_state["tp_pending_logs"]) >= 5:
+                            answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
+                            st.session_state["tp_pending_logs"] = []
                     except Exception:
                         pass
                     if tp_pos < tp_total - 1:
@@ -1005,8 +1001,7 @@ else:
                     st.rerun()
             with tp_nav_cols[3]:
                 if st.button("💡", key=f"tp_explain_{tp_pos}",
-                            disabled=(not tp_is_shown), use_container_width=True,
-                            help="解説を見る"):
+                            use_container_width=True, help="解説を見る"):
                     with st.spinner("解説生成中..."):
                         st.session_state[f"tp_explain_{tp_pos}"] = (
                             generate_workbook_explanation(
@@ -1027,8 +1022,16 @@ else:
             st.markdown("")
             render_point_box(st.session_state[tp_explain_key], color="yellow")
 
-        # 完了時のリロード
-        if tp_pos == tp_total - 1 and tp_is_shown:
+        # 完了時のリロード（最後の問題に答えたタイミング）
+        if tp_pos == tp_total - 1 and tp_result is not None:
+            # pending logs を flush
+            if st.session_state.get("tp_pending_logs"):
+                try:
+                    answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
+                    st.session_state["tp_pending_logs"] = []
+                except Exception:
+                    pass
+
             st.markdown("---")
             tp_still_wrong = sum(1 for i in range(tp_total)
                                 if st.session_state.get(f"tp_result_{i}") == "batsu")
@@ -1038,7 +1041,6 @@ else:
                 st.success("🎉 全問正解！")
             if st.button("🔄 「今日の問題」を再読み込み", key="tp_reload",
                          use_container_width=True, type="primary"):
-                # キャッシュと state をクリア
                 keys_to_clear = [k for k in list(st.session_state.keys())
                                 if k.startswith("tp_")]
                 for k in keys_to_clear:
@@ -1368,9 +1370,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 """, unsafe_allow_html=True)
                 st.progress((cur_pos + 1) / n_active)
 
-                # フラッシュカード
-                shown_key = f"wb_shown_{page_num}_{original_idx}"
-                is_shown = st.session_state.get(shown_key, False)
+                # フラッシュカード（答え常時表示）
                 result = st.session_state.get(f"wb_result_{page_num}_{original_idx}")
 
                 # ヘッダー情報
@@ -1390,36 +1390,26 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                     <div class='wb-fc-q'>{current['q']}</div>
                     <div class='wb-fc-divider'></div>
                     <div class='wb-fc-a-area'>
+                        <div class='wb-fc-a-shown'>{current['a']}</div>
+                    </div>
+                </div>
                 """
-                if is_shown:
-                    card_html += f"<div class='wb-fc-a-shown'>{current['a']}</div>"
-                else:
-                    card_html += "<div class='wb-fc-a-hidden'>?</div>"
-                card_html += "</div></div>"
                 st.markdown(card_html, unsafe_allow_html=True)
 
-                if is_shown:
-                    info_lines = []
-                    if current.get('note'):
-                        info_lines.append(f"※ {current['note']}")
-                    if current.get('context'):
-                        info_lines.append(f"💭 {current['context']}")
-                    if info_lines:
-                        st.caption(" ／ ".join(info_lines))
-                    if result == "maru":
-                        st.markdown("<div class='wb-result-badge maru'>⭕ 正解として記録</div>",
-                                    unsafe_allow_html=True)
-                    elif result == "batsu":
-                        st.markdown("<div class='wb-result-badge batsu'>❌ 間違いとして記録</div>",
-                                    unsafe_allow_html=True)
-                else:
-                    # 答えを見るボタン
-                    with st.container(key="wb_reveal_wrap"):
-                        if st.button("👆 タップで答えを見る",
-                                     key=f"reveal_{page_num}_{original_idx}",
-                                     use_container_width=True):
-                            st.session_state[shown_key] = True
-                            st.rerun()
+                # 注記と結果バッジ
+                info_lines = []
+                if current.get('note'):
+                    info_lines.append(f"※ {current['note']}")
+                if current.get('context'):
+                    info_lines.append(f"💭 {current['context']}")
+                if info_lines:
+                    st.caption(" ／ ".join(info_lines))
+                if result == "maru":
+                    st.markdown("<div class='wb-result-badge maru'>⭕ 正解</div>",
+                                unsafe_allow_html=True)
+                elif result == "batsu":
+                    st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>",
+                                unsafe_allow_html=True)
 
                 # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
                 with st.container(key="wb_nav_row"):
@@ -1434,17 +1424,21 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
                     with nav_cols[1]:
                         if st.button("⭕", key=f"maru_{page_num}_{original_idx}",
-                                    disabled=(not is_shown), use_container_width=True,
-                                    help="正解として記録"):
+                                    use_container_width=True, help="覚えた！"):
                             st.session_state[f"wb_result_{page_num}_{original_idx}"] = "maru"
-                            # GitHub にログを保存
+                            # バッファに追加（5件溜まったら一括 push）
                             if ANSWER_LOG_AVAILABLE:
+                                if "wb_pending_logs" not in st.session_state:
+                                    st.session_state["wb_pending_logs"] = []
                                 try:
                                     entry = answer_log.question_to_log_entry(
                                         current, skey, sinfo['name'],
                                         gkey, ginfo['name'], "maru"
                                     )
-                                    answer_log.append_log(entry)
+                                    st.session_state["wb_pending_logs"].append(entry)
+                                    if len(st.session_state["wb_pending_logs"]) >= 5:
+                                        answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
+                                        st.session_state["wb_pending_logs"] = []
                                 except Exception:
                                     pass
                             if cur_pos < n_active - 1:
@@ -1453,17 +1447,20 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
                     with nav_cols[2]:
                         if st.button("❌", key=f"batsu_{page_num}_{original_idx}",
-                                    disabled=(not is_shown), use_container_width=True,
-                                    help="間違いとして記録"):
+                                    use_container_width=True, help="まだ覚えてない"):
                             st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
-                            # GitHub にログを保存
                             if ANSWER_LOG_AVAILABLE:
+                                if "wb_pending_logs" not in st.session_state:
+                                    st.session_state["wb_pending_logs"] = []
                                 try:
                                     entry = answer_log.question_to_log_entry(
                                         current, skey, sinfo['name'],
                                         gkey, ginfo['name'], "batsu"
                                     )
-                                    answer_log.append_log(entry)
+                                    st.session_state["wb_pending_logs"].append(entry)
+                                    if len(st.session_state["wb_pending_logs"]) >= 5:
+                                        answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
+                                        st.session_state["wb_pending_logs"] = []
                                 except Exception:
                                     pass
                             if cur_pos < n_active - 1:
@@ -1472,8 +1469,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
                     with nav_cols[3]:
                         if st.button("💡", key=f"explain_{page_num}_{original_idx}",
-                                    disabled=(not is_shown), use_container_width=True,
-                                    help="解説を見る"):
+                                    use_container_width=True, help="解説を見る"):
                             with st.spinner("解説生成中..."):
                                 st.session_state[f"wb_explain_{page_num}_{original_idx}"] = (
                                     generate_workbook_explanation(current, sinfo['name'])
@@ -1494,7 +1490,15 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                     render_point_box(st.session_state[explain_key], color="yellow")
 
                 # ページ完了時の再テスト・リセット
-                if cur_pos == n_active - 1 and is_shown:
+                if cur_pos == n_active - 1 and result is not None:
+                    # pending logs を flush
+                    if ANSWER_LOG_AVAILABLE and st.session_state.get("wb_pending_logs"):
+                        try:
+                            answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
+                            st.session_state["wb_pending_logs"] = []
+                        except Exception:
+                            pass
+
                     wrong_indices = [i for i in range(total)
                                     if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
                     st.markdown("---")
@@ -1506,8 +1510,6 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                         key=f"start_retest_{page_num}"):
                                 st.session_state[mode_key] = "retest"
                                 st.session_state[f"wb_idx_{page_num}_retest"] = 0
-                                for i in wrong_indices:
-                                    st.session_state[f"wb_shown_{page_num}_{i}"] = False
                                 st.rerun()
                         else:
                             st.success("🎉 全問正解！")
@@ -1525,7 +1527,6 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                 use_container_width=True):
                         for i in range(total):
                             st.session_state.pop(f"wb_result_{page_num}_{i}", None)
-                            st.session_state.pop(f"wb_shown_{page_num}_{i}", None)
                             st.session_state.pop(f"wb_explain_{page_num}_{i}", None)
                         st.session_state[mode_key] = "normal"
                         st.session_state[f"wb_idx_{page_num}_normal"] = 0
