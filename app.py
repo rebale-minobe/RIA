@@ -673,32 +673,42 @@ def get_genres_with_toc(subject_key):
     return out
 
 
+def _get_openai_client():
+    """OpenAI クライアントを取得"""
+    from openai import OpenAI
+    api_key = st.secrets.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY が Streamlit Secrets に未登録です")
+    return OpenAI(api_key=api_key)
+
+
 def generate_point(title, subject_name, genre_name=""):
     try:
-        api_key = st.secrets.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return ("⚠️ `ANTHROPIC_API_KEY` を Streamlit Secrets に登録すると、"
-                    "ここに先生からのポイントが表示されます。")
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
+        client = _get_openai_client()
         context = subject_name + (f" / {genre_name}" if genre_name else "")
-        msg = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
             max_tokens=600,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"中学2年生に向けて、{context} の単元「{title}」のポイントを"
-                    f"3〜5個まとめて教えてください。\n\n"
-                    f"【書式ルール】\n"
-                    f"- 冒頭にタイトル行（# や ##）を入れない。いきなり1つ目から始める\n"
-                    f"- 各ポイントは「## 絵文字＋短いフレーズ」の見出し、続けて1〜2文の解説\n"
-                    f"- 専門用語は分かりやすい言葉に置き換える\n"
-                    f"- 親しみやすく、わくわくする口調で"
-                )
-            }]
+            messages=[
+                {
+                    "role": "system",
+                    "content": "あなたは中学生に分かりやすく教えるのが得意な先生です。",
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"中学2年生に向けて、{context} の単元「{title}」のポイントを"
+                        f"3〜5個まとめて教えてください。\n\n"
+                        f"【書式ルール】\n"
+                        f"- 冒頭にタイトル行（# や ##）を入れない。いきなり1つ目から始める\n"
+                        f"- 各ポイントは「## 絵文字＋短いフレーズ」の見出し、続けて1〜2文の解説\n"
+                        f"- 専門用語は分かりやすい言葉に置き換える\n"
+                        f"- 親しみやすく、わくわくする口調で"
+                    ),
+                },
+            ],
         )
-        return msg.content[0].text
+        return resp.choices[0].message.content
     except Exception as e:
         return f"⚠️ エラー: {e}"
 
@@ -706,15 +716,9 @@ def generate_point(title, subject_name, genre_name=""):
 def generate_workbook_explanation(question_data, subject_name="社会"):
     """問題に対する解説を生成"""
     try:
-        api_key = st.secrets.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            return "⚠️ ANTHROPIC_API_KEY が未登録"
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
-
+        client = _get_openai_client()
         note_line = f"参考: {question_data['note']}\n" if question_data.get('note') else ""
-        ctx_line = f"文脈: {question_data['context']}\n" if question_data.get('context') else ""
-
+        ctx_line  = f"文脈: {question_data['context']}\n" if question_data.get('context') else ""
         prompt = (
             f"中学2年生の {subject_name} のワーク問題です。\n\n"
             f"単元: {question_data.get('lesson_title','')}\n"
@@ -729,13 +733,15 @@ def generate_workbook_explanation(question_data, subject_name="社会"):
             f"- マークダウン記号や見出しは使わない、ふつうの文章で\n"
             f"- 前置きは不要、いきなり解説から"
         )
-
-        msg = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
             max_tokens=500,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {"role": "system", "content": "あなたは中学生に分かりやすく教えるのが得意な先生です。"},
+                {"role": "user",   "content": prompt},
+            ],
         )
-        return msg.content[0].text
+        return resp.choices[0].message.content
     except Exception as e:
         return f"⚠️ エラー: {e}"
 
