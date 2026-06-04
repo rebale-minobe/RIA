@@ -334,21 +334,23 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(255,59,48,0.12) !important;
     }
 
-    /* 💡 解説 — ミントグリーン */
+    /* 💡 解説 — ミントグリーン・枠線付き */
     .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button,
     .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button {
         background: #E8F8EE !important;
         color: #1a8a3c !important;
-        box-shadow: 0 2px 6px rgba(52,199,89,0.12) !important;
+        border: 2px solid #34C759 !important;
+        box-shadow: 0 2px 8px rgba(52,199,89,0.15) !important;
     }
 
-    /* ▶ 次へ — プライマリブルー・主アクション */
+    /* NEXT ▶ — プライマリブルー・主アクション */
     .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button,
     .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button {
         background: linear-gradient(160deg, #007AFF 0%, #0055d4 100%) !important;
         color: white !important;
         box-shadow: 0 4px 14px rgba(0,122,255,0.35) !important;
-        font-size: 22px !important;
+        font-size: 16px !important;
+        letter-spacing: 0.04em !important;
     }
 
     /* 答えを見るボタン */
@@ -361,6 +363,26 @@ st.markdown("""
         border: none !important;
         font-weight: 700 !important;
         box-shadow: 0 4px 14px rgba(255, 149, 0, 0.35) !important;
+    }
+
+    /* 教科書ボタン — グレー背景・白文字 */
+    .st-key-tb_open_btn_wrap button {
+        background: #636366 !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    }
+    .st-key-tb_open_btn_wrap button:hover { background: #48484a !important; }
+
+    /* ワークボタン — 赤系背景・白文字 */
+    .st-key-wb_open_btn_wrap button {
+        background: linear-gradient(135deg, #FF3B30 0%, #c0392b 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(255,59,48,0.3) !important;
+    }
+    .st-key-wb_open_btn_wrap button:hover {
+        background: linear-gradient(135deg, #e0342a 0%, #a93226 100%) !important;
     }
 
     /* カバー */
@@ -1639,7 +1661,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                     # ▶ 次へ（主アクション）
                     with nav_cols[3]:
                         if cur_pos < n_active - 1:
-                            if st.button("次へ ▶", key=f"next_{page_num}_{original_idx}",
+                            if st.button("NEXT ▶", key=f"next_{page_num}_{original_idx}",
                                          use_container_width=True, help="次の問題"):
                                 st.session_state[idx_key] = cur_pos + 1
                                 st.rerun()
@@ -1696,4 +1718,36 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v1.3")
+
+# フォントサイズ変更
+font_col1, font_col2, font_col3 = st.columns([2, 3, 2])
+with font_col2:
+    font_size = st.select_slider(
+        "🔤 文字サイズ",
+        options=[12, 13, 14, 15, 16, 17, 18, 20, 22],
+        value=st.session_state.get("font_size", 15),
+        key="font_size_slider",
+        format_func=lambda x: f"{x}px"
+    )
+    if font_size != st.session_state.get("font_size", 15):
+        st.session_state["font_size"] = font_size
+        st.rerun()
+
+# フォントサイズをCSSで適用
+fs = st.session_state.get("font_size", 15)
+st.markdown(f"""
+<style>
+    .stApp, .stApp p, .stApp li, .stApp span, .stApp div {{
+        font-size: {fs}px !important;
+    }}
+    .wb-fc-q {{ font-size: {fs * 2}px !important; }}
+    .wb-fc-a-shown {{ font-size: {int(fs * 2.4)}px !important; }}
+    .section-title {{ font-size: {fs + 9}px !important; }}
+    .toc-sect-title {{ font-size: {fs - 1}px !important; }}
+    .toc-sub {{ font-size: {fs - 2}px !important; }}
+    .wb-fc-meta {{ font-size: {fs - 4}px !important; }}
+    .wb-fc-lesson {{ font-size: {fs - 1}px !important; }}
+</style>
+""", unsafe_allow_html=True)
+
+st.caption(f"🌟 RIA v1.5 | 文字サイズ {fs}px")
