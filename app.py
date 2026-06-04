@@ -1,13 +1,9 @@
 """
-RIA TOP ページ（モック版）
-5つのコンテンツ:
-1. NEXT TEST（カウントダウン）
-2. To Do TODAY
-3. 今日の時間割
-4. 明日の時間割
-5. Study（教科ハブ）
-
-※ ダミーデータで動作確認用。仕様調整後に実データ連携。
+RIA TOP ページ（モック v0.2）
+更新点:
+- ヘッダー削除（スッキリ）
+- NEXT TEST: テスト範囲詳細 + 勉強時間
+- 今日の時間割: 教科書タイトルから今日やった範囲を選択
 """
 
 import streamlit as st
@@ -24,7 +20,6 @@ st.set_page_config(
 # ===== スタイル =====
 st.markdown("""
 <style>
-    /* カード共通 */
     .ria-card {
         background: white;
         border-radius: 16px;
@@ -33,7 +28,6 @@ st.markdown("""
         margin-bottom: 20px;
         border: 1px solid #f0f0f0;
     }
-    /* NEXT TEST カード */
     .test-card {
         background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
         color: white;
@@ -47,17 +41,6 @@ st.markdown("""
         line-height: 1;
         margin: 8px 0;
     }
-    /* To Do カード */
-    .todo-item {
-        background: #f8f9fa;
-        padding: 14px 18px;
-        border-radius: 10px;
-        margin: 8px 0;
-        border-left: 4px solid #4a90e2;
-        display: flex;
-        align-items: center;
-    }
-    /* 時間割 */
     .period-row {
         display: flex;
         padding: 10px 14px;
@@ -85,54 +68,66 @@ st.markdown("""
         margin: 24px 0 12px 0;
         color: #2c3e50;
     }
-    /* Study ボタン */
-    .study-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .range-item {
+        background: #fff8f8;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border-left: 4px solid #ff6b6b;
+        margin: 8px 0;
+    }
+    .study-time-badge {
+        background: #4a90e2;
         color: white;
-        padding: 20px;
-        border-radius: 12px;
-        text-align: center;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 13px;
         font-weight: bold;
-        font-size: 16px;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ===== ダミーデータ =====
 
-# テスト情報
+# テスト情報（範囲 + 推奨勉強時間つき）
 NEXT_TEST = {
     "name": "1学期 期末テスト",
     "start_date": "2026-06-18",
     "subjects": [
-        {"subject": "技術家庭", "date": "6/18(木)", "time": "9:00", "range": "教科書 P30-55"},
-        {"subject": "国語", "date": "6/18(木)", "time": "9:45", "range": "漢字 + 文法 + 読解"},
-        {"subject": "社会", "date": "6/18(木)", "time": "10:45", "range": "歴史 P105-160"},
-        {"subject": "保健体育", "date": "6/18(木)", "time": "11:45", "range": "教科書 P20-40"},
-        {"subject": "数学", "date": "6/19(金)", "time": "9:00", "range": "1年範囲 + 文章題"},
-        {"subject": "英語", "date": "6/19(金)", "time": "10:00", "range": "Unit 1-3 + 英作文"},
-        {"subject": "理科", "date": "6/19(金)", "time": "10:55", "range": "化学変化 + 生物"},
+        {"subject": "技術家庭", "date": "6/18(木)", "time": "9:00", "range": "教科書 P30-55", "study_hours": 2},
+        {"subject": "国語", "date": "6/18(木)", "time": "9:45", "range": "漢字 + 文法（助動詞）+ 読解「故郷」", "study_hours": 5},
+        {"subject": "社会", "date": "6/18(木)", "time": "10:45", "range": "歴史 P105-160（武家政権〜江戸）", "study_hours": 8},
+        {"subject": "保健体育", "date": "6/18(木)", "time": "11:45", "range": "教科書 P20-40", "study_hours": 2},
+        {"subject": "数学", "date": "6/19(金)", "time": "9:00", "range": "1年範囲復習 + 文章題 + 連立方程式", "study_hours": 12},
+        {"subject": "英語", "date": "6/19(金)", "time": "10:00", "range": "Unit 1-3 + 英作文 + 不規則動詞", "study_hours": 3},
+        {"subject": "理科", "date": "6/19(金)", "time": "10:55", "range": "化学変化 + 生物のからだ", "study_hours": 4},
     ]
 }
 
-# 今日のTo Do（AI生成想定）
 TODO_TODAY = [
     {"subject": "🗺️ 社会", "task": "歴史 P105-130 教科書通読", "duration": "60分", "done": False},
     {"subject": "📐 数学", "task": "1年範囲 P225-248 復習", "duration": "30分", "done": False},
     {"subject": "📘 国語", "task": "漢字テスト範囲 10個", "duration": "20分", "done": True},
 ]
 
-# 今日の時間割
+# 今日の時間割（教科書範囲選択用に、教科書セクションを紐付け）
 TODAY_TIMETABLE = [
-    {"period": 1, "subject": "国語", "content": "文法 - 助動詞"},
-    {"period": 2, "subject": "数学", "content": "文章題の解き方"},
-    {"period": 3, "subject": "社会", "content": "織豊政権"},
-    {"period": 4, "subject": "理科", "content": "化学変化"},
-    {"period": 5, "subject": "英語", "content": "Unit 3 - 過去形"},
-    {"period": 6, "subject": "音楽", "content": "合唱練習"},
+    {"period": 1, "subject": "国語", "subject_key": "japanese"},
+    {"period": 2, "subject": "数学", "subject_key": "math"},
+    {"period": 3, "subject": "社会", "subject_key": "social"},
+    {"period": 4, "subject": "理科", "subject_key": "science"},
+    {"period": 5, "subject": "英語", "subject_key": "english"},
+    {"period": 6, "subject": "音楽", "subject_key": "music"},
 ]
 
-# 明日の時間割
+# 社会教科書の章・節（today timetable で選択用、本番は JSON から）
+SOCIAL_SECTIONS = [
+    "第3章 第1節 武士の世の始まり",
+    "第3章 第2節 武家政権の内と外",
+    "第4章 第1節 大航海によって結びつく世界",
+    "第4章 第2節 戦乱から全国統一へ",
+    "第4章 第3節 武士による全国支配の完成",
+]
+
 TOMORROW_TIMETABLE = [
     {"period": 1, "subject": "数学", "next_chapter": "連立方程式の応用", "page": "P232"},
     {"period": 2, "subject": "社会", "next_chapter": "江戸幕府の成立", "page": "P124"},
@@ -142,19 +137,13 @@ TOMORROW_TIMETABLE = [
     {"period": 6, "subject": "英語", "next_chapter": "Unit 4 - 未来形", "page": "P45"},
 ]
 
-# ===== ヘッダー =====
+# ===== カウントダウン計算 =====
 
 today = datetime.now()
 test_date = datetime.strptime(NEXT_TEST["start_date"], "%Y-%m-%d")
 days_until_test = (test_date - today).days
 
-st.markdown("# 🌟 RIA")
-st.markdown("##### Ria's Intelligent Agent — 莉亜の学習エージェント")
-st.markdown(f"こんにちは、**見延 莉亜** さん！　📅 {today.strftime('%Y年%m月%d日')}")
-
-st.markdown("---")
-
-# ===== レイアウト：左カラム（メイン）+ 右カラム =====
+# ===== レイアウト =====
 
 col_left, col_right = st.columns([3, 2])
 
@@ -173,13 +162,25 @@ with col_left:
     </div>
     """, unsafe_allow_html=True)
     
-    # テスト詳細（展開）
-    with st.expander("📋 テストの詳細を見る"):
-        for s in NEXT_TEST["subjects"]:
-            st.markdown(f"""
-            **{s['subject']}** — {s['date']} {s['time']}  
-            　範囲: {s['range']}
-            """)
+    # テスト範囲詳細 + 勉強時間
+    st.markdown("#### 📋 テスト範囲と勉強時間")
+    
+    total_hours = sum(s["study_hours"] for s in NEXT_TEST["subjects"])
+    st.markdown(f"**推奨勉強時間 合計: {total_hours} 時間**　（残り {days_until_test} 日 → 1日 約{total_hours/max(days_until_test,1):.1f}時間）")
+    
+    for s in NEXT_TEST["subjects"]:
+        st.markdown(f"""
+        <div class="range-item">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong>{s['subject']}</strong>
+                <span class="study-time-badge">⏱ {s['study_hours']}h</span>
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+                📅 {s['date']} {s['time']}<br>
+                📖 {s['range']}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # --- 2. To Do TODAY ---
     st.markdown('<div class="section-title">📌 To Do TODAY</div>', unsafe_allow_html=True)
@@ -188,7 +189,7 @@ with col_left:
     st.markdown(f"今日のタスク: **{done_count}/{len(TODO_TODAY)}** 完了")
     
     for i, todo in enumerate(TODO_TODAY):
-        checked = st.checkbox(
+        st.checkbox(
             f"{todo['subject']} — {todo['task']}（{todo['duration']}）",
             value=todo["done"],
             key=f"todo_{i}"
@@ -199,42 +200,50 @@ with col_left:
 # ===== 右カラム =====
 
 with col_right:
-    # --- 3. 今日の時間割 ---
+    # --- 3. 今日の時間割（教科書範囲選択）---
     st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
+    st.caption("各授業で「今日やった範囲」を教科書から選択できます")
     
     for p in TODAY_TIMETABLE:
-        st.markdown(f"""
-        <div class="period-row">
-            <span class="period-num">{p['period']}</span>
-            <span><strong>{p['subject']}</strong> — {p['content']}</span>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with st.expander("✏️ 今日やったことを記録"):
-        st.text_input("教科書ページ数", placeholder="例: 社会 P105-110")
-        st.text_input("出た宿題", placeholder="例: ワーク P20-22")
-        st.button("記録する", key="record_today")
+        with st.container():
+            st.markdown(f"""
+            <div class="period-row">
+                <span class="period-num">{p['period']}</span>
+                <span><strong>{p['subject']}</strong></span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 社会だけ範囲選択を実装（モック）
+            if p["subject_key"] == "social":
+                selected_range = st.selectbox(
+                    f"今日やった範囲（{p['subject']}）",
+                    ["（未選択）"] + SOCIAL_SECTIONS,
+                    key=f"range_{p['period']}",
+                    label_visibility="collapsed"
+                )
+                if selected_range != "（未選択）":
+                    if st.button(f"✅ 記録", key=f"rec_{p['period']}"):
+                        st.success(f"記録: {selected_range}")
 
-# ===== 下段：明日の時間割（全幅）=====
+# ===== 明日の時間割 =====
 
 st.markdown('<div class="section-title">🔮 明日の時間割（予習プレビュー）</div>', unsafe_allow_html=True)
 
 cols = st.columns(3)
 for i, p in enumerate(TOMORROW_TIMETABLE):
     with cols[i % 3]:
-        with st.container():
-            st.markdown(f"""
-            <div class="ria-card" style="padding: 16px;">
-                <div style="color: #888; font-size: 13px;">{p['period']}限</div>
-                <div style="font-size: 18px; font-weight: bold; color: #4a90e2;">{p['subject']}</div>
-                <div style="font-size: 14px; margin: 6px 0;">📖 {p['next_chapter']}</div>
-                <div style="color: #888; font-size: 12px;">{p['page']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button(f"💡 ポイントを見る", key=f"point_{i}"):
-                st.info(f"「{p['next_chapter']}」のポイントを RIA が解説します（実装予定）")
+        st.markdown(f"""
+        <div class="ria-card" style="padding: 16px;">
+            <div style="color: #888; font-size: 13px;">{p['period']}限</div>
+            <div style="font-size: 18px; font-weight: bold; color: #4a90e2;">{p['subject']}</div>
+            <div style="font-size: 14px; margin: 6px 0;">📖 {p['next_chapter']}</div>
+            <div style="color: #888; font-size: 12px;">{p['page']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button(f"💡 ポイントを見る", key=f"point_{i}"):
+            st.info(f"「{p['next_chapter']}」のポイントを RIA が解説（実装予定）")
 
-# ===== Study（教科ハブ）=====
+# ===== Study =====
 
 st.markdown('<div class="section-title">📚 Study</div>', unsafe_allow_html=True)
 st.markdown("各教科の教科書・ワークで学習できます")
@@ -250,7 +259,7 @@ subjects = [
 
 for i, subj in enumerate(subjects):
     with study_cols[i]:
-        if st.button(f"{subj['emoji']}\n\n{subj['name']}", key=f"study_{i}", use_container_width=True):
+        if st.button(f"{subj['emoji']} {subj['name']}", key=f"study_{i}", use_container_width=True):
             st.session_state.selected_study = subj["name"]
 
 if "selected_study" in st.session_state:
@@ -276,4 +285,4 @@ if "selected_study" in st.session_state:
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA — Ria's Intelligent Agent | TOP ページ モック v0.1（ダミーデータ）")
+st.caption("🌟 RIA | TOP ページ モック v0.2")
