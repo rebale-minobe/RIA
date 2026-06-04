@@ -294,42 +294,61 @@ st.markdown("""
     .wb-result-badge.maru { background: #E5F1FF; color: #007AFF; }
     .wb-result-badge.batsu { background: #FFE5E2; color: #FF3B30; }
 
-    /* ナビボタン (5列) — 色分け（ワーク詳細＆今日の問題 共通） */
-    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button,
-    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button {
-        background: #8E8E93 !important; color: white !important;
-    }
-    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button,
-    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        background: #007AFF !important; color: white !important;
-    }
-    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button,
-    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button {
-        background: #FF3B30 !important; color: white !important;
-    }
-    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button,
-    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button {
-        background: #34C759 !important; color: white !important;
-    }
-    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(5) button,
-    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(5) button {
-        background: linear-gradient(135deg, #FF9500, #FF7A00) !important;
-        color: white !important;
-        box-shadow: 0 3px 10px rgba(255, 149, 0, 0.35) !important;
-    }
+    /* ナビボタン (4列) — Apple HIG風 ワーク詳細＆今日の問題 共通 */
+
+    /* 共通ベース */
     .st-key-wb_nav_row button,
     .st-key-tp_nav_row button {
-        font-size: 22px !important;
-        min-height: 56px !important;
+        font-size: 20px !important;
+        min-height: 60px !important;
         font-weight: 700 !important;
         border: none !important;
-        border-radius: 14px !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.12) !important;
+        border-radius: 16px !important;
+        letter-spacing: 0.01em !important;
+        transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+    }
+    .st-key-wb_nav_row button:active,
+    .st-key-tp_nav_row button:active {
+        transform: scale(0.96) !important;
     }
     .st-key-wb_nav_row button:disabled,
     .st-key-tp_nav_row button:disabled {
-        opacity: 0.35 !important;
+        opacity: 0.22 !important;
         box-shadow: none !important;
+    }
+
+    /* ◀ 前へ — グレー */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button {
+        background: #E5E5EA !important;
+        color: #3a3a3c !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+    }
+
+    /* ❌ バツ — 白ベース・赤枠（トグル） */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        background: white !important;
+        color: #FF3B30 !important;
+        border: 2px solid #FF3B30 !important;
+        box-shadow: 0 2px 8px rgba(255,59,48,0.12) !important;
+    }
+
+    /* 💡 解説 — ミントグリーン */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button {
+        background: #E8F8EE !important;
+        color: #1a8a3c !important;
+        box-shadow: 0 2px 6px rgba(52,199,89,0.12) !important;
+    }
+
+    /* ▶ 次へ — プライマリブルー・主アクション */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button {
+        background: linear-gradient(160deg, #007AFF 0%, #0055d4 100%) !important;
+        color: white !important;
+        box-shadow: 0 4px 14px rgba(0,122,255,0.35) !important;
+        font-size: 22px !important;
     }
 
     /* 答えを見るボタン */
@@ -1515,18 +1534,20 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 wrong = sum(1 for i in range(total)
                            if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
 
+                # ×カウント（batsuのみ）
+                wrong = sum(1 for i in range(total)
+                            if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
                 st.markdown(f"""
                 <div class='wb-progress-row'>
                     <span>問題 <b>{cur_pos + 1}</b> / {n_active}</span>
-                    <span>
-                        <span style='color:#007AFF;'>⭕ {correct}</span>　
-                        <span style='color:#FF3B30;'>❌ {wrong}</span>
+                    <span style='color:#FF3B30; font-weight:700;'>
+                        {"❌ " + str(wrong) + " 問" if wrong else ""}
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
                 st.progress((cur_pos + 1) / n_active)
 
-                # フラッシュカード（答え常時表示）
+                # 現在の×状態
                 result = st.session_state.get(f"wb_result_{page_num}_{original_idx}")
 
                 # ヘッダー情報
@@ -1539,8 +1560,10 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 if current.get('textbook_ref'):
                     meta_parts.append(current['textbook_ref'])
 
+                # ×バッジをカードボーダーに反映
+                border_color = "#FF3B30" if result == "batsu" else "#FF9500"
                 card_html = f"""
-                <div class='wb-flashcard'>
+                <div class='wb-flashcard' style='border-color:{border_color};'>
                     <div class='wb-fc-header'>
                         <div class='wb-fc-meta'>{' ／ '.join(meta_parts)}</div>
                         <div class='wb-fc-lesson'>{current.get('lesson_title','')}</div>
@@ -1550,96 +1573,79 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                     <div class='wb-fc-a-area'>
                         <div class='wb-fc-a-shown'>{current['a']}</div>
                     </div>
+                    {('<div style="text-align:center;margin-top:8px;font-size:13px;'
+                      'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
+                     if result == "batsu" else ''}
                 </div>
                 """
                 st.markdown(card_html, unsafe_allow_html=True)
 
-                # 注記と結果バッジ
+                # 注記
                 info_lines = []
-                if current.get('note'):
-                    info_lines.append(f"※ {current['note']}")
-                if current.get('context'):
-                    info_lines.append(f"💭 {current['context']}")
+                if current.get('note'):    info_lines.append(f"※ {current['note']}")
+                if current.get('context'): info_lines.append(f"💭 {current['context']}")
                 if info_lines:
                     st.caption(" ／ ".join(info_lines))
-                if result == "maru":
-                    st.markdown("<div class='wb-result-badge maru'>⭕ 正解</div>",
-                                unsafe_allow_html=True)
-                elif result == "batsu":
-                    st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>",
-                                unsafe_allow_html=True)
 
-                # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
+                # ナビゲーション (◀  ❌toggle  💡  ▶) — 4ボタン
                 with st.container(key="wb_nav_row"):
-                    nav_cols = st.columns(5)
+                    nav_cols = st.columns([1, 1.2, 1.2, 1.6])
 
+                    # ◀ 前へ
                     with nav_cols[0]:
                         if st.button("◀", key=f"prev_{page_num}_{original_idx}",
-                                    disabled=(cur_pos == 0), use_container_width=True,
-                                    help="前の問題"):
+                                     disabled=(cur_pos == 0), use_container_width=True,
+                                     help="前の問題"):
                             st.session_state[idx_key] = cur_pos - 1
                             st.rerun()
 
+                    # ❌ トグル（押すと×、もう一度押すと解除）
                     with nav_cols[1]:
-                        if st.button("⭕", key=f"maru_{page_num}_{original_idx}",
-                                    use_container_width=True, help="覚えた！"):
-                            st.session_state[f"wb_result_{page_num}_{original_idx}"] = "maru"
-                            # バッファに追加（5件溜まったら一括 push）
-                            if ANSWER_LOG_AVAILABLE:
-                                if "wb_pending_logs" not in st.session_state:
-                                    st.session_state["wb_pending_logs"] = []
-                                try:
-                                    entry = answer_log.question_to_log_entry(
-                                        current, skey, sinfo['name'],
-                                        gkey, ginfo['name'], "maru"
-                                    )
-                                    st.session_state["wb_pending_logs"].append(entry)
-                                    if len(st.session_state["wb_pending_logs"]) >= 5:
-                                        answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
+                        batsu_label = "❌ 消す" if result == "batsu" else "❌"
+                        if st.button(batsu_label, key=f"batsu_{page_num}_{original_idx}",
+                                     use_container_width=True, help="わからなかった問題にマーク"):
+                            if result == "batsu":
+                                # トグルOFF → 削除
+                                st.session_state.pop(f"wb_result_{page_num}_{original_idx}", None)
+                            else:
+                                # トグルON → batsu記録
+                                st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
+                                if ANSWER_LOG_AVAILABLE:
+                                    if "wb_pending_logs" not in st.session_state:
                                         st.session_state["wb_pending_logs"] = []
-                                except Exception:
-                                    pass
-                            if cur_pos < n_active - 1:
-                                st.session_state[idx_key] = cur_pos + 1
+                                    try:
+                                        entry = answer_log.question_to_log_entry(
+                                            current, skey, sinfo['name'],
+                                            gkey, ginfo['name'], "batsu"
+                                        )
+                                        st.session_state["wb_pending_logs"].append(entry)
+                                        if len(st.session_state["wb_pending_logs"]) >= 5:
+                                            answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
+                                            st.session_state["wb_pending_logs"] = []
+                                    except Exception:
+                                        pass
                             st.rerun()
 
+                    # 💡 解説
                     with nav_cols[2]:
-                        if st.button("❌", key=f"batsu_{page_num}_{original_idx}",
-                                    use_container_width=True, help="まだ覚えてない"):
-                            st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
-                            if ANSWER_LOG_AVAILABLE:
-                                if "wb_pending_logs" not in st.session_state:
-                                    st.session_state["wb_pending_logs"] = []
-                                try:
-                                    entry = answer_log.question_to_log_entry(
-                                        current, skey, sinfo['name'],
-                                        gkey, ginfo['name'], "batsu"
-                                    )
-                                    st.session_state["wb_pending_logs"].append(entry)
-                                    if len(st.session_state["wb_pending_logs"]) >= 5:
-                                        answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
-                                        st.session_state["wb_pending_logs"] = []
-                                except Exception:
-                                    pass
-                            if cur_pos < n_active - 1:
-                                st.session_state[idx_key] = cur_pos + 1
-                            st.rerun()
-
-                    with nav_cols[3]:
                         if st.button("💡", key=f"explain_{page_num}_{original_idx}",
-                                    use_container_width=True, help="解説を見る"):
+                                     use_container_width=True, help="解説を見る"):
                             with st.spinner("解説生成中..."):
                                 st.session_state[f"wb_explain_{page_num}_{original_idx}"] = (
                                     generate_workbook_explanation(current, sinfo['name'])
                                 )
                             st.rerun()
 
-                    with nav_cols[4]:
-                        if st.button("▶", key=f"next_{page_num}_{original_idx}",
-                                    disabled=(cur_pos >= n_active - 1), use_container_width=True,
-                                    help="次の問題"):
-                            st.session_state[idx_key] = cur_pos + 1
-                            st.rerun()
+                    # ▶ 次へ（主アクション）
+                    with nav_cols[3]:
+                        if cur_pos < n_active - 1:
+                            if st.button("次へ ▶", key=f"next_{page_num}_{original_idx}",
+                                         use_container_width=True, help="次の問題"):
+                                st.session_state[idx_key] = cur_pos + 1
+                                st.rerun()
+                        else:
+                            st.button("最後", key=f"next_{page_num}_{original_idx}",
+                                      use_container_width=True, disabled=True)
 
                 # 解説表示
                 explain_key = f"wb_explain_{page_num}_{original_idx}"
@@ -1647,9 +1653,9 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                     st.markdown("")
                     render_point_box(st.session_state[explain_key], color="yellow")
 
-                # ページ完了時の再テスト・リセット
-                if cur_pos == n_active - 1 and result is not None:
-                    # pending logs を flush
+                # ページ完了時（最後の問題に到達）
+                if cur_pos == n_active - 1:
+                    # pending logs flush
                     if ANSWER_LOG_AVAILABLE and st.session_state.get("wb_pending_logs"):
                         try:
                             answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
@@ -1658,31 +1664,29 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                             pass
 
                     wrong_indices = [i for i in range(total)
-                                    if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
+                                     if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
                     st.markdown("---")
-                    if mode == "normal":
-                        if wrong_indices:
-                            st.warning(f"❌ {len(wrong_indices)} 問 間違えました")
+                    if wrong_indices:
+                        st.warning(f"❌ {len(wrong_indices)} 問にマークあり")
+                        if mode == "normal":
                             if st.button(f"🔄 ×の {len(wrong_indices)} 問で再テスト",
-                                        use_container_width=True, type="primary",
-                                        key=f"start_retest_{page_num}"):
+                                         use_container_width=True, type="primary",
+                                         key=f"start_retest_{page_num}"):
                                 st.session_state[mode_key] = "retest"
                                 st.session_state[f"wb_idx_{page_num}_retest"] = 0
                                 st.rerun()
                         else:
-                            st.success("🎉 全問正解！")
-                    else:  # retest
-                        st.success("🎉 再テスト完了！")
-                        if st.button("↩️ 通常モードに戻る",
-                                    use_container_width=True,
-                                    key=f"back_normal_{page_num}"):
-                            st.session_state[mode_key] = "normal"
-                            st.rerun()
+                            if st.button("↩️ 通常モードに戻る",
+                                         use_container_width=True,
+                                         key=f"back_normal_{page_num}"):
+                                st.session_state[mode_key] = "normal"
+                                st.rerun()
+                    else:
+                        st.success("🎉 全問チェック完了！")
 
-                    # リセットボタン
-                    if st.button("🗑️ このページの○×をリセット",
-                                key=f"reset_{page_num}",
-                                use_container_width=True):
+                    if st.button("🗑️ このページの×をリセット",
+                                 key=f"reset_{page_num}",
+                                 use_container_width=True):
                         for i in range(total):
                             st.session_state.pop(f"wb_result_{page_num}_{i}", None)
                             st.session_state.pop(f"wb_explain_{page_num}_{i}", None)
