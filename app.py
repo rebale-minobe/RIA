@@ -1,12 +1,10 @@
 """
-RIA TOP ページ v1.1
-更新点 (v1.1):
-- ToDo: task と duration を編集可能に（text_input + selectbox）
-- ToDo カードを境界線全周でカラー（border: 2px solid {color}）
-- セクションタイトルを 24px / iPad 28px に縮小
-- 起動時デフォルト: 社会 → 歴史 → 目次オープン
-- 「📆 期末テストまでのスケジュール」→「📆 Schedule」
-- 「📌 To Do TODAY」→「📌 Today's To Do」
+RIA TOP ページ v1.2
+v1.2 追加:
+- 教科書 / ワーク 切り替え (radio)
+- ワーク表紙表示 + 「📋 解答を見る」ボタン
+- ワーク詳細: ページ選択 → セクション → 問題ごとに「タップで答え」表示
+- 全部表示/全部隠す ボタン
 """
 
 import streamlit as st
@@ -16,11 +14,9 @@ import base64
 from datetime import datetime
 from pathlib import Path
 
-# ===== ページ設定 =====
 st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_sidebar_state="collapsed")
 
-# ===== Apple-style カラーパレット =====
-
+# ===== カラーパレット =====
 SUBJECT_COLOR_MAP = {
     "国語":     {"primary": "#FF2D55", "light": "#FFE5EC", "emoji": "📘"},
     "数学":     {"primary": "#007AFF", "light": "#E5F1FF", "emoji": "📐"},
@@ -54,7 +50,6 @@ st.markdown("""
         background: #fafafa;
     }
 
-    /* ===== セクションタイトル (24px) ===== */
     .section-title {
         font-size: 24px; font-weight: 700;
         margin: 28px 0 12px 0;
@@ -79,14 +74,14 @@ st.markdown("""
     .cover-ph {
         background: linear-gradient(135deg, #e0e0e0, #c0c0c0); height: 180px;
         border-radius: 12px; display: flex; align-items: center; justify-content: center;
-        color: #888; font-size: 13px;
+        color: #888; font-size: 13px; padding: 8px; text-align: center;
     }
     .now-badge {
         text-align: right; color: #8E8E93; font-size: 13px;
         margin: -10px 0 10px 0; font-weight: 500;
     }
 
-    /* ===== カレンダー ===== */
+    /* カレンダー */
     .calendar-scroll {
         display: flex; gap: 8px;
         overflow-x: auto; padding: 20px 4px 12px;
@@ -100,8 +95,7 @@ st.markdown("""
         background: white; border-radius: 12px; padding: 10px 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         border: 1px solid rgba(0,0,0,0.05);
-        scroll-snap-align: start;
-        position: relative;
+        scroll-snap-align: start; position: relative;
     }
     .day-card.today {
         border-color: #007AFF; border-width: 2px;
@@ -140,34 +134,22 @@ st.markdown("""
         font-weight: 700; border: none !important;
     }
 
-    /* ===== ToDo カード (全周カラーボーダー) ===== */
+    /* ToDo カード */
     [class*="st-key-todo_card_"] {
         border-radius: 14px !important;
         padding: 14px !important;
         background: white !important;
         margin: 8px 0 !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    [class*="st-key-todo_card_"]:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
-    }
-    .todo-subj-header {
-        font-size: 16px; font-weight: 700; margin-bottom: 6px;
-    }
-    /* カード内 input をミニマルに */
+    .todo-subj-header { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
     [class*="st-key-todo_card_"] input[type="text"] {
-        font-size: 13px;
-        background: #FAFAFA;
-        border: 1px solid #E5E5EA;
-        border-radius: 8px;
+        font-size: 13px; background: #FAFAFA;
+        border: 1px solid #E5E5EA; border-radius: 8px;
     }
-    [class*="st-key-todo_card_"] [data-baseweb="select"] {
-        font-size: 13px;
-    }
+    [class*="st-key-todo_card_"] [data-baseweb="select"] { font-size: 13px; }
 
-    /* ===== ポイントボックス ===== */
+    /* ポイントボックス */
     .point-box, .point-box-blue {
         padding: 14px 18px; border-radius: 12px;
         margin: 8px 0 14px 0; line-height: 1.8;
@@ -188,7 +170,7 @@ st.markdown("""
     .point-box ol, .point-box-blue ol { padding-left: 22px; margin: 6px 0; }
     .point-box li, .point-box-blue li { font-size: 15px; line-height: 1.8; margin: 3px 0; }
 
-    /* ===== TOC ===== */
+    /* TOC */
     .toc-sect-title {
         font-size: 14px; font-weight: 700;
         color: #1c1c1e; margin: 12px 0 4px 0;
@@ -200,40 +182,70 @@ st.markdown("""
     .toc-sub .toc-page { color: #8E8E93; font-size: 0.9em; }
 
     .st-key-tb_toc div[data-testid="stExpander"] summary,
-    .st-key-tb_toc div[data-testid="stExpander"] summary p {
-        font-size: 14px !important;
-    }
+    .st-key-tb_toc div[data-testid="stExpander"] summary p { font-size: 14px !important; }
     .st-key-tb_toc div[data-testid="stExpander"] { margin: 4px 0; border-radius: 10px; }
-
-    /* ノート風ライン */
     .st-key-tb_toc div[data-testid="stHorizontalBlock"] {
         border-bottom: 1px dashed #d8d8d8;
-        align-items: center;
-        margin-bottom: 0 !important;
+        align-items: center; margin-bottom: 0 !important;
     }
-    .st-key-tb_toc div[data-testid="stHorizontalBlock"]:last-child {
-        border-bottom: none;
-    }
+    .st-key-tb_toc div[data-testid="stHorizontalBlock"]:last-child { border-bottom: none; }
     .st-key-tb_toc div[data-testid="stButton"] button {
-        min-height: 36px !important;
-        padding: 4px 8px !important;
-        font-size: 16px !important;
+        min-height: 36px !important; padding: 4px 8px !important; font-size: 16px !important;
     }
 
-    /* 教科書カバー */
+    /* ワーク解答 */
+    .wb-detail-title {
+        font-size: 20px; font-weight: 700; color: #1c1c1e;
+        margin: 8px 0 4px 0;
+    }
+    .wb-section-head {
+        font-size: 15px; font-weight: 700;
+        background: #FFF4E5; color: #b8331f;
+        padding: 8px 12px; border-radius: 8px;
+        margin: 14px 0 6px 0;
+    }
+    .wb-group-label {
+        font-weight: 700; font-size: 14px;
+        color: #FF6B00; margin: 8px 0 4px 0;
+    }
+    .wb-ans-q {
+        font-weight: 700; font-size: 16px;
+        color: #FF9500; padding-top: 6px; text-align: center;
+    }
+    .wb-ans-revealed {
+        background: linear-gradient(135deg, #E8F8EE, #C8F0D8);
+        color: #1c1c1e; font-weight: 600;
+        padding: 10px 14px; border-radius: 10px;
+        border-left: 4px solid #34C759;
+        font-size: 15px; line-height: 1.55;
+        animation: ansReveal 0.3s ease-out;
+    }
+    @keyframes ansReveal {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .wb-ans-note { color: #AF52DE; font-size: 12px; margin-left: 6px; }
+    .st-key-wb_ans_row div[data-testid="stButton"] button {
+        background: #FFF8E1 !important;
+        color: #8E6800 !important;
+        font-size: 13px !important;
+        border: 1px dashed #FFCC00 !important;
+        min-height: 38px !important;
+        font-weight: 500 !important;
+    }
+
+    /* カバー */
     .tb-cover-wrap { text-align: center; padding: 16px 0 8px 0; }
     .tb-cover {
         width: 220px; max-width: 70%; border-radius: 12px;
         box-shadow: 0 6px 24px rgba(0,0,0,0.12);
     }
-
-    /* 目次を見るボタンを狭く */
-    .st-key-tb_open_btn_wrap {
+    .st-key-tb_open_btn_wrap, .st-key-wb_open_btn_wrap {
         max-width: 240px !important;
         margin: 4px auto 16px auto !important;
     }
 
-    /* ボタン基本 */
+    /* ボタン */
     div.stButton > button {
         min-height: 46px; font-size: 15px;
         border-radius: 12px !important;
@@ -246,38 +258,31 @@ st.markdown("""
 
     div[role="radiogroup"] { justify-content: flex-start; }
 
-    /* 教科書/ワーク - 教科 segmented control */
+    /* segmented_control */
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
     div[data-testid="stSegmentedControl"] button,
     div[data-testid="stSegmentedControl"] [role="group"] button {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        padding: 10px 20px !important;
-        min-height: 50px !important;
+        font-size: 18px !important; font-weight: 600 !important;
+        padding: 10px 20px !important; min-height: 50px !important;
     }
     div[data-testid="stSegmentedControl"] button p {
-        font-size: 18px !important;
-        font-weight: 600 !important;
+        font-size: 18px !important; font-weight: 600 !important;
     }
 
-    /* ========== iPad / タブレット以上 (≥768px) ========== */
+    /* iPad */
     @media (min-width: 768px) {
         .section-title { font-size: 28px; }
         .now-badge { font-size: 15px; }
-
         .day-card { width: 110px; min-height: 156px; padding: 14px 10px; }
         .day-num { font-size: 23px; }
         .day-wd { font-size: 13px; }
         .chip { font-size: 13px; padding: 4px 6px; }
-
         .todo-subj-header { font-size: 18px; }
         [class*="st-key-todo_card_"] input[type="text"] { font-size: 15px; }
         [class*="st-key-todo_card_"] [data-baseweb="select"] { font-size: 15px; }
-
         .range-item { padding: 16px 20px; }
         .range-item strong { font-size: 18px; }
         .study-time-badge { font-size: 14px; padding: 4px 12px; }
-
         .point-box, .point-box-blue { padding: 20px 24px; }
         .point-box p, .point-box-blue p,
         .point-box li, .point-box-blue li {
@@ -286,34 +291,34 @@ st.markdown("""
         .point-box h1, .point-box-blue h1,
         .point-box h2, .point-box-blue h2 { font-size: 22px !important; }
         .point-box h3, .point-box-blue h3 { font-size: 19px !important; }
-
         .toc-sect-title { font-size: 17px; margin: 14px 0 6px; }
         .toc-sub { font-size: 16px; line-height: 1.9; padding: 12px 4px; }
-
         .st-key-tb_toc div[data-testid="stExpander"] summary,
         .st-key-tb_toc div[data-testid="stExpander"] summary p {
             font-size: 17px !important;
         }
-
         div.stButton > button { font-size: 16px; min-height: 52px; }
         div[data-testid="stCheckbox"] label p { font-size: 16px; }
-
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [role="group"] button {
-            font-size: 22px !important;
-            padding: 14px 28px !important;
-            min-height: 58px !important;
+            font-size: 22px !important; padding: 14px 28px !important; min-height: 58px !important;
         }
         div[data-testid="stSegmentedControl"] button p { font-size: 22px !important; }
-
         .tb-cover { width: 240px; }
-        .st-key-tb_open_btn_wrap { max-width: 260px !important; }
+        .st-key-tb_open_btn_wrap, .st-key-wb_open_btn_wrap { max-width: 260px !important; }
+
+        .wb-detail-title { font-size: 24px; }
+        .wb-section-head { font-size: 17px; padding: 10px 14px; }
+        .wb-ans-q { font-size: 18px; }
+        .wb-ans-revealed { font-size: 17px; padding: 12px 16px; }
+        .st-key-wb_ans_row div[data-testid="stButton"] button {
+            font-size: 14px !important; min-height: 44px !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== 教科 × ジャンル定義 =====
-
+# ===== 教科 × ジャンル =====
 SUBJECTS = {
     "social": {"name": "社会", "emoji": "🗺️", "genres": {
         "history": {"name": "歴史", "emoji": "📜"},
@@ -340,7 +345,6 @@ SUBJECTS = {
 
 DATA_DIR = Path(__file__).parent / "data"
 JP_WD = ["月", "火", "水", "木", "金", "土", "日"]
-
 DURATION_OPTIONS = ["10分", "15分", "20分", "30分", "45分", "60分", "90分", "120分"]
 
 
@@ -351,7 +355,23 @@ def load_textbook(subject_key, genre_key):
         with open(local_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     try:
-        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}"
+        url = f"https://raw.githubusercontent.com/MinobeHiroshi/RIA/main/data/{filename}"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except:
+        pass
+    return None
+
+
+def load_workbook_answers(subject_key, genre_key):
+    filename = f"{subject_key}_{genre_key}_workbook_answers.json"
+    local_path = DATA_DIR / filename
+    if local_path.exists():
+        with open(local_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    try:
+        url = f"https://raw.githubusercontent.com/MinobeHiroshi/RIA/main/data/{filename}"
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             return r.json()
@@ -403,14 +423,10 @@ def generate_point(title, subject_name, genre_name=""):
 
 def render_point_box(text, color="yellow"):
     cls = "point-box" if color == "yellow" else "point-box-blue"
-    st.markdown(
-        f"<div class='{cls}'>\n\n{text}\n\n</div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='{cls}'>\n\n{text}\n\n</div>", unsafe_allow_html=True)
 
 
 # ===== スケジュール =====
-
 STUDY_SCHEDULE = {
     "2026-06-04": [{"subj": "社会"}],
     "2026-06-05": [{"subj": "数学"}],
@@ -450,12 +466,9 @@ def render_calendar(schedule, today):
         if is_past and not is_today: classes.append("past")
 
         wd = JP_WD[d.weekday()]
-        if d.weekday() == 5:
-            wd_color = "#007AFF"
-        elif d.weekday() == 6:
-            wd_color = "#FF3B30"
-        else:
-            wd_color = "#8E8E93"
+        if d.weekday() == 5: wd_color = "#007AFF"
+        elif d.weekday() == 6: wd_color = "#FF3B30"
+        else: wd_color = "#8E8E93"
 
         chips_html = ""
         for it in items:
@@ -469,8 +482,7 @@ def render_calendar(schedule, today):
                 col = subject_color(subj)
                 chips_html += (
                     f'<div class="chip" style="'
-                    f'background:{col["light"]}; '
-                    f'color:{col["primary"]}; '
+                    f'background:{col["light"]}; color:{col["primary"]}; '
                     f'border:1px solid {col["primary"]};">{subj}</div>'
                 )
 
@@ -487,8 +499,7 @@ def render_calendar(schedule, today):
     return f'<div class="calendar-scroll">{"".join(days_html)}</div>'
 
 
-# ===== ダミーデータ =====
-
+# ===== データ =====
 NEXT_TEST = {
     "name": "1学期 期末テスト", "start_date": "2026-06-18",
     "subjects": [
@@ -532,8 +543,7 @@ days_until_test = (test_date - today).days
 test_wd = JP_WD[test_date.weekday()]
 today_wd = JP_WD[today.weekday()]
 
-# ===== 初回起動時のデフォルト状態 =====
-# 教科書/ワーク: 社会の歴史を選択、目次を開いた状態に
+# ===== 初回起動時のデフォルト =====
 if "selected_study" not in st.session_state:
     st.session_state.selected_study = "social"
     st.session_state.current_study_subject = "social"
@@ -542,16 +552,13 @@ if "selected_study" not in st.session_state:
     st.session_state.detail_genre = "history"
     st.session_state.detail_type = "textbook"
 
-# ===== ToDo 完了状態 =====
 if "todo_done" not in st.session_state:
     st.session_state.todo_done = {i: t["done"] for i, t in enumerate(TODO_TODAY)}
 
-# ===== ToDo task/duration を session_state にプリセット =====
 for idx, todo in enumerate(TODO_TODAY):
     if f"todo_task_{idx}" not in st.session_state:
         st.session_state[f"todo_task_{idx}"] = todo["task"]
     if f"todo_dur_{idx}" not in st.session_state:
-        # duration を DURATION_OPTIONS に含めておく
         if todo["duration"] not in DURATION_OPTIONS:
             DURATION_OPTIONS.insert(0, todo["duration"])
         st.session_state[f"todo_dur_{idx}"] = todo["duration"]
@@ -580,7 +587,7 @@ st.markdown(f"""
 st.markdown('<div class="section-title">📆 Schedule</div>', unsafe_allow_html=True)
 st.markdown(render_calendar(STUDY_SCHEDULE, today), unsafe_allow_html=True)
 
-# ===== TEST詳細 トグル =====
+# ===== TEST詳細 =====
 btn_label = "📋 TEST詳細を閉じる" if st.session_state.get("show_test_detail") else "📋 TEST詳細を見る"
 if st.button(btn_label, key="toggle_test_detail", use_container_width=True):
     st.session_state["show_test_detail"] = not st.session_state.get("show_test_detail", False)
@@ -588,10 +595,8 @@ if st.button(btn_label, key="toggle_test_detail", use_container_width=True):
 if st.session_state.get("show_test_detail"):
     total_hours = sum(s["study_hours"] for s in NEXT_TEST["subjects"])
     daily = total_hours / max(days_until_test, 1)
-    st.markdown(
-        f"**推奨勉強時間 合計: {total_hours} 時間**"
-        f"（残り {days_until_test} 日 → 1日 約{daily:.1f}時間）"
-    )
+    st.markdown(f"**推奨勉強時間 合計: {total_hours} 時間**"
+                f"（残り {days_until_test} 日 → 1日 約{daily:.1f}時間）")
     for s in NEXT_TEST["subjects"]:
         col = subject_color(s['subject'])
         st.markdown(f"""
@@ -606,7 +611,7 @@ if st.session_state.get("show_test_detail"):
         </div>
         """, unsafe_allow_html=True)
 
-# ===== Today's To Do (3列グリッド、編集可能カード) =====
+# ===== Today's To Do =====
 st.markdown('<div class="section-title">📌 Today\'s To Do</div>', unsafe_allow_html=True)
 done_count = sum(1 for v in st.session_state.todo_done.values() if v)
 st.markdown(f"今日のタスク: **{done_count}/{len(TODO_TODAY)}** 完了 🎯")
@@ -617,15 +622,13 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
     for ci in range(n_per_row):
         idx = row_start + ci
         if idx >= len(TODO_TODAY):
-            with cols[ci]:
-                st.empty()
+            with cols[ci]: st.empty()
             continue
         todo = TODO_TODAY[idx]
         is_done = st.session_state.todo_done.get(idx, todo["done"])
         col = subject_color(todo["subject_name"])
 
         with cols[ci]:
-            # 各カードに動的 CSS でカラーボーダー
             container_key = f"todo_card_{idx}"
             opacity = "0.55" if is_done else "1"
             bg = "#F2F2F7" if is_done else "white"
@@ -642,30 +645,15 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
             """, unsafe_allow_html=True)
 
             with st.container(key=container_key):
-                # 教科ヘッダー
                 st.markdown(
                     f"<div class='todo-subj-header' style='color:{col['primary']}; text-decoration:{text_deco};'>"
                     f"{col['emoji']} {todo['subject_name']}</div>",
                     unsafe_allow_html=True
                 )
-
-                # 編集可能タスク内容
-                st.text_input(
-                    "タスク内容",
-                    key=f"todo_task_{idx}",
-                    label_visibility="collapsed",
-                    placeholder="タスク内容"
-                )
-
-                # 編集可能時間（selectbox）
-                st.selectbox(
-                    "時間",
-                    DURATION_OPTIONS,
-                    key=f"todo_dur_{idx}",
-                    label_visibility="collapsed"
-                )
-
-                # 完了トグル
+                st.text_input("タスク内容", key=f"todo_task_{idx}",
+                              label_visibility="collapsed", placeholder="タスク内容")
+                st.selectbox("時間", DURATION_OPTIONS,
+                             key=f"todo_dur_{idx}", label_visibility="collapsed")
                 btn_label = "↩️ 戻す" if is_done else "✅ できた！"
                 if st.button(btn_label, key=f"todo_btn_{idx}", use_container_width=True):
                     st.session_state.todo_done[idx] = not is_done
@@ -686,10 +674,8 @@ for p in TODAY_TIMETABLE:
         if gtocs:
             if len(gtocs) > 1:
                 gnames = [g[1] for g in gtocs]
-                sel_gname = st.radio(
-                    "ジャンル", gnames, horizontal=True,
-                    key=f"today_grad_{pn}", label_visibility="collapsed"
-                )
+                sel_gname = st.radio("ジャンル", gnames, horizontal=True,
+                                     key=f"today_grad_{pn}", label_visibility="collapsed")
                 _, _, tdata = next(g for g in gtocs if g[1] == sel_gname)
             else:
                 _, _, tdata = gtocs[0]
@@ -699,11 +685,9 @@ for p in TODAY_TIMETABLE:
                 f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
                 for c in chapters
             ]
-            sel_ch = st.selectbox(
-                "章", chapter_labels,
-                index=None, placeholder="章を選択...",
-                key=f"today_ch_{pn}", label_visibility="collapsed"
-            )
+            sel_ch = st.selectbox("章", chapter_labels, index=None,
+                                  placeholder="章を選択...",
+                                  key=f"today_ch_{pn}", label_visibility="collapsed")
             if sel_ch:
                 ch_idx = chapter_labels.index(sel_ch)
                 chap = chapters[ch_idx]
@@ -712,16 +696,12 @@ for p in TODAY_TIMETABLE:
                     for sub in sec.get("subsections", []):
                         sub_opts.append(f"{sub['title']} (p.{sub['page']})")
                 if sub_opts:
-                    st.multiselect(
-                        "項目", sub_opts,
-                        placeholder="やった項目を選択（複数可）",
-                        key=f"today_subs_{pn}", label_visibility="collapsed"
-                    )
+                    st.multiselect("項目", sub_opts,
+                                   placeholder="やった項目を選択（複数可）",
+                                   key=f"today_subs_{pn}", label_visibility="collapsed")
         else:
-            st.text_input(
-                "範囲", placeholder="今日やった範囲（例: P30-45）",
-                key=f"today_range_{pn}", label_visibility="collapsed"
-            )
+            st.text_input("範囲", placeholder="今日やった範囲（例: P30-45）",
+                          key=f"today_range_{pn}", label_visibility="collapsed")
 
 if st.button("✅ 全部記録する", use_container_width=True, type="primary", key="record_today_all"):
     records = []
@@ -754,12 +734,10 @@ for p in TOMORROW_TIMETABLE:
         if st.button("💡 ポイントを見る", key=f"tm_point_{pn}", use_container_width=True):
             with st.spinner("ポイント生成中..."):
                 st.session_state[point_key] = generate_point(p['next_chapter'], p['subject'])
-
         if st.session_state.get(point_key):
             render_point_box(st.session_state[point_key], color="blue")
 
 # ===== Study (教科書/ワーク) =====
-
 st.markdown('<div class="section-title">📚 教科書/ワーク</div>', unsafe_allow_html=True)
 
 subject_keys = list(SUBJECTS.keys())
@@ -771,10 +749,8 @@ if st.session_state.get("selected_study") in SUBJECTS:
     current_label = SUBJECTS[cs]['name']
 
 selected_label = st.segmented_control(
-    "教科", subject_labels,
-    default=current_label,
-    label_visibility="collapsed",
-    key="subject_seg"
+    "教科", subject_labels, default=current_label,
+    label_visibility="collapsed", key="subject_seg"
 )
 if selected_label:
     idx = subject_labels.index(selected_label)
@@ -800,28 +776,49 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         for gk in genre_keys:
             gi = sinfo["genres"][gk]
             genre_display[gi['name']] = gk
-        sel_label = st.radio(
-            "ジャンル", list(genre_display.keys()),
-            horizontal=True, label_visibility="collapsed",
-            key=f"genre_radio_{skey}"
-        )
+        sel_label = st.radio("ジャンル", list(genre_display.keys()),
+                             horizontal=True, label_visibility="collapsed",
+                             key=f"genre_radio_{skey}")
         gkey = genre_display[sel_label]
     else:
         gkey = genre_keys[0]
     ginfo = sinfo["genres"][gkey]
-    data = load_textbook(skey, gkey)
-
-    if data and data.get("textbook", {}).get("cover_image"):
-        tb = data["textbook"]
-        cover_path = DATA_DIR / tb["cover_image"]
-        if cover_path.exists():
-            with open(cover_path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode()
-            st.markdown(f"""
-            <div class="tb-cover-wrap">
-                <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
-            </div>
-            """, unsafe_allow_html=True)
+    
+    # データロード
+    tb_data = load_textbook(skey, gkey)
+    wb_data = load_workbook_answers(skey, gkey)
+    
+    # 教科書/ワーク 切替
+    material_options = []
+    if tb_data: material_options.append("📖 教科書")
+    if wb_data: material_options.append("📝 ワーク")
+    
+    sel_material = None
+    if not material_options:
+        st.markdown('<div class="cover-ph">📖 教科書・ワーク 未登録</div>', unsafe_allow_html=True)
+        st.caption("「教科書登録」「ワーク解答登録」ページから登録できます")
+    elif len(material_options) > 1:
+        sel_material = st.radio(
+            "教材", material_options,
+            horizontal=True, label_visibility="collapsed",
+            key=f"material_type_{skey}_{gkey}"
+        )
+    else:
+        sel_material = material_options[0]
+    
+    # === 教科書モード ===
+    if sel_material == "📖 教科書" and tb_data:
+        tb = tb_data["textbook"]
+        if tb.get("cover_image"):
+            cover_path = DATA_DIR / tb["cover_image"]
+            if cover_path.exists():
+                with open(cover_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode()
+                st.markdown(f"""
+                <div class="tb-cover-wrap">
+                    <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
+                </div>
+                """, unsafe_allow_html=True)
         with st.container(key="tb_open_btn_wrap"):
             if st.button("📖 目次を見る", key=f"open_tb_{skey}_{gkey}",
                          use_container_width=True, type="primary"):
@@ -829,17 +826,46 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 st.session_state.detail_genre = gkey
                 st.session_state.detail_type = "textbook"
                 st.rerun()
-    else:
-        st.markdown('<div class="cover-ph">📖 教科書 未登録</div>', unsafe_allow_html=True)
-        st.caption("「教科書登録」ページで登録できます")
+    
+    # === ワークモード ===
+    if sel_material == "📝 ワーク" and wb_data:
+        if wb_data.get("cover_image"):
+            cover_path = DATA_DIR / wb_data["cover_image"]
+            if cover_path.exists():
+                with open(cover_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode()
+                st.markdown(f"""
+                <div class="tb-cover-wrap">
+                    <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="ワーク">
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="cover-ph">📝 {wb_data.get("workbook_title", "ワーク")}</div>',
+                            unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f'<div class="cover-ph">📝 {wb_data.get("workbook_title", "ワーク")}<br>'
+                f'<small style="opacity:0.7;">表紙未登録</small></div>',
+                unsafe_allow_html=True
+            )
+        
+        with st.container(key="wb_open_btn_wrap"):
+            if st.button("📋 解答を見る", key=f"open_wb_{skey}_{gkey}",
+                         use_container_width=True, type="primary"):
+                st.session_state.detail_subject = skey
+                st.session_state.detail_genre = gkey
+                st.session_state.detail_type = "workbook"
+                st.rerun()
 
-    if st.session_state.get("detail_type") == "textbook" and st.session_state.get("detail_genre") == gkey:
+    # === 教科書詳細 (目次) ===
+    if (st.session_state.get("detail_type") == "textbook" 
+        and st.session_state.get("detail_genre") == gkey
+        and st.session_state.get("detail_subject") == skey):
         ddata = load_textbook(st.session_state.detail_subject, st.session_state.detail_genre)
         if ddata:
             st.markdown("---")
             st.markdown(
-                f"<div style='font-size:20px; font-weight:700; color:#1c1c1e; margin: 8px 0 4px 0;'>"
-                f"📄 目次 — {ddata['textbook'].get('name', '')}</div>",
+                f"<div class='wb-detail-title'>📄 目次 — {ddata['textbook'].get('name', '')}</div>",
                 unsafe_allow_html=True
             )
             st.markdown(
@@ -864,8 +890,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
                                         with st.spinner("生成中..."):
                                             st.session_state[f"pt_text_{sub['id']}"] = generate_point(
-                                                sub["title"],
-                                                subject_name=sinfo['name'],
+                                                sub["title"], subject_name=sinfo['name'],
                                                 genre_name=ginfo['name']
                                             )
                                 with c2:
@@ -878,6 +903,102 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                 if st.session_state.get(pt_key):
                                     render_point_box(st.session_state[pt_key], color="yellow")
 
+    # === ワーク詳細 (解答ページ) ===
+    if (st.session_state.get("detail_type") == "workbook"
+        and st.session_state.get("detail_genre") == gkey
+        and st.session_state.get("detail_subject") == skey):
+        wbd = load_workbook_answers(st.session_state.detail_subject, st.session_state.detail_genre)
+        if wbd and wbd.get("pages"):
+            st.markdown("---")
+            st.markdown(
+                f"<div class='wb-detail-title'>📋 解答 — {wbd.get('workbook_title', '')}</div>",
+                unsafe_allow_html=True
+            )
+            st.caption("各問題のボタンをタップすると答えが表示されます")
+            
+            # ページ選択
+            page_options = [
+                f"P.{p['page_number']}　{p.get('lesson_title','')}"
+                for p in wbd["pages"]
+            ]
+            sel_page_label = st.selectbox(
+                "📄 ページを選択", page_options,
+                key=f"wb_page_sel_{skey}_{gkey}",
+            )
+            page_idx = page_options.index(sel_page_label)
+            page = wbd["pages"][page_idx]
+            page_num = page['page_number']
+            
+            # 章・参照
+            chap = f"{page.get('chapter_number','') or ''} {page.get('chapter_title','') or ''}".strip()
+            if chap:
+                st.markdown(f"📖 **{chap}**")
+            if page.get('question_pages_ref'):
+                st.caption(f"参照: {page['question_pages_ref']}")
+            
+            # 全部表示/隠す
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("👁️ 全部表示", key=f"show_all_{page_num}",
+                            use_container_width=True):
+                    for si, sec in enumerate(page['sections']):
+                        for gi, grp in enumerate(sec['groups']):
+                            for ai in range(len(grp['answers'])):
+                                st.session_state[f"wb_shown_{page_num}_{si}_{gi}_{ai}"] = True
+                    st.rerun()
+            with col_b:
+                if st.button("🔒 全部隠す", key=f"hide_all_{page_num}",
+                            use_container_width=True):
+                    for si, sec in enumerate(page['sections']):
+                        for gi, grp in enumerate(sec['groups']):
+                            for ai in range(len(grp['answers'])):
+                                st.session_state[f"wb_shown_{page_num}_{si}_{gi}_{ai}"] = False
+                    st.rerun()
+            
+            # セクション
+            for si, section in enumerate(page['sections']):
+                sec_head_text = f"{section['code']} {section['name']}"
+                if section.get('textbook_ref'):
+                    sec_head_text += f"　— {section['textbook_ref']}"
+                st.markdown(f"<div class='wb-section-head'>{sec_head_text}</div>",
+                            unsafe_allow_html=True)
+                if section.get('subtitle'):
+                    st.caption(section['subtitle'])
+                
+                for gi, group in enumerate(section['groups']):
+                    if group.get('label'):
+                        st.markdown(f"<div class='wb-group-label'>{group['label']}</div>",
+                                    unsafe_allow_html=True)
+                    
+                    for ai, ans in enumerate(group['answers']):
+                        shown_key = f"wb_shown_{page_num}_{si}_{gi}_{ai}"
+                        is_shown = st.session_state.get(shown_key, False)
+                        
+                        with st.container(key=f"wb_ans_row_{page_num}_{si}_{gi}_{ai}"):
+                            cols = st.columns([1, 5])
+                            with cols[0]:
+                                st.markdown(f"<div class='wb-ans-q'>{ans['q']}</div>",
+                                            unsafe_allow_html=True)
+                            with cols[1]:
+                                if is_shown:
+                                    note_html = (
+                                        f"<span class='wb-ans-note'>※ {ans['note']}</span>"
+                                        if ans.get('note') else ""
+                                    )
+                                    st.markdown(
+                                        f"<div class='wb-ans-revealed'>{ans['a']}{note_html}</div>",
+                                        unsafe_allow_html=True
+                                    )
+                                    if ans.get('context'):
+                                        st.caption(f"💭 {ans['context']}")
+                                else:
+                                    if st.button("👆 タップで答えを見る",
+                                                key=f"reveal_{shown_key}",
+                                                use_container_width=True):
+                                        st.session_state[shown_key] = True
+                                        st.rerun()
+                st.markdown("")
+
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v1.1")
+st.caption("🌟 RIA | TOP ページ v1.2")

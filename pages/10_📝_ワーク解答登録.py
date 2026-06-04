@@ -1,8 +1,7 @@
 """
-ワーク解答登録ページ
-- スクショをアップロード → Claude Vision で JSON 抽出
-- プレビュー＆編集後、data/{subject}_{genre}_workbook_answers.json に追記
-- GitHub push で本番反映
+ワーク解答登録ページ (v0.2: 表紙画像対応)
+- スクショ + 表紙画像 をアップロード → Claude Vision で JSON 抽出
+- data/{subject}_{genre}_workbook_answers.json に追記、表紙は workbook_covers/ へ
 """
 import streamlit as st
 import json
@@ -16,7 +15,6 @@ from modules.gh import gh_put, gh_get_text
 
 st.set_page_config(page_title="ワーク解答登録 - RIA", page_icon="📝", layout="wide")
 
-# ===== 教科 × ジャンル =====
 SUBJECTS = {
     "social": {"name": "社会", "emoji": "🗺️", "genres": {
         "history": "歴史", "geography": "地理", "civics": "公民",
@@ -34,7 +32,6 @@ SUBJECTS = {
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-# ===== 抽出プロンプト =====
 EXTRACTION_PROMPT = """\
 あなたは中学校のワーク（問題集）の解答ページを構造化JSONに変換するアシスタントです。
 
@@ -82,51 +79,30 @@ EXTRACTION_PROMPT = """\
 
 # 抽出ルール
 
-## page_number
-- ページの隅にある小さな番号（解答ページの通し番号、例: 1, 2, 3...）
-
-## question_pages_ref
-- ページ右上の「本誌 P.X」や「本誌 P.X・Y」表記をそのまま文字列で
-
-## chapter_number / chapter_title
-- ページ最上部の「第4章」「武家政権の展開と世界の動き」など
-- 章情報がない要約ページなどは両方 null
-
-## lesson_title
-- 大きく書かれた見出しタイトル（例: 「大航海によって結びつく世界」）
-
-## sections[]
-セクション = ページ内の青や緑のラベル付き枠ごと。よくあるもの:
-- code="地図", name="地図でおさえよう"
-- code="A",  name="教科書で確認"
-- code="B",  name="力をつけよう"
-- code="B+", name="資料の活用"
-- code="C",  name="日本と世界の流れをまとめよう!" など
-- 各セクション内の「本誌 P.X」表記は textmark_ref ではなく **textbook_ref** に入れる
-- subtitle: 「①〜⑪にあてはまる語句」のような補足見出しがあれば
-
-## groups[]
-- セクション内の [1] [2] [3] 区切り。区切りが無い場合は label=null で1グループ
-- 時系列ページで「① 長篠の戦い」「② 刀狩令」のような資料ラベルがある場合、それを label に
-
-## answers[]
-- q: 質問の識別子。①〜⑯、(1)(2)(3)(4)、(2)①、(2) a、(2) X など、画像通りの記号を保持
-- a: 解答テキスト。「(例)…」の表記、「ローマ教皇[法王]」の角括弧表記もそのまま保持
-- note: 「※漢字1字でなければ不可」「※順番が逆でも可」「理由」「目的」など答えに付随する注記
-- context: 時系列まとめページなどで「いつ・どんな出来事」の手がかりがある場合に保持。通常は null
+- **page_number**: ページ隅の小さな通し番号
+- **question_pages_ref**: ページ右上「本誌 P.X」「本誌 P.X・Y」をそのまま文字列で
+- **chapter_number / chapter_title**: 上部の章情報。無ければ両方 null
+- **lesson_title**: 大きな見出しタイトル
+- **sections**: ページ内のラベル付き枠ごと。code は「地図」「A」「B」「B+」「C」「資料」など / name は「教科書で確認」「力をつけよう」「資料の活用」など
+- **textbook_ref**: セクション内の「本誌 P.X」表記
+- **groups.label**: [1] [2] [3]。区切りが無い場合は null
+- **answers**:
+  - q: 質問識別子 (①〜⑯、(1)(2)(3)(4)、(2)①、(2) a など、画像通り)
+  - a: 解答。「(例)」「[法王]」表記もそのまま保持
+  - note: 「※漢字1字でなければ不可」「順番が逆でも可」「理由」「目的」など
+  - context: 時系列まとめページなどで「いつ・どんな出来事」の手がかり
 
 # 重要
 
 - JSONのみを返す。説明文や前置きは一切不要
 - ```json コードフェンスで囲んで返す
-- 全てのフィールドを必ず含める（該当しない場合は null）
-- 答えに含まれる「=」「・」「[]」などの記号は画像通り正確に保持
-- 「(例)」プレフィックスの記述問題は a の先頭に「(例)」を残す
+- 全フィールド必須（該当しない場合は null）
+- 答えの記号「=」「・」「[]」は画像通り保持
+- 記述問題の「(例)」は a の先頭に残す
 """
 
 
 def resize_image_for_api(image_bytes: bytes, max_dim: int = 1568) -> tuple[bytes, str]:
-    """Anthropic API向けに画像をリサイズ"""
     img = Image.open(io.BytesIO(image_bytes))
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
@@ -137,8 +113,18 @@ def resize_image_for_api(image_bytes: bytes, max_dim: int = 1568) -> tuple[bytes
     return out.getvalue(), "image/jpeg"
 
 
+def process_cover_image(image_bytes: bytes, max_dim: int = 800) -> bytes:
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=90)
+    return out.getvalue()
+
+
 def extract_page_from_image(image_bytes: bytes, subject_name: str, genre_name: str) -> dict:
-    """Claude Vision でスクショから1ページ分のJSON抽出"""
     api_key = st.secrets.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY が Secrets に登録されていません")
@@ -154,20 +140,15 @@ def extract_page_from_image(image_bytes: bytes, subject_name: str, genre_name: s
         messages=[{
             "role": "user",
             "content": [
-                {
-                    "type": "image",
-                    "source": {"type": "base64", "media_type": mime, "data": b64},
-                },
-                {
-                    "type": "text",
-                    "text": f"{subject_name}（{genre_name}）のワーク解答ページです。スキーマ通りのJSONに変換してください。"
-                },
+                {"type": "image",
+                 "source": {"type": "base64", "media_type": mime, "data": b64}},
+                {"type": "text",
+                 "text": f"{subject_name}（{genre_name}）のワーク解答ページです。スキーマ通りのJSONに変換してください。"},
             ],
         }],
     )
 
     text = response.content[0].text.strip()
-    # コードフェンス除去
     if text.startswith("```"):
         lines = text.split("\n")
         if lines[0].startswith("```"):
@@ -182,11 +163,12 @@ def get_filename(subject_key: str, genre_key: str) -> str:
     return f"{subject_key}_{genre_key}_workbook_answers.json"
 
 
-def load_existing(subject_key: str, genre_key: str) -> dict | None:
-    """既存のワーク解答JSONを読み込み（無ければNone）"""
-    filename = get_filename(subject_key, genre_key)
+def get_cover_filename(subject_key: str, genre_key: str) -> str:
+    return f"workbook_covers/{subject_key}_{genre_key}.jpg"
 
-    # ローカル優先
+
+def load_existing(subject_key: str, genre_key: str) -> dict | None:
+    filename = get_filename(subject_key, genre_key)
     local_path = DATA_DIR / filename
     if local_path.exists():
         try:
@@ -194,23 +176,19 @@ def load_existing(subject_key: str, genre_key: str) -> dict | None:
                 return json.load(f)
         except Exception:
             pass
-
-    # GitHub フォールバック
     try:
         text = gh_get_text(f"data/{filename}")
         if text:
             return json.loads(text)
     except Exception:
         pass
-
     return None
 
 
 def merge_pages(existing: dict, new_pages: list[dict]) -> dict:
-    """既存pagesに新規pagesを upsert（page_numberで重複チェック）"""
     by_num = {p["page_number"]: p for p in existing.get("pages", [])}
     for np in new_pages:
-        by_num[np["page_number"]] = np  # 上書き
+        by_num[np["page_number"]] = np
     existing["pages"] = sorted(by_num.values(), key=lambda p: p["page_number"])
     return existing
 
@@ -235,19 +213,55 @@ with col2:
     sel_genre_label = st.selectbox("ジャンル", genre_labels, key="reg_genre")
     genre_key = genre_keys[genre_labels.index(sel_genre_label)]
 
-# 既存データチェック
 existing = load_existing(subject_key, genre_key)
+is_new = existing is None
+
 if existing:
-    existing_pages = existing.get("pages", [])
+    pages_list = existing.get("pages", [])
+    page_nums_str = ', '.join(str(p['page_number']) for p in sorted(pages_list, key=lambda x: x['page_number']))
+    cover_status = "✅ 表紙登録済" if existing.get("cover_image") else "⚠️ 表紙未登録"
     st.info(f"📚 既存データ: **{existing.get('workbook_title', '')}** "
-            f"／ 登録済 {len(existing_pages)} ページ "
-            f"（P.{', P.'.join(str(p['page_number']) for p in sorted(existing_pages, key=lambda x: x['page_number']))}）")
+            f"／ 登録済 {len(pages_list)} ページ（P.{page_nums_str}）／ {cover_status}")
 else:
-    st.warning("🆕 このジャンルは新規登録です。ワーク名を入力してください。")
+    st.warning("🆕 このジャンルは新規登録です")
+
+# ─── Step 1b: ワーク情報 ───
+new_workbook_title = ""
+cover_file = None
+if is_new:
+    st.markdown("#### 📚 ワーク情報")
     new_workbook_title = st.text_input(
         "ワーク名（例: 歴史2・3年 帝国書院 まとめのワーク）",
         key="new_wb_title"
     )
+    cover_file = st.file_uploader(
+        "🖼️ ワーク表紙画像（任意・JPEG/PNG）",
+        type=["jpg", "jpeg", "png"],
+        key="new_wb_cover",
+    )
+elif not existing.get("cover_image"):
+    with st.expander("🖼️ 表紙画像を追加（未登録）", expanded=False):
+        add_cover_file = st.file_uploader(
+            "表紙画像をアップロード",
+            type=["jpg", "jpeg", "png"],
+            key="add_cover_file",
+        )
+        if add_cover_file and st.button("📷 表紙だけ保存する", key="save_cover_only"):
+            try:
+                cover_bytes = process_cover_image(add_cover_file.read())
+                cover_path = get_cover_filename(subject_key, genre_key)
+                with st.spinner("表紙を保存中..."):
+                    gh_put(f"data/{cover_path}", cover_bytes,
+                           f"Add workbook cover: {subject_key}/{genre_key}")
+                    existing["cover_image"] = cover_path
+                    full_path = f"data/{get_filename(subject_key, genre_key)}"
+                    gh_put(full_path,
+                           json.dumps(existing, ensure_ascii=False, indent=2).encode("utf-8"),
+                           f"Link workbook cover: {subject_key}/{genre_key}")
+                st.success("🎉 表紙を登録しました！")
+                st.rerun()
+            except Exception as e:
+                st.error(f"表紙保存失敗: {e}")
 
 st.markdown("---")
 
@@ -284,14 +298,12 @@ if st.button("🔍 抽出する", type="primary", use_container_width=True,
     progress = st.progress(0, text="抽出中...")
 
     for i, f in enumerate(uploaded_files):
-        progress.progress((i) / len(uploaded_files), text=f"抽出中... {f.name}")
+        progress.progress(i / len(uploaded_files), text=f"抽出中... {f.name}")
         try:
             f.seek(0)
             image_bytes = f.read()
             page_data = extract_page_from_image(
-                image_bytes,
-                sinfo["name"],
-                sinfo["genres"][genre_key]
+                image_bytes, sinfo["name"], sinfo["genres"][genre_key]
             )
             extracted.append(page_data)
         except Exception as e:
@@ -323,7 +335,6 @@ if "reg_extracted" in st.session_state and st.session_state["reg_extracted"]:
         key="reg_json_edit",
     )
 
-    # 視覚プレビュー
     with st.expander("📋 視覚プレビュー", expanded=True):
         try:
             preview_data = json.loads(json_text)
@@ -361,20 +372,39 @@ if "reg_extracted" in st.session_state and st.session_state["reg_extracted"]:
             st.error("保存するページがありません")
             st.stop()
 
-        # 既存とマージ
+        # 表紙画像保存
+        cover_path_value = None
+        if cover_file:
+            try:
+                cover_bytes = process_cover_image(cover_file.read())
+                cover_path = get_cover_filename(subject_key, genre_key)
+                with st.spinner("表紙を保存中..."):
+                    gh_put(
+                        f"data/{cover_path}",
+                        cover_bytes,
+                        f"Add workbook cover: {subject_key}/{genre_key}"
+                    )
+                cover_path_value = cover_path
+            except Exception as e:
+                st.warning(f"表紙保存エラー: {e}")
+
+        # マージ
         if existing:
             merged = merge_pages(existing, new_pages)
+            if cover_path_value:
+                merged["cover_image"] = cover_path_value
         else:
-            wb_title = st.session_state.get("new_wb_title", "")
-            if not wb_title:
+            if not new_workbook_title:
                 st.error("新規登録の場合はワーク名を入力してください")
                 st.stop()
             merged = {
                 "subject": subject_key,
                 "genre": genre_key,
-                "workbook_title": wb_title,
+                "workbook_title": new_workbook_title,
                 "pages": sorted(new_pages, key=lambda p: p["page_number"]),
             }
+            if cover_path_value:
+                merged["cover_image"] = cover_path_value
 
         # GitHub push
         filename = get_filename(subject_key, genre_key)
@@ -383,15 +413,12 @@ if "reg_extracted" in st.session_state and st.session_state["reg_extracted"]:
 
         try:
             with st.spinner("GitHub に保存中..."):
-                gh_put(
-                    path, content,
-                    f"Add/update workbook answers: {subject_key}/{genre_key} ({len(new_pages)} pages)"
-                )
+                gh_put(path, content,
+                       f"Add/update workbook answers: {subject_key}/{genre_key} ({len(new_pages)} pages)")
             st.success(f"🎉 保存完了！ 計 {len(merged['pages'])} ページ登録済み")
             st.balloons()
-            # クリア
             del st.session_state["reg_extracted"]
-            st.caption("Streamlit Cloud が再デプロイされたら、教科ページの「📝 ワーク解答」から確認できます。")
+            st.caption("Streamlit Cloud が再デプロイされたら、TOPの 📚 教科書/ワーク から確認できます。")
         except Exception as e:
             st.error(f"❌ 保存失敗: {e}")
             st.exception(e)
@@ -401,15 +428,10 @@ with st.sidebar:
     st.markdown("### 📖 使い方")
     st.markdown("""
 1. 教科・ジャンルを選択
-2. ワーク解答ページのスクショをアップロード（1ページ = 1枚）
-3. **抽出する** ボタンで Claude が自動でJSON化
-4. プレビューを確認、必要なら修正
-5. **保存する** ボタンで GitHub に登録
-6. 教科ページの「📝 ワーク解答」で確認！
-    """)
-    st.markdown("---")
-    st.markdown("### ⚙️ 必要な設定")
-    st.markdown("""
-- `ANTHROPIC_API_KEY` (Secrets)
-- `GITHUB_PAT` (Secrets / `modules/gh.py` で使用)
+2. 新規ならワーク名＆表紙画像
+3. ワーク解答ページのスクショをアップロード（1ページ = 1枚）
+4. **抽出する** で Claude が自動でJSON化
+5. プレビュー確認・修正
+6. **保存する** で GitHub に登録
+7. TOPの 📚 教科書/ワーク でワーク選択 → 解答ページ表示
     """)
