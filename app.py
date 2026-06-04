@@ -220,87 +220,93 @@ for i, p in enumerate(TOMORROW_TIMETABLE):
 st.markdown('<div class="section-title">📚 Study</div>', unsafe_allow_html=True)
 st.markdown("各教科を選ぶと、教科書・ワークが表示されます")
 
+# 教科タブ（選択中オレンジ下線）
 study_cols = st.columns(5)
 for i, (skey, sinfo) in enumerate(SUBJECTS.items()):
     with study_cols[i]:
+        is_sel = st.session_state.get("selected_study") == skey
         if st.button(f"{sinfo['emoji']} {sinfo['name']}", key=f"study_{skey}", use_container_width=True):
             st.session_state.selected_study = skey
             st.session_state.pop("detail_type", None)
+            st.rerun()
+        bar = "#ff8c00" if is_sel else "transparent"
+        st.markdown(f"<div style='height:3px;background:{bar};border-radius:2px;margin-top:-10px;'></div>", unsafe_allow_html=True)
 
 if "selected_study" in st.session_state and st.session_state.selected_study in SUBJECTS:
     skey = st.session_state.selected_study
     sinfo = SUBJECTS[skey]
     genre_keys = list(sinfo["genres"].keys())
     
-    # 教科切り替え時にジャンルインデックスをリセット
     if st.session_state.get("current_study_subject") != skey:
         st.session_state.genre_idx = 0
         st.session_state.current_study_subject = skey
         st.session_state.pop("detail_type", None)
-    
     if "genre_idx" not in st.session_state:
         st.session_state.genre_idx = 0
     
-    st.markdown("---")
-    st.markdown(f"### {sinfo['emoji']} {sinfo['name']}")
+    gkey = genre_keys[st.session_state.genre_idx]
+    ginfo = sinfo["genres"][gkey]
+    data = load_textbook(skey, gkey)
     
-    # ===== ジャンル フリップ（◀ ▶）=====
+    st.markdown("---")
+    
+    # ジャンル名（控えめ・中央）
     if len(genre_keys) > 1:
-        col_prev, col_label, col_next = st.columns([1, 5, 1])
-        with col_prev:
+        st.markdown(
+            f"<div style='text-align:center;color:#888;font-size:14px;margin-bottom:8px;'>"
+            f"{ginfo['emoji']} {ginfo['name']}（{st.session_state.genre_idx+1}/{len(genre_keys)}）</div>",
+            unsafe_allow_html=True
+        )
+    
+    # ◀ 表紙 ▶（フリップ）
+    col_l, col_c, col_r = st.columns([1, 3, 1])
+    
+    with col_l:
+        if len(genre_keys) > 1:
+            st.markdown("<div style='height:130px;'></div>", unsafe_allow_html=True)
             if st.button("◀", key="genre_prev", use_container_width=True):
                 st.session_state.genre_idx = (st.session_state.genre_idx - 1) % len(genre_keys)
                 st.session_state.pop("detail_type", None)
-        with col_next:
-            if st.button("▶", key="genre_next", use_container_width=True):
-                st.session_state.genre_idx = (st.session_state.genre_idx + 1) % len(genre_keys)
-                st.session_state.pop("detail_type", None)
-        with col_label:
-            gkey = genre_keys[st.session_state.genre_idx]
-            ginfo = sinfo["genres"][gkey]
-            st.markdown(
-                f"<div style='text-align:center; font-size:20px; font-weight:700; padding-top:4px;'>"
-                f"{ginfo['emoji']} {ginfo['name']} "
-                f"<span style='color:#aaa; font-size:14px;'>（{st.session_state.genre_idx+1}/{len(genre_keys)}）</span></div>",
-                unsafe_allow_html=True
-            )
-    else:
-        gkey = genre_keys[0]
-        ginfo = sinfo["genres"][gkey]
-        st.markdown(f"#### {ginfo['emoji']} {ginfo['name']}")
+                st.rerun()
     
-    # ===== 教科書 + ワーク（表紙を程よいサイズで）=====
-    data = load_textbook(skey, gkey)
-    
-    mat_col_tb, mat_col_wk, _ = st.columns([2, 2, 3])
-    
-    # 教科書
-    with mat_col_tb:
-        st.markdown("**📖 教科書**")
+    with col_c:
         if data and data.get("textbook", {}).get("cover_image"):
             tb = data["textbook"]
             cover_path = DATA_DIR / tb["cover_image"]
             if cover_path.exists():
-                st.image(str(cover_path), width=170)
-            st.caption(f"{tb.get('publisher', '')} | {len(tb.get('chapters', []))}章")
-            if st.button("📖 開く", key=f"open_tb_{skey}_{gkey}"):
-                st.session_state.detail_subject = skey
-                st.session_state.detail_genre = gkey
-                st.session_state.detail_type = "textbook"
+                ic1, ic2, ic3 = st.columns([1, 3, 1])
+                with ic2:
+                    st.image(str(cover_path), use_container_width=True)
+            st.markdown(
+                f"<div style='text-align:center;color:#888;font-size:13px;margin:6px 0;'>"
+                f"{tb.get('publisher','')} | {len(tb.get('chapters',[]))}章</div>",
+                unsafe_allow_html=True
+            )
+            bc1, bc2, bc3 = st.columns([1, 2, 1])
+            with bc2:
+                if st.button("開く", key=f"open_tb_{skey}_{gkey}", use_container_width=True):
+                    st.session_state.detail_subject = skey
+                    st.session_state.detail_genre = gkey
+                    st.session_state.detail_type = "textbook"
+                    st.rerun()
         else:
-            st.markdown('<div class="cover-ph" style="width:170px;">未登録</div>', unsafe_allow_html=True)
+            st.markdown('<div class="cover-ph">📖 教科書 未登録</div>', unsafe_allow_html=True)
+            st.caption("「教科書登録」ページで登録できます")
     
-    # ワーク
-    with mat_col_wk:
-        st.markdown("**📝 ワーク**")
-        st.markdown('<div class="cover-ph" style="width:170px;">未登録</div>', unsafe_allow_html=True)
-        st.caption("（実装予定）")
+    with col_r:
+        if len(genre_keys) > 1:
+            st.markdown("<div style='height:130px;'></div>", unsafe_allow_html=True)
+            if st.button("▶", key="genre_next", use_container_width=True):
+                st.session_state.genre_idx = (st.session_state.genre_idx + 1) % len(genre_keys)
+                st.session_state.pop("detail_type", None)
+                st.rerun()
     
-    # ===== 目次（教科書のすぐ下）=====
+    # 目次（教科書を開いたら下に展開）
     if st.session_state.get("detail_type") == "textbook" and st.session_state.get("detail_genre") == gkey:
         ddata = load_textbook(st.session_state.detail_subject, st.session_state.detail_genre)
         if ddata:
-            st.markdown(f"##### 📑 目次 — {ddata['textbook'].get('name', '')}")
+            st.markdown("---")
+            st.markdown(f"### 📄 目次 — {ddata['textbook'].get('name', '')}")
             st.caption("章を開いて、小節の「💡」でポイントを見られます")
             
             for chapter in ddata["textbook"]["chapters"]:
@@ -321,4 +327,4 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ モック v0.3")
+st.caption("🌟 RIA | TOP ページ モック v0.4")
