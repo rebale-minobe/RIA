@@ -1,8 +1,20 @@
 """共通UIコンポーネント・教科ページ共通テンプレート"""
+import json
+from pathlib import Path
 import streamlit as st
 from shared.claude_client import stream_chat, build_user_content
 from shared.profile import get_profile
 from modules.schedule.manager import get_subject_range
+
+
+# ジャンル英 → 日本語名マッピング（ワーク解答表示用）
+_GENRE_JP = {
+    "history": "歴史", "geography": "地理", "civics": "公民",
+    "reading": "読解", "classic": "古文・漢文",
+    "kanji": "漢字・語彙", "grammar": "文法",
+    "field1": "第1分野", "field2": "第2分野",
+    "general": "",
+}
 
 
 # 教科キー → プロンプトモジュール のマッピング
@@ -23,6 +35,88 @@ def _get_prompt_module(subject_key: str):
     return prompts
 
 
+def _render_workbook_answers(subject_key: str):
+    """data/{subject_key}_*_workbook_answers.json があれば expander 内に表示"""
+    data_dir = Path(__file__).parent.parent / "data"
+    if not data_dir.exists():
+        return
+
+    answer_files = sorted(data_dir.glob(f"{subject_key}_*_workbook_answers.json"))
+    if not answer_files:
+        return
+
+    with st.expander("📝 ワーク解答", expanded=False):
+        # ジャンル選択（複数あれば）
+        if len(answer_files) > 1:
+            options = {}
+            for f in answer_files:
+                stem = f.stem  # e.g. social_history_workbook_answers
+                genre_key = stem.replace(f"{subject_key}_", "").replace("_workbook_answers", "")
+                jp = _GENRE_JP.get(genre_key, genre_key) or genre_key
+                options[jp] = f
+            sel = st.radio(
+                "ジャンル", list(options.keys()),
+                horizontal=True,
+                key=f"wb_genre_{subject_key}",
+                label_visibility="collapsed",
+            )
+            chosen = options[sel]
+        else:
+            chosen = answer_files[0]
+
+        try:
+            with open(chosen, "r", encoding="utf-8") as f:
+                wb = json.load(f)
+        except Exception as e:
+            st.error(f"解答データ読み込みエラー: {e}")
+            return
+
+        if not wb.get("pages"):
+            st.info("解答データが空です")
+            return
+
+        # ページ選択
+        page_options = [
+            f"P.{p['page_number']}　{p['lesson_title']}"
+            for p in wb["pages"]
+        ]
+        sel_page_label = st.selectbox(
+            "ページ", page_options,
+            key=f"wb_page_{subject_key}",
+            label_visibility="collapsed",
+        )
+        page = wb["pages"][page_options.index(sel_page_label)]
+
+        # ヘッダー情報
+        meta_parts = []
+        chap = f"{page.get('chapter_number','') or ''} {page.get('chapter_title','') or ''}".strip()
+        if chap:
+            meta_parts.append(f"📖 {chap}")
+        if page.get("question_pages_ref"):
+            meta_parts.append(f"参照: {page['question_pages_ref']}")
+        if meta_parts:
+            st.caption("　/　".join(meta_parts))
+
+        # セクション
+        for section in page["sections"]:
+            sec_label = f"**{section['code']}**　{section['name']}"
+            if section.get("textbook_ref"):
+                sec_label += f"　— {section['textbook_ref']}"
+            st.markdown(sec_label)
+            if section.get("subtitle"):
+                st.caption(section["subtitle"])
+
+            for group in section["groups"]:
+                if group.get("label"):
+                    st.markdown(f"　**{group['label']}**")
+                for ans in group["answers"]:
+                    note = f" *※{ans['note']}*" if ans.get("note") else ""
+                    st.markdown(f"　`{ans['q']}` {ans['a']}{note}")
+                    if ans.get("context"):
+                        st.caption(f"　　💭 {ans['context']}")
+            st.markdown("")
+
+
 def render_subject_page(subject_key: str, subject_name: str, icon: str):
     """各教科ページの共通レンダリング"""
 
@@ -38,6 +132,9 @@ def render_subject_page(subject_key: str, subject_name: str, icon: str):
                 st.markdown(f"**学習のポイント:** {range_info['points']}")
             if range_info.get('submission'):
                 st.markdown(f"**提出物:** {range_info['submission']}")
+
+    # ─── ワーク解答（JSONファイルがあれば表示） ───
+    _render_workbook_answers(subject_key)
 
     # ─── システムプロンプト構築 ───
     module = _get_prompt_module(subject_key)
