@@ -258,48 +258,43 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
             unsafe_allow_html=True
         )
     
-    # ◀ 表紙 ▶（フリップ）
-    col_l, col_c, col_r = st.columns([1, 3, 1])
-    
-    with col_l:
-        if len(genre_keys) > 1:
-            st.markdown("<div style='height:130px;'></div>", unsafe_allow_html=True)
-            if st.button("◀", key="genre_prev", use_container_width=True):
+    # ◀ ▶ ナビ（表紙の上・横並び：モバイル対応）
+    if len(genre_keys) > 1:
+        nav_l, nav_r = st.columns(2)
+        with nav_l:
+            if st.button("◀ 前", key="genre_prev", use_container_width=True):
                 st.session_state.genre_idx = (st.session_state.genre_idx - 1) % len(genre_keys)
                 st.session_state.pop("detail_type", None)
                 st.rerun()
-    
-    with col_c:
-        if data and data.get("textbook", {}).get("cover_image"):
-            tb = data["textbook"]
-            cover_path = DATA_DIR / tb["cover_image"]
-            if cover_path.exists():
-                ic1, ic2, ic3 = st.columns([1, 3, 1])
-                with ic2:
-                    st.image(str(cover_path), use_container_width=True)
-            st.markdown(
-                f"<div style='text-align:center;color:#888;font-size:13px;margin:6px 0;'>"
-                f"{tb.get('publisher','')} | {len(tb.get('chapters',[]))}章</div>",
-                unsafe_allow_html=True
-            )
-            bc1, bc2, bc3 = st.columns([1, 2, 1])
-            with bc2:
-                if st.button("開く", key=f"open_tb_{skey}_{gkey}", use_container_width=True):
-                    st.session_state.detail_subject = skey
-                    st.session_state.detail_genre = gkey
-                    st.session_state.detail_type = "textbook"
-                    st.rerun()
-        else:
-            st.markdown('<div class="cover-ph">📖 教科書 未登録</div>', unsafe_allow_html=True)
-            st.caption("「教科書登録」ページで登録できます")
-    
-    with col_r:
-        if len(genre_keys) > 1:
-            st.markdown("<div style='height:130px;'></div>", unsafe_allow_html=True)
-            if st.button("▶", key="genre_next", use_container_width=True):
+        with nav_r:
+            if st.button("次 ▶", key="genre_next", use_container_width=True):
                 st.session_state.genre_idx = (st.session_state.genre_idx + 1) % len(genre_keys)
                 st.session_state.pop("detail_type", None)
                 st.rerun()
+    
+    # 表紙（中央）
+    if data and data.get("textbook", {}).get("cover_image"):
+        tb = data["textbook"]
+        cover_path = DATA_DIR / tb["cover_image"]
+        if cover_path.exists():
+            ic1, ic2, ic3 = st.columns([1, 3, 1])
+            with ic2:
+                st.image(str(cover_path), use_container_width=True)
+        st.markdown(
+            f"<div style='text-align:center;color:#888;font-size:13px;margin:6px 0;'>"
+            f"{tb.get('publisher','')} | {len(tb.get('chapters',[]))}章</div>",
+            unsafe_allow_html=True
+        )
+        bc1, bc2, bc3 = st.columns([1, 2, 1])
+        with bc2:
+            if st.button("📖 開く", key=f"open_tb_{skey}_{gkey}", use_container_width=True):
+                st.session_state.detail_subject = skey
+                st.session_state.detail_genre = gkey
+                st.session_state.detail_type = "textbook"
+                st.rerun()
+    else:
+        st.markdown('<div class="cover-ph">📖 教科書 未登録</div>', unsafe_allow_html=True)
+        st.caption("「教科書登録」ページで登録できます")
     
     # 目次（教科書を開いたら下に展開）
     if st.session_state.get("detail_type") == "textbook" and st.session_state.get("detail_genre") == gkey:
@@ -327,4 +322,4 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ モック v0.4a")
+st.caption("🌟 RIA | TOP ページ モック v0.4")
