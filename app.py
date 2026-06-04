@@ -8,6 +8,7 @@ RIA TOP ページ（モック v0.3）
 import streamlit as st
 import json
 import requests
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -238,50 +239,43 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
     genre_keys = list(sinfo["genres"].keys())
     
     if st.session_state.get("current_study_subject") != skey:
-        st.session_state.genre_idx = 0
         st.session_state.current_study_subject = skey
         st.session_state.pop("detail_type", None)
-    if "genre_idx" not in st.session_state:
-        st.session_state.genre_idx = 0
-    
-    gkey = genre_keys[st.session_state.genre_idx]
-    ginfo = sinfo["genres"][gkey]
-    data = load_textbook(skey, gkey)
     
     st.markdown("---")
     
-    # ジャンル名（控えめ・中央）
+    # ジャンル選択（横並びラジオ：モバイルで崩れない）
     if len(genre_keys) > 1:
-        st.markdown(
-            f"<div style='text-align:center;color:#888;font-size:14px;margin-bottom:8px;'>"
-            f"{ginfo['emoji']} {ginfo['name']}（{st.session_state.genre_idx+1}/{len(genre_keys)}）</div>",
-            unsafe_allow_html=True
+        genre_display = {}
+        for gk in genre_keys:
+            gi = sinfo["genres"][gk]
+            genre_display[f"{gi['emoji']} {gi['name']}"] = gk
+        sel_label = st.radio(
+            "ジャンル", list(genre_display.keys()),
+            horizontal=True, label_visibility="collapsed",
+            key=f"genre_radio_{skey}"
         )
+        gkey = genre_display[sel_label]
+    else:
+        gkey = genre_keys[0]
+    ginfo = sinfo["genres"][gkey]
+    data = load_textbook(skey, gkey)
     
-    # ◀ ▶ ナビ（表紙の上・横並び：モバイル対応）
-    if len(genre_keys) > 1:
-        nav_l, nav_r = st.columns(2)
-        with nav_l:
-            if st.button("◀ 前", key="genre_prev", use_container_width=True):
-                st.session_state.genre_idx = (st.session_state.genre_idx - 1) % len(genre_keys)
-                st.session_state.pop("detail_type", None)
-                st.rerun()
-        with nav_r:
-            if st.button("次 ▶", key="genre_next", use_container_width=True):
-                st.session_state.genre_idx = (st.session_state.genre_idx + 1) % len(genre_keys)
-                st.session_state.pop("detail_type", None)
-                st.rerun()
-    
-    # 表紙（中央）
+    # 表紙（中央・サイズ固定 220px）
     if data and data.get("textbook", {}).get("cover_image"):
         tb = data["textbook"]
         cover_path = DATA_DIR / tb["cover_image"]
         if cover_path.exists():
-            ic1, ic2, ic3 = st.columns([1, 3, 1])
-            with ic2:
-                st.image(str(cover_path), use_container_width=True)
+            with open(cover_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            st.markdown(
+                f"<div style='text-align:center;'>"
+                f"<img src='data:image/jpeg;base64,{b64}' "
+                f"style='width:220px;max-width:70%;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.15);'></div>",
+                unsafe_allow_html=True
+            )
         st.markdown(
-            f"<div style='text-align:center;color:#888;font-size:13px;margin:6px 0;'>"
+            f"<div style='text-align:center;color:#888;font-size:13px;margin:8px 0;'>"
             f"{tb.get('publisher','')} | {len(tb.get('chapters',[]))}章</div>",
             unsafe_allow_html=True
         )
