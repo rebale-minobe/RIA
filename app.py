@@ -327,4 +327,4 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ モック v0.4")
+st.caption("🌟 RIA | TOP ページ モック v0.4a")
