@@ -1,0 +1,475 @@
+{
+  "textbook": {
+    "name": "社会科教科書（中学2年 日本史・世界史）",
+    "publisher": "未設定",
+    "total_pages": 310,
+    "chapters": [
+      {
+        "chapter_id": "ch0",
+        "chapter_number": "第1節",
+        "title": "歴史の流れと時代区分",
+        "page_range": "p2-14",
+        "sections": [
+          {
+            "section_id": "sec0-1",
+            "title": "歴史をたどろう",
+            "page": 2
+          },
+          {
+            "section_id": "sec0-2",
+            "title": "年代の表し方と時代区分",
+            "page": 4
+          }
+        ]
+      },
+      {
+        "chapter_id": "ch1",
+        "chapter_number": "第2章",
+        "title": "古代国家の成立と東アジア",
+        "page_range": "p15-63",
+        "sections": [
+          {
+            "section_id": "sec1-1",
+            "title": "人類の登場から文明の発生へ",
+            "page": 16,
+            "subsections": [
+              {
+                "id": "sub1-1-1",
+                "title": "人類がたどった進化",
+                "page": 16
+              },
+              {
+                "id": "sub1-1-2",
+                "title": "世界各地で生まれた文明",
+                "page": 18
+              },
+              {
+                "id": "sub1-1-3",
+                "title": "東アジアの文明の広がり",
+                "page": 20
+              },
+              {
+                "id": "sub1-1-4",
+                "title": "シリアとローマの政治と文明",
+                "page": 22
+              },
+              {
+                "id": "sub1-1-5",
+                "title": "仏教・キリスト教・イスラム教の誕生",
+                "page": 24
+              }
+            ]
+          },
+          {
+            "section_id": "sec1-2",
+            "title": "東アジアのなかの倭（日本）",
+            "page": 26,
+            "subsections": [
+              {
+                "id": "sub1-2-1",
+                "title": "縄文から弥生への変化",
+                "page": 28
+              },
+              {
+                "id": "sub1-2-2",
+                "title": "ムラがまとまりクニへ",
+                "page": 30
+              },
+              {
+                "id": "sub1-2-3",
+                "title": "鉄から見えるヤマト王権",
+                "page": 32
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chapter_id": "ch2",
+        "chapter_number": "第3章",
+        "title": "武家政権の成長と東アジア",
+        "page_range": "p63-105",
+        "sections": [
+          {
+            "section_id": "sec2-1",
+            "title": "武士の世の始まり",
+            "page": 64,
+            "subsections": [
+              {
+                "id": "sub2-1-1",
+                "title": "各地で生まれる武士団",
+                "page": 66
+              },
+              {
+                "id": "sub2-1-2",
+                "title": "朝廷と結びつく武士",
+                "page": 68
+              },
+              {
+                "id": "sub2-1-3",
+                "title": "鎌倉を中心とした武家政権",
+                "page": 70
+              },
+              {
+                "id": "sub2-1-4",
+                "title": "武士や僧侶たちが広めた鎌倉文化",
+                "page": 72
+              }
+            ]
+          },
+          {
+            "section_id": "sec2-2",
+            "title": "武家政権の内と外",
+            "page": 78,
+            "subsections": [
+              {
+                "id": "sub2-2-1",
+                "title": "モンゴル帝国と『蒙古襲来』",
+                "page": 78
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chapter_id": "ch3",
+        "chapter_number": "第4章",
+        "title": "武家政権の展開と世界の動き",
+        "page_range": "p105-227",
+        "sections": [
+          {
+            "section_id": "sec3-1",
+            "title": "大航海によって結びつく世界",
+            "page": 106,
+            "subsections": [
+              {
+                "id": "sub3-1-1",
+                "title": "ヨーロッパの変革",
+                "page": 106
+              },
+              {
+                "id": "sub3-1-2",
+                "title": "大航海時代の幕開け",
+                "page": 108
+              },
+              {
+                "id": "sub3-1-3",
+                "title": "東アジアの貿易と南蛮人",
+                "page": 112
+              }
+            ]
+          },
+          {
+            "section_id": "sec3-2",
+            "title": "戦乱から全国統へ",
+            "page": 114,
+            "subsections": [
+              {
+                "id": "sub3-2-1",
+                "title": "信長・秀吉による全国統一",
+                "page": 116
+              },
+              {
+                "id": "sub3-2-2",
+                "title": "秀吉が違いた近世社会",
+                "page": 118
+              },
+              {
+                "id": "sub3-2-3",
+                "title": "戦国大名と豊面が担った桃町文化",
+                "page": 120
+              }
+            ]
+          },
+          {
+            "section_id": "sec3-3",
+            "title": "武士による全国支配の完成",
+            "page": 124,
+            "subsections": [
+              {
+                "id": "sub3-3-1",
+                "title": "幕藩体制の始まり",
+                "page": 124
+              },
+              {
+                "id": "sub3-3-2",
+                "title": "鎖国下での日本とアジア",
+                "page": 128
+              },
+              {
+                "id": "sub3-3-3",
+                "title": "経済成長による日本の変化",
+                "page": 130
+              },
+              {
+                "id": "sub3-3-4",
+                "title": "琉球王国とアイヌ民族への支配",
+                "page": 132
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chapter_id": "ch4",
+        "chapter_number": "第5章",
+        "title": "近代国家の歩みと国際社会",
+        "page_range": "p161-227",
+        "sections": [
+          {
+            "section_id": "sec4-1",
+            "title": "欧米諸国における近代化",
+            "page": 162,
+            "subsections": [
+              {
+                "id": "sub4-1-1",
+                "title": "市民革命の始まり",
+                "page": 162
+              },
+              {
+                "id": "sub4-1-2",
+                "title": "人権思想からフランス革命へ",
+                "page": 164
+              },
+              {
+                "id": "sub4-1-3",
+                "title": "産業革命と資本主義の成立",
+                "page": 166
+              },
+              {
+                "id": "sub4-1-4",
+                "title": "欧米諸国の近代国家建設",
+                "page": 170
+              },
+              {
+                "id": "sub4-1-5",
+                "title": "世界進出を目指す欧米諸国",
+                "page": 172
+              }
+            ]
+          },
+          {
+            "section_id": "sec4-2",
+            "title": "閣国と幕府の終わり",
+            "page": 176,
+            "subsections": [
+              {
+                "id": "sub4-2-1",
+                "title": "日本を取り巻く世界情勢の変化",
+                "page": 176
+              },
+              {
+                "id": "sub4-2-2",
+                "title": "諸藩の改革と幕府の衰退",
+                "page": 178
+              },
+              {
+                "id": "sub4-2-3",
+                "title": "黒船来航の衝撃と閣国",
+                "page": 180
+              },
+              {
+                "id": "sub4-2-4",
+                "title": "日本幕府の滅亡",
+                "page": 182
+              }
+            ]
+          },
+          {
+            "section_id": "sec4-3",
+            "title": "明治政府による近代化の始まり",
+            "page": 184,
+            "subsections": [
+              {
+                "id": "sub4-3-1",
+                "title": "新政府による改革",
+                "page": 186
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chapter_id": "ch5",
+        "chapter_number": "第6章",
+        "title": "二度の世界大戦と日本",
+        "page_range": "p227-288",
+        "sections": [
+          {
+            "section_id": "sec5-1",
+            "title": "第一次世界大戦と民族自立の動き",
+            "page": 228,
+            "subsections": [
+              {
+                "id": "sub5-1-1",
+                "title": "第一次世界大戦の始まりと絵力戦",
+                "page": 228
+              },
+              {
+                "id": "sub5-1-2",
+                "title": "第一次世界大戦の拡大と日本",
+                "page": 230
+              },
+              {
+                "id": "sub5-1-3",
+                "title": "第一次世界大戦後の欧米諸国",
+                "page": 232
+              },
+              {
+                "id": "sub5-1-4",
+                "title": "アジアの民族自立と国際協調",
+                "page": 234
+              }
+            ]
+          },
+          {
+            "section_id": "sec5-2",
+            "title": "高まるデモクラシーの意識",
+            "page": 236,
+            "subsections": [
+              {
+                "id": "sub5-2-1",
+                "title": "護憲運動と政党内閣の成立",
+                "page": 240
+              },
+              {
+                "id": "sub5-2-2",
+                "title": "社会運動の高まりと男子普通選挙の実現",
+                "page": 242
+              },
+              {
+                "id": "sub5-2-3",
+                "title": "近代都市に現れた大衆文化",
+                "page": 248
+              }
+            ]
+          },
+          {
+            "section_id": "sec5-3",
+            "title": "戦争に向かう世論",
+            "page": 250,
+            "subsections": [
+              {
+                "id": "sub5-3-1",
+                "title": "世界恐慌と行き詰まる日本",
+                "page": 252
+              },
+              {
+                "id": "sub5-3-2",
+                "title": "欧米諸国が選択した道",
+                "page": 254
+              },
+              {
+                "id": "sub5-3-3",
+                "title": "強まる軍部と賃える政党",
+                "page": 258
+              },
+              {
+                "id": "sub5-3-4",
+                "title": "日中戦争と総力戦に向かう国民生活",
+                "page": 258
+              }
+            ]
+          },
+          {
+            "section_id": "sec5-4",
+            "title": "第二次世界大戦の傷禍",
+            "page": 262,
+            "subsections": [
+              {
+                "id": "sub5-4-1",
+                "title": "第二次世界大戦への道",
+                "page": 262
+              },
+              {
+                "id": "sub5-4-2",
+                "title": "太平洋戦争と植民地支配の変化",
+                "page": 264
+              },
+              {
+                "id": "sub5-4-3",
+                "title": "戦局の悪化と戦時下の暮らし",
+                "page": 270
+              },
+              {
+                "id": "sub5-4-4",
+                "title": "ボツダム宣言と日本の敗戦",
+                "page": 272
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "chapter_id": "ch6",
+        "chapter_number": "第7章",
+        "title": "現在に続く日本と世界",
+        "page_range": "p275-310",
+        "sections": [
+          {
+            "section_id": "sec6-1",
+            "title": "敗戦から立ち直る日本",
+            "page": 276,
+            "subsections": [
+              {
+                "id": "sub6-1-1",
+                "title": "敗戦から立ち直る施法",
+                "page": 280
+              },
+              {
+                "id": "sub6-1-2",
+                "title": "新時代に求められた施法",
+                "page": 282
+              },
+              {
+                "id": "sub6-1-3",
+                "title": "冷たい戦争とその影響",
+                "page": 282
+              }
+            ]
+          },
+          {
+            "section_id": "sec6-2",
+            "title": "世界の多極化と日本の成長",
+            "page": 284,
+            "subsections": [
+              {
+                "id": "sub6-2-1",
+                "title": "日本の独立と世界の動き",
+                "page": 284
+              }
+            ]
+          },
+          {
+            "section_id": "sec6-3",
+            "title": "これからの日本と世界",
+            "page": 298,
+            "subsections": [
+              {
+                "id": "sub6-3-1",
+                "title": "グローバル化が進む世界",
+                "page": 300
+              },
+              {
+                "id": "sub6-3-2",
+                "title": "激変する日本とアジア",
+                "page": 302
+              },
+              {
+                "id": "sub6-3-3",
+                "title": "国際社会におけるこれからの日本",
+                "page": 304
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "last_updated": "2026-06-04T09:00:00Z",
+    "version": "1.0",
+    "total_chapters": 7,
+    "note": "ワークのスクショが来たら、workbook_answers セクションに統合予定"
+  }
+}
