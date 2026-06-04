@@ -1,13 +1,12 @@
 """
-RIA TOP ページ v0.8
-更新点 (v0.8):
-- NEXT TEST 上に「期末テストまでのスケジュールカレンダー」追加
-- To Do TODAY をカード化（教科色の左ストライプ＋完了トグル）
-- 5教科＋実技4教科を色分け、カレンダー/ToDo/タイムテーブルで統一使用
-- 教科書を「タップで開く」（クリック可能なカバー、開くボタン削除）
-- 章を開いた中の項目にノート風 dashed ライン
-- 全体フォントを Zen Maru Gothic に変更、角丸/ホバーで柔らかい雰囲気に
-- iPad 用フォントをさらに底上げ
+RIA TOP ページ v0.9
+更新点 (v0.9):
+- フォント: Apple system (-apple-system / Hiragino Sans)、Material Icons 壊さない
+- 全体トーン: Apple iOS 風（system colors、白背景、控えめシャドウ、10-12px 角丸）
+- 順序変更: 日時 → NEXT TEST → カレンダー → TEST詳細 → ToDo → 今日 → 明日 → 教科書
+- ToDo: 3列グリッド（st.columns(3)）
+- 今日の時間割: expander 廃止、全教科を1フォームで一気に記録
+- 教科書: カバー表示 + 「📖 目次を見る」ボタン（query_params やめて session 保護）
 """
 
 import streamlit as st
@@ -20,20 +19,20 @@ from pathlib import Path
 # ===== ページ設定 =====
 st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_sidebar_state="collapsed")
 
-# ===== カラーパレット =====
+# ===== Apple-style カラーパレット =====
 
 SUBJECT_COLOR_MAP = {
-    "国語":     {"primary": "#E91E63", "light": "#FCE4EC", "emoji": "📘"},
-    "数学":     {"primary": "#1E88E5", "light": "#E3F2FD", "emoji": "📐"},
-    "社会":     {"primary": "#FB8C00", "light": "#FFF3E0", "emoji": "🗺️"},
-    "理科":     {"primary": "#43A047", "light": "#E8F5E9", "emoji": "🔬"},
-    "英語":     {"primary": "#8E24AA", "light": "#F3E5F5", "emoji": "🌐"},
-    "保健体育": {"primary": "#E53935", "light": "#FFEBEE", "emoji": "🏃"},
-    "技術家庭": {"primary": "#00897B", "light": "#E0F2F1", "emoji": "🔧"},
-    "技術":     {"primary": "#00897B", "light": "#E0F2F1", "emoji": "🔧"},
-    "家庭":     {"primary": "#00897B", "light": "#E0F2F1", "emoji": "🍳"},
-    "音楽":     {"primary": "#FFA000", "light": "#FFF8E1", "emoji": "🎵"},
-    "美術":     {"primary": "#EC407A", "light": "#FCE4EC", "emoji": "🎨"},
+    "国語":     {"primary": "#FF2D55", "light": "#FFE5EC", "emoji": "📘"},
+    "数学":     {"primary": "#007AFF", "light": "#E5F1FF", "emoji": "📐"},
+    "社会":     {"primary": "#FF9500", "light": "#FFF4E5", "emoji": "🗺️"},
+    "理科":     {"primary": "#34C759", "light": "#E8F8EE", "emoji": "🔬"},
+    "英語":     {"primary": "#AF52DE", "light": "#F5EBFB", "emoji": "🌐"},
+    "保健体育": {"primary": "#FF3B30", "light": "#FFE8E6", "emoji": "🏃"},
+    "技術家庭": {"primary": "#5AC8FA", "light": "#E8F7FE", "emoji": "🔧"},
+    "技術":     {"primary": "#5AC8FA", "light": "#E8F7FE", "emoji": "🔧"},
+    "家庭":     {"primary": "#5AC8FA", "light": "#E8F7FE", "emoji": "🍳"},
+    "音楽":     {"primary": "#FFCC00", "light": "#FFF8D6", "emoji": "🎵"},
+    "美術":     {"primary": "#FF6482", "light": "#FFE5EB", "emoji": "🎨"},
 }
 
 def subject_color(name):
@@ -41,35 +40,41 @@ def subject_color(name):
     for key, val in SUBJECT_COLOR_MAP.items():
         if key in name:
             return val
-    return {"primary": "#888", "light": "#f5f5f5", "emoji": "📚"}
+    return {"primary": "#8E8E93", "light": "#F2F2F7", "emoji": "📚"}
 
 
 # ===== スタイル =====
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap');
-
-    /* 全体フォント */
-    .stApp, .stApp * {
-        font-family: 'Zen Maru Gothic', 'Hiragino Sans', 'Yu Gothic', sans-serif !important;
+    /* Apple system font - .stApp のみに指定して icon font を壊さない */
+    .stApp {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+                     "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: #fafafa;
     }
 
     /* ========== ベース（モバイル）========== */
     .test-card {
-        background: linear-gradient(135deg, #ff6b9d 0%, #ee5a52 100%);
-        color: white; border-radius: 20px; padding: 28px; text-align: center;
-        box-shadow: 0 6px 24px rgba(238, 90, 82, 0.25);
+        background: linear-gradient(135deg, #FF3B30 0%, #FF2D55 100%);
+        color: white; border-radius: 16px; padding: 24px 20px; text-align: center;
+        box-shadow: 0 4px 16px rgba(255, 59, 48, 0.2);
     }
-    .section-title { font-size: 22px; font-weight: 700; margin: 28px 0 12px 0; color: #2c3e50; }
-    .section-title.big { font-size: 30px; margin-top: 36px; }
+    .section-title {
+        font-size: 22px; font-weight: 700; margin: 28px 0 12px 0;
+        color: #1c1c1e; letter-spacing: -0.02em;
+    }
+    .section-title.big { font-size: 28px; margin-top: 36px; }
 
     .range-item {
-        background: #fff8f8; padding: 12px 16px; border-radius: 12px;
-        border-left: 4px solid #ff6b6b; margin: 8px 0;
+        background: white; padding: 14px 16px; border-radius: 12px;
+        border-left: 4px solid #FF3B30; margin: 8px 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .study-time-badge {
-        background: #4a90e2; color: white; padding: 3px 12px; border-radius: 12px;
-        font-size: 13px; font-weight: bold;
+        color: white; padding: 3px 10px; border-radius: 10px;
+        font-size: 13px; font-weight: 600;
     }
     .cover-ph {
         background: linear-gradient(135deg, #e0e0e0, #c0c0c0); height: 180px;
@@ -77,90 +82,110 @@ st.markdown("""
         color: #888; font-size: 13px;
     }
     .now-badge {
-        text-align: right; color: #888; font-size: 13px;
-        margin: -10px 0 10px 0;
+        text-align: right; color: #8E8E93; font-size: 13px;
+        margin: -10px 0 10px 0; font-weight: 500;
     }
 
-    /* ===== スケジュールカレンダー ===== */
+    /* ===== カレンダー ===== */
     .calendar-scroll {
         display: flex; gap: 8px;
-        overflow-x: auto; padding: 24px 4px 16px;
+        overflow-x: auto; padding: 20px 4px 12px;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
     }
     .calendar-scroll::-webkit-scrollbar { height: 6px; }
-    .calendar-scroll::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
+    .calendar-scroll::-webkit-scrollbar-thumb { background: #d1d1d6; border-radius: 3px; }
     .day-card {
-        flex-shrink: 0; width: 88px; min-height: 130px;
-        background: white; border-radius: 16px; padding: 10px 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        border: 2px solid #f0f0f0;
+        flex-shrink: 0; width: 86px; min-height: 128px;
+        background: white; border-radius: 12px; padding: 10px 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        border: 1px solid rgba(0,0,0,0.05);
         scroll-snap-align: start;
         position: relative;
-        transition: transform 0.2s;
     }
-    .day-card:hover { transform: translateY(-2px); }
     .day-card.today {
-        border-color: #4a90e2;
-        background: linear-gradient(135deg, #e3f2fd, #fff);
-        box-shadow: 0 6px 16px rgba(74, 144, 226, 0.25);
+        border-color: #007AFF; border-width: 2px;
+        background: linear-gradient(135deg, #E5F1FF 0%, #fff 100%);
+        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.18);
     }
     .day-card.test-day {
-        border-color: #ff6b6b;
-        background: linear-gradient(135deg, #ffe5e5, #fff);
-        box-shadow: 0 6px 16px rgba(255, 107, 107, 0.2);
+        border-color: #FF3B30; border-width: 2px;
+        background: linear-gradient(135deg, #FFE5E2 0%, #fff 100%);
+        box-shadow: 0 4px 12px rgba(255, 59, 48, 0.15);
     }
-    .day-card.past { opacity: 0.45; }
+    .day-card.past { opacity: 0.4; }
     .today-badge {
-        position: absolute; top: -14px; left: 50%;
+        position: absolute; top: -12px; left: 50%;
         transform: translateX(-50%);
-        background: #4a90e2; color: white;
-        font-size: 11px; font-weight: bold;
-        padding: 3px 10px; border-radius: 10px;
-        white-space: nowrap;
-        box-shadow: 0 2px 6px rgba(74, 144, 226, 0.4);
+        background: #007AFF; color: white;
+        font-size: 10px; font-weight: 700;
+        padding: 3px 9px; border-radius: 10px;
+        white-space: nowrap; letter-spacing: 0.02em;
+        box-shadow: 0 2px 6px rgba(0, 122, 255, 0.35);
     }
-    .day-num { font-size: 19px; font-weight: 700; color: #2c3e50; text-align: center; line-height: 1.1; }
-    .day-wd { font-size: 12px; text-align: center; margin-bottom: 8px; }
+    .day-num { font-size: 18px; font-weight: 700; color: #1c1c1e; text-align: center; line-height: 1.1; }
+    .day-wd { font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: 500; }
     .chips { display: flex; flex-direction: column; gap: 3px; }
     .chip {
-        font-size: 11px; padding: 3px 5px; border-radius: 8px;
-        background: #f5f5f5; color: #666; text-align: center;
-        font-weight: 500; line-height: 1.3;
+        font-size: 11px; padding: 3px 5px; border-radius: 6px;
+        background: #F2F2F7; color: #666; text-align: center;
+        font-weight: 600; line-height: 1.3;
     }
     .chip-test {
-        background: #ff6b6b !important; color: white !important;
+        background: #FF3B30 !important; color: white !important;
         font-weight: 700; border: none !important;
     }
     .chip-submit {
-        background: #ffd54f !important; color: #5d4037 !important;
+        background: #FFCC00 !important; color: #5a4a00 !important;
         font-weight: 700; border: none !important;
     }
 
-    /* ===== ToDo カード ===== */
+    /* ===== ToDo グリッド ===== */
     .todo-card {
-        border-radius: 16px; padding: 14px 18px; margin: 10px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        transition: all 0.2s;
-        border-left: 6px solid #888;
+        background: white;
+        border-radius: 12px; padding: 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+        border: 1px solid rgba(0,0,0,0.04);
+        border-left-width: 4px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        min-height: 110px;
     }
-    .todo-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
-    .todo-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .todo-content { flex: 1; }
-    .todo-subj { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-    .todo-task { font-size: 14px; color: #333; line-height: 1.5; }
+    .todo-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .todo-head {
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        margin-bottom: 8px;
+    }
+    .todo-subj { font-size: 16px; font-weight: 700; }
     .todo-time {
-        color: white; padding: 6px 12px; border-radius: 14px;
-        font-size: 12px; font-weight: bold; white-space: nowrap;
+        color: white; padding: 4px 10px; border-radius: 10px;
+        font-size: 11px; font-weight: 700; white-space: nowrap;
     }
+    .todo-task { font-size: 13px; color: #3a3a3c; line-height: 1.5; }
+
+    /* ===== 時間割（1フォーム式）===== */
+    .tt-row {
+        margin: 14px 0 4px 0; padding: 10px 14px;
+        border-left: 4px solid #ccc;
+        background: #fff;
+        border-radius: 10px;
+        display: flex; align-items: center; gap: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .tt-num {
+        background: #F2F2F7; color: #1c1c1e;
+        width: 26px; height: 26px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700;
+    }
+    .tt-name { font-size: 16px; font-weight: 700; }
 
     /* ===== ポイントボックス ===== */
     .point-box, .point-box-blue {
         padding: 14px 18px; border-radius: 12px;
         margin: 8px 0 14px 0; line-height: 1.8;
     }
-    .point-box { background: #fff8e1; border-left: 3px solid #f5c518; }
-    .point-box-blue { background: #f0f7ff; border-left: 3px solid #4a90e2; }
+    .point-box { background: #FFF8E1; border-left: 3px solid #FFCC00; }
+    .point-box-blue { background: #E5F1FF; border-left: 3px solid #007AFF; }
     .point-box p, .point-box-blue p { font-size: 15px; line-height: 1.8; margin: 6px 0; }
     .point-box h1, .point-box-blue h1,
     .point-box h2, .point-box-blue h2 {
@@ -178,22 +203,21 @@ st.markdown("""
     /* ===== TOC ===== */
     .toc-sect-title {
         font-size: 14px; font-weight: 700;
-        color: #2c3e50; margin: 12px 0 4px 0;
+        color: #1c1c1e; margin: 12px 0 4px 0;
     }
     .toc-sub {
         font-size: 13px; line-height: 1.7;
         padding: 10px 4px 10px 8px;
     }
-    .toc-sub .toc-page { color: #888; font-size: 0.9em; }
+    .toc-sub .toc-page { color: #8E8E93; font-size: 0.9em; }
 
-    /* TOC 内の章 expander */
     .st-key-tb_toc div[data-testid="stExpander"] summary,
     .st-key-tb_toc div[data-testid="stExpander"] summary p {
         font-size: 14px !important;
     }
-    .st-key-tb_toc div[data-testid="stExpander"] { margin: 4px 0; border-radius: 12px; }
+    .st-key-tb_toc div[data-testid="stExpander"] { margin: 4px 0; border-radius: 10px; }
 
-    /* ノート風ライン: TOC 内の各 subsection 行に下線 */
+    /* ノート風ライン */
     .st-key-tb_toc div[data-testid="stHorizontalBlock"] {
         border-bottom: 1px dashed #d8d8d8;
         align-items: center;
@@ -204,50 +228,56 @@ st.markdown("""
     }
 
     /* 教科書カバー */
-    .tb-cover-wrap { text-align: center; padding: 12px 0; }
+    .tb-cover-wrap { text-align: center; padding: 16px 0 8px 0; }
     .tb-cover {
-        width: 220px; max-width: 70%; border-radius: 14px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        cursor: pointer;
-        transition: transform 0.2s ease;
+        width: 220px; max-width: 70%; border-radius: 12px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.12);
     }
-    .tb-cover:hover { transform: scale(1.04); }
-    .tb-cover-hint { color: #888; font-size: 12px; margin-top: 10px; }
 
-    /* ボタン基本 */
+    /* ボタン基本 - Apple っぽく */
     div.stButton > button {
-        min-height: 48px; font-size: 16px;
-        border-radius: 14px !important;
-        transition: all 0.2s;
-        font-weight: 500;
+        min-height: 46px; font-size: 15px;
+        border-radius: 12px !important;
+        font-weight: 600;
+        transition: all 0.15s ease;
     }
     div.stButton > button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    div.stButton > button[kind="primary"] {
+        background: #007AFF;
+        border: none;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background: #0066d6;
     }
 
-    div[role="radiogroup"] { justify-content: center; }
+    div[role="radiogroup"] { justify-content: flex-start; }
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
 
     /* ========== iPad / タブレット以上 (≥768px) ========== */
     @media (min-width: 768px) {
         .section-title { font-size: 28px; }
-        .section-title.big { font-size: 38px; }
+        .section-title.big { font-size: 36px; }
         .now-badge { font-size: 15px; }
 
-        .day-card { width: 112px; min-height: 160px; padding: 14px 10px; }
-        .day-num { font-size: 24px; }
-        .day-wd { font-size: 14px; }
+        .day-card { width: 110px; min-height: 156px; padding: 14px 10px; }
+        .day-num { font-size: 23px; }
+        .day-wd { font-size: 13px; }
         .chip { font-size: 13px; padding: 4px 6px; }
 
-        .todo-card { padding: 18px 22px; }
-        .todo-subj { font-size: 20px; }
-        .todo-task { font-size: 16px; }
-        .todo-time { font-size: 14px; padding: 8px 14px; }
+        .todo-card { padding: 18px; min-height: 130px; }
+        .todo-subj { font-size: 18px; }
+        .todo-task { font-size: 15px; }
+        .todo-time { font-size: 13px; padding: 5px 12px; }
+
+        .tt-row { padding: 14px 18px; }
+        .tt-num { width: 30px; height: 30px; font-size: 15px; }
+        .tt-name { font-size: 18px; }
 
         .range-item { padding: 16px 20px; }
         .range-item strong { font-size: 18px; }
-        .study-time-badge { font-size: 15px; padding: 4px 14px; }
+        .study-time-badge { font-size: 14px; padding: 4px 12px; }
 
         .point-box, .point-box-blue { padding: 20px 24px; }
         .point-box p, .point-box-blue p,
@@ -256,7 +286,7 @@ st.markdown("""
         }
         .point-box h1, .point-box-blue h1,
         .point-box h2, .point-box-blue h2 {
-            font-size: 23px !important; margin: 18px 0 8px 0 !important;
+            font-size: 22px !important;
         }
         .point-box h3, .point-box-blue h3 { font-size: 19px !important; }
 
@@ -268,25 +298,10 @@ st.markdown("""
             font-size: 17px !important;
         }
 
-        div[data-testid="stExpander"] summary { font-size: 18px; }
-        div.stButton > button { font-size: 18px; min-height: 54px; }
+        div.stButton > button { font-size: 16px; min-height: 52px; }
         div[data-testid="stCheckbox"] label p { font-size: 16px; }
 
         .tb-cover { width: 240px; }
-        .tb-cover-hint { font-size: 14px; }
-    }
-
-    /* ========== デスクトップ (≥1024px) ========== */
-    @media (min-width: 1024px) {
-        .point-box, .point-box-blue { padding: 22px 28px; }
-        .point-box p, .point-box-blue p,
-        .point-box li, .point-box-blue li {
-            font-size: 18px !important;
-        }
-        .point-box h1, .point-box-blue h1,
-        .point-box h2, .point-box-blue h2 {
-            font-size: 25px !important;
-        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -386,7 +401,7 @@ def render_point_box(text, color="yellow"):
     )
 
 
-# ===== スケジュール（テストまでの計画）=====
+# ===== スケジュール =====
 
 STUDY_SCHEDULE = {
     "2026-06-04": [{"subj": "社会"}],
@@ -428,11 +443,11 @@ def render_calendar(schedule, today):
 
         wd = JP_WD[d.weekday()]
         if d.weekday() == 5:
-            wd_color = "#4a90e2"
+            wd_color = "#007AFF"
         elif d.weekday() == 6:
-            wd_color = "#ff6b6b"
+            wd_color = "#FF3B30"
         else:
-            wd_color = "#888"
+            wd_color = "#8E8E93"
 
         chips_html = ""
         for it in items:
@@ -441,18 +456,17 @@ def render_calendar(schedule, today):
             if ctype == "test":
                 chips_html += '<div class="chip chip-test">TEST</div>'
             elif ctype == "submit":
-                short = subj.replace("📝 ", "").replace("ワーク提出", "ワーク提出")
-                chips_html += f'<div class="chip chip-submit">{short}</div>'
+                chips_html += f'<div class="chip chip-submit">{subj.replace("📝 ", "")}</div>'
             else:
-                color = subject_color(subj)
+                col = subject_color(subj)
                 chips_html += (
                     f'<div class="chip" style="'
-                    f'background:{color["light"]}; '
-                    f'color:{color["primary"]}; '
-                    f'border:1px solid {color["primary"]};">{subj}</div>'
+                    f'background:{col["light"]}; '
+                    f'color:{col["primary"]}; '
+                    f'border:1px solid {col["primary"]};">{subj}</div>'
                 )
 
-        today_marker = '<div class="today-badge">👇 今日</div>' if is_today else ''
+        today_marker = '<div class="today-badge">今日</div>' if is_today else ''
         days_html.append(
             f'<div class="{" ".join(classes)}">'
             f'{today_marker}'
@@ -481,9 +495,9 @@ NEXT_TEST = {
 }
 
 TODO_TODAY = [
-    {"subject_name": "社会",  "task": "歴史 P105-130 教科書通読",   "duration": "60分", "done": False},
-    {"subject_name": "数学",  "task": "1年範囲 P225-248 復習",       "duration": "30分", "done": False},
-    {"subject_name": "国語",  "task": "漢字テスト範囲 10個",         "duration": "20分", "done": True},
+    {"subject_name": "社会",  "task": "歴史 P105-130 教科書通読", "duration": "60分", "done": False},
+    {"subject_name": "数学",  "task": "1年範囲 P225-248 復習",     "duration": "30分", "done": False},
+    {"subject_name": "国語",  "task": "漢字テスト範囲 10個",       "duration": "20分", "done": True},
 ]
 
 TODAY_TIMETABLE = [
@@ -510,21 +524,7 @@ days_until_test = (test_date - today).days
 test_wd = JP_WD[test_date.weekday()]
 today_wd = JP_WD[today.weekday()]
 
-# ===== 教科書を「タップで開く」処理（query_params 経由）=====
-qp = st.query_params
-if "open_tb" in qp:
-    target = qp["open_tb"]
-    if "__" in target:
-        skey, gkey = target.split("__", 1)
-        if skey in SUBJECTS and gkey in SUBJECTS[skey]["genres"]:
-            st.session_state.selected_study = skey
-            st.session_state.detail_subject = skey
-            st.session_state.detail_genre = gkey
-            st.session_state.detail_type = "textbook"
-    del st.query_params["open_tb"]
-    st.rerun()
-
-# ===== ToDo 完了状態を session_state に保持 =====
+# ===== ToDo 完了状態 =====
 if "todo_done" not in st.session_state:
     st.session_state.todo_done = {i: t["done"] for i, t in enumerate(TODO_TODAY)}
 
@@ -535,22 +535,22 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ===== カレンダー（NEXT TESTの上）=====
-st.markdown('<div class="section-title">📆 期末テストまでのスケジュール</div>', unsafe_allow_html=True)
-st.markdown(render_calendar(STUDY_SCHEDULE, today), unsafe_allow_html=True)
-
-# ===== NEXT TEST =====
+# ===== NEXT TEST（カレンダーより上）=====
 st.markdown('<div class="section-title">⏳ NEXT TEST</div>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="test-card">
-    <div style="font-size: 18px; opacity: 0.9;">{NEXT_TEST['name']} まで</div>
-    <div style="display: flex; align-items: baseline; justify-content: center; gap: 10px; margin: 14px 0;">
-        <span style="font-size: 72px; font-weight: 900; line-height: 1;">{days_until_test}</span>
-        <span style="font-size: 28px; font-weight: 700;">日</span>
+    <div style="font-size: 17px; opacity: 0.95; font-weight: 600;">{NEXT_TEST['name']} まで</div>
+    <div style="display: flex; align-items: baseline; justify-content: center; gap: 10px; margin: 12px 0;">
+        <span style="font-size: 68px; font-weight: 800; line-height: 1;">{days_until_test}</span>
+        <span style="font-size: 26px; font-weight: 700;">日</span>
     </div>
-    <div style="font-size: 13px; opacity: 0.85;">開始: {NEXT_TEST['start_date']}（{test_wd}）</div>
+    <div style="font-size: 13px; opacity: 0.9;">開始: {NEXT_TEST['start_date']}（{test_wd}）</div>
 </div>
 """, unsafe_allow_html=True)
+
+# ===== カレンダー =====
+st.markdown('<div class="section-title">📆 期末テストまでのスケジュール</div>', unsafe_allow_html=True)
+st.markdown(render_calendar(STUDY_SCHEDULE, today), unsafe_allow_html=True)
 
 # ===== TEST詳細 トグル =====
 btn_label = "📋 TEST詳細を閉じる" if st.session_state.get("show_test_detail") else "📋 TEST詳細を見る"
@@ -567,104 +567,135 @@ if st.session_state.get("show_test_detail"):
     for s in NEXT_TEST["subjects"]:
         col = subject_color(s['subject'])
         st.markdown(f"""
-        <div class="range-item" style="border-left-color:{col['primary']}; background:{col['light']};">
+        <div class="range-item" style="border-left-color:{col['primary']};">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="color:{col['primary']};">{col['emoji']} {s['subject']}</strong>
+                <strong style="color:{col['primary']}; font-size: 16px;">{col['emoji']} {s['subject']}</strong>
                 <span class="study-time-badge" style="background:{col['primary']};">⏱ {s['study_hours']}h</span>
             </div>
-            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+            <div style="font-size: 13px; color: #8E8E93; margin-top: 6px;">
                 📅 {s['date']} {s['time']}<br>📖 {s['range']}
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-# ===== To Do TODAY (カード式) =====
+# ===== To Do TODAY (3列グリッド) =====
 st.markdown('<div class="section-title">📌 To Do TODAY</div>', unsafe_allow_html=True)
 done_count = sum(1 for v in st.session_state.todo_done.values() if v)
 st.markdown(f"今日のタスク: **{done_count}/{len(TODO_TODAY)}** 完了 🎯")
 
-for i, todo in enumerate(TODO_TODAY):
-    is_done = st.session_state.todo_done.get(i, todo["done"])
-    col = subject_color(todo["subject_name"])
+n_per_row = 3
+for row_start in range(0, len(TODO_TODAY), n_per_row):
+    cols = st.columns(n_per_row)
+    for ci in range(n_per_row):
+        idx = row_start + ci
+        if idx >= len(TODO_TODAY):
+            with cols[ci]:
+                st.empty()
+            continue
+        todo = TODO_TODAY[idx]
+        is_done = st.session_state.todo_done.get(idx, todo["done"])
+        col = subject_color(todo["subject_name"])
 
-    bg = col["light"] if not is_done else "#f5f5f5"
-    text_deco = "line-through" if is_done else "none"
-    opacity = "0.55" if is_done else "1"
+        bg = "white" if not is_done else "#F2F2F7"
+        text_deco = "line-through" if is_done else "none"
+        opacity = "0.55" if is_done else "1"
 
-    st.markdown(f"""
-    <div class="todo-card" style="border-left-color:{col['primary']}; background:{bg}; opacity:{opacity};">
-        <div class="todo-row">
-            <div class="todo-content" style="text-decoration:{text_deco};">
-                <div class="todo-subj" style="color:{col['primary']};">{col['emoji']} {todo['subject_name']}</div>
-                <div class="todo-task">{todo['task']}</div>
+        with cols[ci]:
+            st.markdown(f"""
+            <div class="todo-card" style="border-left-color:{col['primary']}; background:{bg}; opacity:{opacity};">
+                <div class="todo-head">
+                    <div class="todo-subj" style="color:{col['primary']};">{col['emoji']} {todo['subject_name']}</div>
+                    <div class="todo-time" style="background:{col['primary']};">⏱ {todo['duration']}</div>
+                </div>
+                <div class="todo-task" style="text-decoration:{text_deco};">{todo['task']}</div>
             </div>
-            <div class="todo-time" style="background:{col['primary']};">⏱ {todo['duration']}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-    cols = st.columns([3, 1])
-    with cols[1]:
-        btn_label = "↩️ 戻す" if is_done else "✅ できた！"
-        if st.button(btn_label, key=f"todo_btn_{i}", use_container_width=True):
-            st.session_state.todo_done[i] = not is_done
-            st.rerun()
+            btn_label = "↩️ 戻す" if is_done else "✅ できた！"
+            if st.button(btn_label, key=f"todo_btn_{idx}", use_container_width=True):
+                st.session_state.todo_done[idx] = not is_done
+                st.rerun()
 
 st.caption("💡 To Do は RIA が自動生成（予定）")
 
-# ===== 今日の時間割 =====
+# ===== 今日の時間割（1フォーム式・一気に記録）=====
 st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
+
 for p in TODAY_TIMETABLE:
     pn = p['period']
     col = subject_color(p['subject'])
-    with st.expander(f"**{pn}**　{col['emoji']} {p['subject']}", expanded=False):
+    skey = p.get("subject_key")
+    gtocs = get_genres_with_toc(skey) if skey else []
+
+    # ヘッダー
+    st.markdown(f"""
+    <div class="tt-row" style="border-left-color:{col['primary']};">
+        <div class="tt-num">{pn}</div>
+        <div class="tt-name" style="color:{col['primary']};">{col['emoji']} {p['subject']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if gtocs:
+        # 目次あり: ジャンル → 章 → 項目
+        if len(gtocs) > 1:
+            gnames = [g[1] for g in gtocs]
+            sel_gname = st.radio(
+                "ジャンル", gnames, horizontal=True,
+                key=f"today_grad_{pn}", label_visibility="collapsed"
+            )
+            _, _, tdata = next(g for g in gtocs if g[1] == sel_gname)
+        else:
+            _, _, tdata = gtocs[0]
+
+        chapters = tdata["textbook"]["chapters"]
+        chapter_labels = [
+            f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
+            for c in chapters
+        ]
+        sel_ch = st.selectbox(
+            "章", chapter_labels,
+            index=None, placeholder="章を選択...",
+            key=f"today_ch_{pn}", label_visibility="collapsed"
+        )
+        if sel_ch:
+            ch_idx = chapter_labels.index(sel_ch)
+            chap = chapters[ch_idx]
+            sub_opts = []
+            for sec in chap.get("sections", []):
+                for sub in sec.get("subsections", []):
+                    sub_opts.append(f"{sub['title']} (p.{sub['page']})")
+            if sub_opts:
+                st.multiselect(
+                    "項目", sub_opts,
+                    placeholder="やった項目を選択...",
+                    key=f"today_subs_{pn}", label_visibility="collapsed"
+                )
+    else:
+        st.text_input(
+            "範囲", placeholder="今日やった範囲（例: P30-45）",
+            key=f"today_range_{pn}", label_visibility="collapsed"
+        )
+
+# まとめて記録ボタン
+if st.button("✅ 全部記録する", use_container_width=True, type="primary", key="record_today_all"):
+    records = []
+    for p in TODAY_TIMETABLE:
+        pn = p['period']
         skey = p.get("subject_key")
         gtocs = get_genres_with_toc(skey) if skey else []
-
         if gtocs:
-            if len(gtocs) > 1:
-                gnames = [g[1] for g in gtocs]
-                sel_gname = st.radio("ジャンル", gnames, horizontal=True, key=f"today_grad_{pn}")
-                _, _, tdata = next(g for g in gtocs if g[1] == sel_gname)
-            else:
-                _, _, tdata = gtocs[0]
-
-            chapters = tdata["textbook"]["chapters"]
-            chapter_labels = [
-                f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
-                for c in chapters
-            ]
-
-            sel_ch = st.selectbox(
-                "章", chapter_labels,
-                index=None, placeholder="章を選択...",
-                key=f"today_ch_{pn}", label_visibility="collapsed"
-            )
-
-            if sel_ch:
-                ch_idx = chapter_labels.index(sel_ch)
-                chap = chapters[ch_idx]
-                sub_opts = []
-                for sec in chap.get("sections", []):
-                    for sub in sec.get("subsections", []):
-                        sub_opts.append(f"{sub['title']} (p.{sub['page']})")
-
-                if sub_opts:
-                    sel_subs = st.multiselect(
-                        "項目（複数選択可）", sub_opts,
-                        placeholder="やった項目を選択...",
-                        key=f"today_subs_{pn}", label_visibility="collapsed"
-                    )
-
-                    if sel_subs and st.button("✅ 記録する", key=f"today_rec_{pn}", use_container_width=True):
-                        st.success(f"記録: {sel_ch} ／ {len(sel_subs)}項目")
+            ch_val = st.session_state.get(f"today_ch_{pn}")
+            subs_val = st.session_state.get(f"today_subs_{pn}", [])
+            if ch_val and subs_val:
+                records.append(f"**{p['subject']}**: {ch_val}（{len(subs_val)}項目）")
         else:
-            sr = st.text_input(
-                "範囲", placeholder="今日やった範囲を入力",
-                key=f"today_range_{pn}", label_visibility="collapsed"
-            )
-            if sr and st.button("✅ 記録する", key=f"today_rec_{pn}", use_container_width=True):
-                st.success(f"記録: {sr}")
+            range_val = st.session_state.get(f"today_range_{pn}", "")
+            if range_val:
+                records.append(f"**{p['subject']}**: {range_val}")
+    if records:
+        st.success("📝 " + str(len(records)) + " 件記録しました！\n\n" + "\n\n".join(f"・ {r}" for r in records))
+    else:
+        st.warning("記録する内容がありません。範囲を入力/選択してください。")
 
 # ===== 明日の予習 =====
 st.markdown('<div class="section-title">🔮 明日の予習</div>', unsafe_allow_html=True)
@@ -740,15 +771,19 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         if cover_path.exists():
             with open(cover_path, "rb") as f:
                 b64 = base64.b64encode(f.read()).decode()
-            # クリック可能カバー（query_params 経由で開く）
             st.markdown(f"""
             <div class="tb-cover-wrap">
-                <a href="?open_tb={skey}__{gkey}" style="text-decoration:none;" target="_self">
-                    <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
-                </a>
-                <div class="tb-cover-hint">👆 表紙をタップで目次を見る</div>
+                <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
             </div>
             """, unsafe_allow_html=True)
+        bc1, bc2, bc3 = st.columns([1, 2, 1])
+        with bc2:
+            if st.button("📖 目次を見る", key=f"open_tb_{skey}_{gkey}",
+                         use_container_width=True, type="primary"):
+                st.session_state.detail_subject = skey
+                st.session_state.detail_genre = gkey
+                st.session_state.detail_type = "textbook"
+                st.rerun()
     else:
         st.markdown('<div class="cover-ph">📖 教科書 未登録</div>', unsafe_allow_html=True)
         st.caption("「教科書登録」ページで登録できます")
@@ -758,12 +793,12 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         if ddata:
             st.markdown("---")
             st.markdown(
-                f"<div style='font-size:20px; font-weight:700; color:#2c3e50; margin: 8px 0 4px 0;'>"
+                f"<div style='font-size:20px; font-weight:700; color:#1c1c1e; margin: 8px 0 4px 0;'>"
                 f"📄 目次 — {ddata['textbook'].get('name', '')}</div>",
                 unsafe_allow_html=True
             )
             st.markdown(
-                "<div style='font-size:13px; color:#888; margin-bottom:10px;'>"
+                "<div style='font-size:13px; color:#8E8E93; margin-bottom:10px;'>"
                 "章を開いて、項目の「💡」でポイントを見られます ✨</div>",
                 unsafe_allow_html=True
             )
@@ -801,4 +836,4 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v0.8")
+st.caption("🌟 RIA | TOP ページ v0.9")
