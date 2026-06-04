@@ -1,11 +1,10 @@
 """
-RIA TOP ページ v0.6
-更新点 (v0.6):
-- 今日の時間割: 目次登録あり科目は「章 → 項目(複数選択)」UI
-- ポイント生成: Anthropic API で実動作（中2向けの要点解説）
-- 「📚 教科書/ワーク」見出しを拡大
-- 目次フォント縮小（章expander含めて14px統一）
-- 「明日の時間割（予習プレビュー）」→「明日の予習」
+RIA TOP ページ v0.7
+更新点 (v0.7):
+- iPad / タブレット以上のサイズ (≥768px) でフォントを拡大（メディアクエリ）
+- ポイントボックス内の見出し/段落サイズを明示制御（H2 暴走を抑える）
+- ポイント本文の markdown レンダリングを修正（先頭 # の取りこぼし対策）
+- 生成プロンプトを調整（タイトル行を省略、## 構造で統一）
 """
 
 import streamlit as st
@@ -21,6 +20,7 @@ st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_si
 # ===== スタイル =====
 st.markdown("""
 <style>
+    /* ========== ベース（モバイル）========== */
     .ria-card {
         background: white; border-radius: 16px; padding: 24px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #f0f0f0;
@@ -48,28 +48,108 @@ st.markdown("""
         text-align: right; color: #888; font-size: 13px;
         margin: -10px 0 10px 0;
     }
-    .point-box {
-        background: #fff8e1; padding: 12px 16px; border-radius: 8px;
-        margin: 6px 0 12px 0; font-size: 14px; line-height: 1.7;
-        border-left: 3px solid #f5c518;
+
+    /* ポイントボックス（黄=TOC用 / 青=明日の予習用） */
+    .point-box, .point-box-blue {
+        padding: 14px 18px; border-radius: 8px;
+        margin: 8px 0 14px 0; line-height: 1.8;
     }
-    .point-box-blue {
-        background: #f0f7ff; padding: 12px 16px; border-radius: 8px;
-        margin: 8px 0; font-size: 14px; line-height: 1.7;
-        border-left: 3px solid #4a90e2;
+    .point-box { background: #fff8e1; border-left: 3px solid #f5c518; }
+    .point-box-blue { background: #f0f7ff; border-left: 3px solid #4a90e2; }
+
+    .point-box p, .point-box-blue p {
+        font-size: 15px; line-height: 1.8; margin: 6px 0;
     }
+    .point-box h1, .point-box-blue h1,
+    .point-box h2, .point-box-blue h2 {
+        font-size: 18px !important; font-weight: 700;
+        margin: 14px 0 6px 0 !important; line-height: 1.4 !important;
+    }
+    .point-box h3, .point-box-blue h3 {
+        font-size: 16px !important; font-weight: 700;
+        margin: 12px 0 4px 0 !important;
+    }
+    .point-box ul, .point-box-blue ul,
+    .point-box ol, .point-box-blue ol {
+        padding-left: 22px; margin: 6px 0;
+    }
+    .point-box li, .point-box-blue li {
+        font-size: 15px; line-height: 1.8; margin: 3px 0;
+    }
+
+    /* TOC 用クラス */
+    .toc-sect-title {
+        font-size: 14px; font-weight: 600;
+        color: #2c3e50; margin: 10px 0 4px 0;
+    }
+    .toc-sub {
+        font-size: 13px; line-height: 1.8;
+        padding-left: 8px;
+    }
+    .toc-sub .toc-page { color: #888; }
 
     div.stButton > button { min-height: 48px; font-size: 16px; }
     div[role="radiogroup"] { justify-content: center; }
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
 
-    /* TOC コンテナ内の expander ラベルを 14px に縮小 */
+    /* TOC コンテナ内の expander ラベル */
     .st-key-tb_toc div[data-testid="stExpander"] summary,
     .st-key-tb_toc div[data-testid="stExpander"] summary p {
         font-size: 14px !important;
     }
-    .st-key-tb_toc div[data-testid="stExpander"] {
-        margin: 2px 0;
+    .st-key-tb_toc div[data-testid="stExpander"] { margin: 2px 0; }
+
+    /* ========== iPad / タブレット以上 (≥768px) ========== */
+    @media (min-width: 768px) {
+        .section-title { font-size: 28px; }
+        .section-title.big { font-size: 36px; }
+        .now-badge { font-size: 15px; }
+
+        .range-item { padding: 16px 20px; }
+        .range-item strong { font-size: 17px; }
+        .study-time-badge { font-size: 14px; padding: 3px 12px; }
+
+        .point-box, .point-box-blue { padding: 20px 24px; }
+        .point-box p, .point-box-blue p,
+        .point-box li, .point-box-blue li {
+            font-size: 17px !important; line-height: 1.9 !important;
+        }
+        .point-box h1, .point-box-blue h1,
+        .point-box h2, .point-box-blue h2 {
+            font-size: 22px !important; margin: 18px 0 8px 0 !important;
+        }
+        .point-box h3, .point-box-blue h3 {
+            font-size: 19px !important;
+        }
+
+        .toc-sect-title { font-size: 16px; margin: 12px 0 6px; }
+        .toc-sub { font-size: 15px; line-height: 2; }
+
+        .st-key-tb_toc div[data-testid="stExpander"] summary,
+        .st-key-tb_toc div[data-testid="stExpander"] summary p {
+            font-size: 16px !important;
+        }
+
+        /* タイムテーブル expander（TOC 外） */
+        div[data-testid="stExpander"]:not(.st-key-tb_toc *) summary {
+            font-size: 18px;
+        }
+
+        div.stButton > button { font-size: 18px; min-height: 54px; }
+        div[data-testid="stCheckbox"] label p { font-size: 16px; }
+    }
+
+    /* ========== デスクトップ (≥1024px) ========== */
+    @media (min-width: 1024px) {
+        .point-box, .point-box-blue { padding: 22px 28px; }
+        .point-box p, .point-box-blue p,
+        .point-box li, .point-box-blue li {
+            font-size: 18px !important;
+        }
+        .point-box h1, .point-box-blue h1,
+        .point-box h2, .point-box-blue h2 {
+            font-size: 24px !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -120,7 +200,6 @@ def load_textbook(subject_key, genre_key):
 
 
 def get_genres_with_toc(subject_key):
-    """指定教科で目次登録済みのジャンル一覧を返す。"""
     if subject_key not in SUBJECTS:
         return []
     out = []
@@ -148,16 +227,32 @@ def generate_point(title, subject_name, genre_name=""):
                 "role": "user",
                 "content": (
                     f"中学2年生に向けて、{context} の単元「{title}」のポイントを"
-                    f"3〜5個の箇条書きで簡潔に教えてください。\n"
-                    f"・各項目は1〜2文以内\n"
-                    f"・専門用語は分かりやすい言葉に置き換えて\n"
-                    f"・親しみやすく、わくわくする口調で"
+                    f"3〜5個まとめて教えてください。\n\n"
+                    f"【書式ルール】\n"
+                    f"- 冒頭にタイトル行（# や ##）を入れない。いきなり1つ目から始める\n"
+                    f"- 各ポイントは「## 絵文字＋短いフレーズ」の見出し、続けて1〜2文の解説\n"
+                    f"- 専門用語は分かりやすい言葉に置き換える\n"
+                    f"- 親しみやすく、わくわくする口調で"
                 )
             }]
         )
         return msg.content[0].text
     except Exception as e:
         return f"⚠️ エラー: {e}"
+
+
+def render_point_box(text, color="yellow"):
+    """ポイント本文を markdown レンダリングしつつスタイル付きボックスで囲む。
+
+    HTML タグ内に直接 markdown を入れると先頭行が処理されない問題があるため、
+    開始/終了タグの間に空行を入れて markdown ブロックとして処理させる。
+    """
+    cls = "point-box" if color == "yellow" else "point-box-blue"
+    # 先頭/末尾の空行で markdown 処理を確実に発動
+    st.markdown(
+        f"<div class='{cls}'>\n\n{text}\n\n</div>",
+        unsafe_allow_html=True
+    )
 
 
 # ===== ダミーデータ =====
@@ -270,7 +365,6 @@ for p in TODAY_TIMETABLE:
         gtocs = get_genres_with_toc(skey) if skey else []
 
         if gtocs:
-            # 目次あり: ジャンル選択 → 章選択 → 項目複数選択
             if len(gtocs) > 1:
                 gnames = [g[1] for g in gtocs]
                 sel_gname = st.radio("ジャンル", gnames, horizontal=True, key=f"today_grad_{pn}")
@@ -308,7 +402,6 @@ for p in TODAY_TIMETABLE:
                     if sel_subs and st.button("✅ 記録する", key=f"today_rec_{pn}", use_container_width=True):
                         st.success(f"記録: {sel_ch} ／ {len(sel_subs)}項目")
         else:
-            # 目次なし: text_input フォールバック
             sr = st.text_input(
                 "範囲", placeholder="今日やった範囲を入力",
                 key=f"today_range_{pn}", label_visibility="collapsed"
@@ -328,10 +421,7 @@ for p in TOMORROW_TIMETABLE:
                 st.session_state[point_key] = generate_point(p['next_chapter'], p['subject'])
 
         if st.session_state.get(point_key):
-            st.markdown(
-                f"<div class='point-box-blue'>{st.session_state[point_key]}</div>",
-                unsafe_allow_html=True
-            )
+            render_point_box(st.session_state[point_key], color="blue")
 
 # ===== Study (教科書/ワーク) =====
 
@@ -424,7 +514,6 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 unsafe_allow_html=True
             )
 
-            # TOC コンテナ（CSS で expander ラベルを縮小）
             with st.container(key="tb_toc"):
                 for chapter in ddata["textbook"]["chapters"]:
                     ch_title = f"{chapter.get('chapter_number', '')} {chapter['title']}"
@@ -432,18 +521,15 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                         for section in chapter.get("sections", []):
                             if section.get("title"):
                                 st.markdown(
-                                    f"<div style='font-size:13px; font-weight:600; "
-                                    f"color:#2c3e50; margin: 8px 0 4px 0;'>"
-                                    f"{section['title']}</div>",
+                                    f"<div class='toc-sect-title'>{section['title']}</div>",
                                     unsafe_allow_html=True
                                 )
                             for sub in section.get("subsections", []):
                                 c1, c2 = st.columns([6, 1])
                                 with c1:
                                     st.markdown(
-                                        f"<div style='font-size:13px; line-height:1.8; "
-                                        f"padding-left:8px;'>　• {sub['title']} "
-                                        f"<span style='color:#888;'>(p.{sub['page']})</span></div>",
+                                        f"<div class='toc-sub'>　• {sub['title']} "
+                                        f"<span class='toc-page'>(p.{sub['page']})</span></div>",
                                         unsafe_allow_html=True
                                     )
                                 with c2:
@@ -457,11 +543,8 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                             )
                                 pt_key = f"pt_text_{sub['id']}"
                                 if st.session_state.get(pt_key):
-                                    st.markdown(
-                                        f"<div class='point-box'>{st.session_state[pt_key]}</div>",
-                                        unsafe_allow_html=True
-                                    )
+                                    render_point_box(st.session_state[pt_key], color="yellow")
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v0.6")
+st.caption("🌟 RIA | TOP ページ v0.7（iPad対応）")
