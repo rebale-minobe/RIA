@@ -1,7 +1,7 @@
 {
   "textbook": {
-    "name": "社会科教科書（中学2年 日本史・世界史）",
-    "publisher": "未設定",
+    "name": "中学生の歴史 日本の歩みと世界の動き",
+    "publisher": "帝国書院",
     "total_pages": 310,
     "chapters": [
       {
@@ -464,7 +464,10 @@
           }
         ]
       }
-    ]
+    ],
+    "cover_image": "textbook_covers/social_history.jpg",
+    "subject": "social",
+    "genre": "history"
   },
   "metadata": {
     "last_updated": "2026-06-04T09:00:00Z",
