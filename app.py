@@ -52,6 +52,7 @@ st.markdown("""
     }
     div.stButton > button { min-height: 52px; font-size: 16px; }
     div[role="radiogroup"] { justify-content: center; }
+    div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -220,17 +221,16 @@ for i, p in enumerate(TOMORROW_TIMETABLE):
 
 # ===== Study =====
 
-st.markdown('<div class="section-title">📚 Study</div>', unsafe_allow_html=True)
-st.markdown("各教科を選ぶと、教科書・ワークが表示されます")
+st.markdown('<div class="section-title">📚 教科書/ワーク</div>', unsafe_allow_html=True)
 
 # 教科選択（segmented control：スマホでも横並び）
 subject_keys = list(SUBJECTS.keys())
-subject_labels = [f"{SUBJECTS[k]['emoji']} {SUBJECTS[k]['name']}" for k in subject_keys]
+subject_labels = [SUBJECTS[k]['name'] for k in subject_keys]
 
 current_label = None
 if st.session_state.get("selected_study") in SUBJECTS:
     cs = st.session_state.selected_study
-    current_label = f"{SUBJECTS[cs]['emoji']} {SUBJECTS[cs]['name']}"
+    current_label = SUBJECTS[cs]['name']
 
 selected_label = st.segmented_control(
     "教科", subject_labels,
