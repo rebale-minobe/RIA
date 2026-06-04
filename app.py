@@ -50,6 +50,8 @@ st.markdown("""
         border-radius: 8px; display: flex; align-items: center; justify-content: center;
         color: #888; font-size: 13px;
     }
+    div.stButton > button { min-height: 52px; font-size: 16px; }
+    div[role="radiogroup"] { justify-content: center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -221,17 +223,19 @@ for i, p in enumerate(TOMORROW_TIMETABLE):
 st.markdown('<div class="section-title">📚 Study</div>', unsafe_allow_html=True)
 st.markdown("各教科を選ぶと、教科書・ワークが表示されます")
 
-# 教科タブ（選択中オレンジ下線）
-study_cols = st.columns(5)
-for i, (skey, sinfo) in enumerate(SUBJECTS.items()):
-    with study_cols[i]:
-        is_sel = st.session_state.get("selected_study") == skey
-        if st.button(f"{sinfo['emoji']} {sinfo['name']}", key=f"study_{skey}", use_container_width=True):
-            st.session_state.selected_study = skey
-            st.session_state.pop("detail_type", None)
-            st.rerun()
-        bar = "#ff8c00" if is_sel else "transparent"
-        st.markdown(f"<div style='height:3px;background:{bar};border-radius:2px;margin-top:-10px;'></div>", unsafe_allow_html=True)
+# 教科タブ（3列・選択中オレンジ下線）
+subject_items = list(SUBJECTS.items())
+for row in range(0, len(subject_items), 3):
+    cols = st.columns(3)
+    for i, (skey, sinfo) in enumerate(subject_items[row:row+3]):
+        with cols[i]:
+            is_sel = st.session_state.get("selected_study") == skey
+            if st.button(f"{sinfo['emoji']} {sinfo['name']}", key=f"study_{skey}", use_container_width=True):
+                st.session_state.selected_study = skey
+                st.session_state.pop("detail_type", None)
+                st.rerun()
+            bar = "#ff8c00" if is_sel else "transparent"
+            st.markdown(f"<div style='height:3px;background:{bar};border-radius:2px;margin-top:-10px;'></div>", unsafe_allow_html=True)
 
 if "selected_study" in st.session_state and st.session_state.selected_study in SUBJECTS:
     skey = st.session_state.selected_study
@@ -249,7 +253,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         genre_display = {}
         for gk in genre_keys:
             gi = sinfo["genres"][gk]
-            genre_display[f"{gi['emoji']} {gi['name']}"] = gk
+            genre_display[gi['name']] = gk
         sel_label = st.radio(
             "ジャンル", list(genre_display.keys()),
             horizontal=True, label_visibility="collapsed",
@@ -274,11 +278,6 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 f"style='width:220px;max-width:70%;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.15);'></div>",
                 unsafe_allow_html=True
             )
-        st.markdown(
-            f"<div style='text-align:center;color:#888;font-size:13px;margin:8px 0;'>"
-            f"{tb.get('publisher','')} | {len(tb.get('chapters',[]))}章</div>",
-            unsafe_allow_html=True
-        )
         bc1, bc2, bc3 = st.columns([1, 2, 1])
         with bc2:
             if st.button("📖 開く", key=f"open_tb_{skey}_{gkey}", use_container_width=True):
