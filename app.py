@@ -1,22 +1,29 @@
 """
-RIA TOP ページ v1.2
-v1.2 追加:
-- 教科書 / ワーク 切り替え (radio)
-- ワーク表紙表示 + 「📋 解答を見る」ボタン
-- ワーク詳細: ページ選択 → セクション → 問題ごとに「タップで答え」表示
-- 全部表示/全部隠す ボタン
+RIA TOP ページ v1.4
+v1.4 追加:
+- 解答ログの永続化（data/answer_log.json）
+- 「📌 今日の問題」セクション: 過去に間違えた問題を教科横断で反復出題
+- ○✕記録は即座に GitHub に保存
+v1.3 追加: フラッシュカード形式、◀▶ナビ、○✕記録、💡解説、再テスト
 """
 
 import streamlit as st
 import json
 import requests
 import base64
+import random
 from datetime import datetime
 from pathlib import Path
 
+# 解答ログ管理（GitHub 永続化）
+try:
+    from modules import answer_log
+    ANSWER_LOG_AVAILABLE = True
+except Exception:
+    ANSWER_LOG_AVAILABLE = False
+
 st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_sidebar_state="collapsed")
 
-# ===== カラーパレット =====
 SUBJECT_COLOR_MAP = {
     "国語":     {"primary": "#FF2D55", "light": "#FFE5EC", "emoji": "📘"},
     "数学":     {"primary": "#007AFF", "light": "#E5F1FF", "emoji": "📐"},
@@ -193,45 +200,150 @@ st.markdown("""
         min-height: 36px !important; padding: 4px 8px !important; font-size: 16px !important;
     }
 
-    /* ワーク解答 */
+    /* ===== ワーク フラッシュカード ===== */
     .wb-detail-title {
         font-size: 20px; font-weight: 700; color: #1c1c1e;
         margin: 8px 0 4px 0;
     }
-    .wb-section-head {
-        font-size: 15px; font-weight: 700;
-        background: #FFF4E5; color: #b8331f;
-        padding: 8px 12px; border-radius: 8px;
-        margin: 14px 0 6px 0;
+    .wb-mode-badge {
+        display: inline-block; padding: 4px 14px;
+        border-radius: 20px; font-size: 12px; font-weight: 700;
+        margin: 8px 0 4px 0;
     }
-    .wb-group-label {
-        font-weight: 700; font-size: 14px;
-        color: #FF6B00; margin: 8px 0 4px 0;
+    .wb-mode-retest { background: #FF6B00; color: white; }
+    .wb-progress-row {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 14px; font-weight: 600;
+        margin: 12px 0 4px 0;
     }
-    .wb-ans-q {
-        font-weight: 700; font-size: 16px;
-        color: #FF9500; padding-top: 6px; text-align: center;
+    .wb-progress-row .ans-stat {
+        font-size: 13px; padding: 2px 10px;
+        border-radius: 12px; margin-left: 6px;
     }
-    .wb-ans-revealed {
+
+    .wb-flashcard {
+        background: white;
+        border-radius: 18px;
+        padding: 20px 24px 24px 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        border: 2px solid #FF9500;
+        margin: 12px 0 16px 0;
+    }
+    .wb-fc-header {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .wb-fc-meta {
+        font-size: 11px;
+        color: #8E8E93;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+    }
+    .wb-fc-lesson {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1c1c1e;
+        margin-top: 2px;
+    }
+    .wb-fc-q {
+        font-size: 64px;
+        font-weight: 800;
+        color: #FF9500;
+        text-align: center;
+        line-height: 1.0;
+        margin: 18px 0 10px 0;
+    }
+    .wb-fc-divider {
+        border-top: 1px dashed #e5e5ea;
+        margin: 14px -10px;
+    }
+    .wb-fc-a-area {
+        text-align: center;
+        min-height: 90px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 0;
+    }
+    .wb-fc-a-shown {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1c1c1e;
         background: linear-gradient(135deg, #E8F8EE, #C8F0D8);
-        color: #1c1c1e; font-weight: 600;
-        padding: 10px 14px; border-radius: 10px;
+        padding: 16px 24px;
+        border-radius: 14px;
         border-left: 4px solid #34C759;
-        font-size: 15px; line-height: 1.55;
-        animation: ansReveal 0.3s ease-out;
+        line-height: 1.4;
+        animation: ansReveal 0.35s ease-out;
+        max-width: 100%;
+        word-break: break-word;
+    }
+    .wb-fc-a-hidden {
+        font-size: 56px;
+        color: #d1d1d6;
+        font-weight: 800;
     }
     @keyframes ansReveal {
-        from { opacity: 0; transform: translateY(-4px); }
-        to   { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: scale(0.95); }
+        to   { opacity: 1; transform: scale(1); }
     }
-    .wb-ans-note { color: #AF52DE; font-size: 12px; margin-left: 6px; }
-    .st-key-wb_ans_row div[data-testid="stButton"] button {
-        background: #FFF8E1 !important;
-        color: #8E6800 !important;
-        font-size: 13px !important;
-        border: 1px dashed #FFCC00 !important;
-        min-height: 38px !important;
-        font-weight: 500 !important;
+    .wb-result-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+    .wb-result-badge.maru { background: #E5F1FF; color: #007AFF; }
+    .wb-result-badge.batsu { background: #FFE5E2; color: #FF3B30; }
+
+    /* ナビボタン (5列) — 色分け（ワーク詳細＆今日の問題 共通） */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button {
+        background: #8E8E93 !important; color: white !important;
+    }
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        background: #007AFF !important; color: white !important;
+    }
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button {
+        background: #FF3B30 !important; color: white !important;
+    }
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button {
+        background: #34C759 !important; color: white !important;
+    }
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(5) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(5) button {
+        background: #8E8E93 !important; color: white !important;
+    }
+    .st-key-wb_nav_row button,
+    .st-key-tp_nav_row button {
+        font-size: 22px !important;
+        min-height: 56px !important;
+        font-weight: 700 !important;
+        border: none !important;
+        border-radius: 14px !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12) !important;
+    }
+    .st-key-wb_nav_row button:disabled,
+    .st-key-tp_nav_row button:disabled {
+        opacity: 0.35 !important;
+        box-shadow: none !important;
+    }
+
+    /* 答えを見るボタン */
+    .st-key-wb_reveal_wrap button,
+    .st-key-tp_reveal_wrap button {
+        background: linear-gradient(135deg, #FF9500, #FF7A00) !important;
+        color: white !important;
+        font-size: 16px !important;
+        min-height: 52px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 14px rgba(255, 149, 0, 0.35) !important;
     }
 
     /* カバー */
@@ -245,7 +357,7 @@ st.markdown("""
         margin: 4px auto 16px auto !important;
     }
 
-    /* ボタン */
+    /* ボタン基本 */
     div.stButton > button {
         min-height: 46px; font-size: 15px;
         border-radius: 12px !important;
@@ -258,7 +370,6 @@ st.markdown("""
 
     div[role="radiogroup"] { justify-content: flex-start; }
 
-    /* segmented_control */
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
     div[data-testid="stSegmentedControl"] button,
     div[data-testid="stSegmentedControl"] [role="group"] button {
@@ -308,11 +419,14 @@ st.markdown("""
         .st-key-tb_open_btn_wrap, .st-key-wb_open_btn_wrap { max-width: 260px !important; }
 
         .wb-detail-title { font-size: 24px; }
-        .wb-section-head { font-size: 17px; padding: 10px 14px; }
-        .wb-ans-q { font-size: 18px; }
-        .wb-ans-revealed { font-size: 17px; padding: 12px 16px; }
-        .st-key-wb_ans_row div[data-testid="stButton"] button {
-            font-size: 14px !important; min-height: 44px !important;
+        .wb-fc-q { font-size: 88px; }
+        .wb-fc-a-shown { font-size: 36px; padding: 18px 28px; }
+        .wb-fc-a-hidden { font-size: 72px; }
+        .wb-fc-meta { font-size: 13px; }
+        .wb-fc-lesson { font-size: 17px; }
+        .st-key-wb_nav_row button,
+        .st-key-tp_nav_row button {
+            font-size: 26px !important; min-height: 64px !important;
         }
     }
 </style>
@@ -380,6 +494,28 @@ def load_workbook_answers(subject_key, genre_key):
     return None
 
 
+def flatten_workbook_questions(page):
+    """ページ内の全問題を順序保持で1次元リストに展開"""
+    flat = []
+    for section in page['sections']:
+        for group in section['groups']:
+            for ans in group['answers']:
+                flat.append({
+                    'page_number': page['page_number'],
+                    'lesson_title': page.get('lesson_title', ''),
+                    'chapter_title': page.get('chapter_title', ''),
+                    'section_code': section['code'],
+                    'section_name': section['name'],
+                    'textbook_ref': section.get('textbook_ref'),
+                    'group_label': group.get('label'),
+                    'q': ans['q'],
+                    'a': ans['a'],
+                    'note': ans.get('note'),
+                    'context': ans.get('context'),
+                })
+    return flat
+
+
 def get_genres_with_toc(subject_key):
     if subject_key not in SUBJECTS:
         return []
@@ -415,6 +551,43 @@ def generate_point(title, subject_name, genre_name=""):
                     f"- 親しみやすく、わくわくする口調で"
                 )
             }]
+        )
+        return msg.content[0].text
+    except Exception as e:
+        return f"⚠️ エラー: {e}"
+
+
+def generate_workbook_explanation(question_data, subject_name="社会"):
+    """問題に対する解説を生成"""
+    try:
+        api_key = st.secrets.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return "⚠️ ANTHROPIC_API_KEY が未登録"
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+
+        note_line = f"参考: {question_data['note']}\n" if question_data.get('note') else ""
+        ctx_line = f"文脈: {question_data['context']}\n" if question_data.get('context') else ""
+
+        prompt = (
+            f"中学2年生の {subject_name} のワーク問題です。\n\n"
+            f"単元: {question_data.get('lesson_title','')}\n"
+            f"セクション: {question_data['section_name']}\n"
+            f"問題番号: {question_data['q']}\n"
+            f"正解: {question_data['a']}\n"
+            f"{note_line}{ctx_line}\n"
+            f"この問題について、中学2年生がよく分かるように2〜4文で解説してください。"
+            f"なぜこの答えになるのか、関連する歴史的背景や覚えるポイントを含めてください。\n\n"
+            f"【書式】\n"
+            f"- 親しみやすい口調で\n"
+            f"- マークダウン記号や見出しは使わない、ふつうの文章で\n"
+            f"- 前置きは不要、いきなり解説から"
+        )
+
+        msg = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}]
         )
         return msg.content[0].text
     except Exception as e:
@@ -654,12 +827,223 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
                               label_visibility="collapsed", placeholder="タスク内容")
                 st.selectbox("時間", DURATION_OPTIONS,
                              key=f"todo_dur_{idx}", label_visibility="collapsed")
-                btn_label = "↩️ 戻す" if is_done else "✅ できた！"
-                if st.button(btn_label, key=f"todo_btn_{idx}", use_container_width=True):
+                btn_label2 = "↩️ 戻す" if is_done else "✅ できた！"
+                if st.button(btn_label2, key=f"todo_btn_{idx}", use_container_width=True):
                     st.session_state.todo_done[idx] = not is_done
                     st.rerun()
 
 st.caption("💡 タスクや時間をタップして編集できます")
+
+# ===== 今日の問題（過去に間違えた問題を反復出題） =====
+st.markdown('<div class="section-title">📌 今日の問題 <span style="font-size:14px; color:#8E8E93; font-weight:500;">— 反復学習</span></div>', unsafe_allow_html=True)
+
+if not ANSWER_LOG_AVAILABLE:
+    st.info("⏳ 解答ログ機能の準備中（modules/answer_log.py を配置してください）")
+else:
+    # キャッシュキー: 教科横断の未解決問題リスト
+    cache_key = "tp_questions_cache"
+    if cache_key not in st.session_state:
+        with st.spinner("間違えた問題を読み込み中..."):
+            try:
+                unsolved = answer_log.get_unsolved_questions()
+                random.shuffle(unsolved)
+                st.session_state[cache_key] = [
+                    answer_log.log_to_question(log) for log in unsolved
+                ]
+            except Exception as e:
+                st.error(f"ログ読み込みエラー: {e}")
+                st.session_state[cache_key] = []
+
+    tp_questions = st.session_state.get(cache_key, [])
+    tp_total = len(tp_questions)
+
+    if tp_total == 0:
+        st.success("🎉 反復学習する問題がありません！全問正解おめでとう！")
+        st.caption("ワークで×を付けた問題が、次の日からここに自動で出題されます。")
+    else:
+        st.markdown(
+            f"📚 復習する問題: **{tp_total} 問**  "
+            f"<span style='color:#8E8E93;'>（過去に間違えた問題を教科横断でシャッフル出題）</span>",
+            unsafe_allow_html=True
+        )
+
+        # 現在位置
+        tp_idx_key = "tp_idx"
+        if tp_idx_key not in st.session_state:
+            st.session_state[tp_idx_key] = 0
+        tp_pos = max(0, min(st.session_state[tp_idx_key], tp_total - 1))
+        st.session_state[tp_idx_key] = tp_pos
+        tp_current = tp_questions[tp_pos]
+
+        # 進捗
+        tp_correct = sum(1 for i in range(tp_total)
+                        if st.session_state.get(f"tp_result_{i}") == "maru")
+        tp_wrong = sum(1 for i in range(tp_total)
+                      if st.session_state.get(f"tp_result_{i}") == "batsu")
+        st.markdown(f"""
+        <div class='wb-progress-row'>
+            <span>問題 <b>{tp_pos + 1}</b> / {tp_total}</span>
+            <span>
+                <span style='color:#007AFF;'>⭕ {tp_correct}</span>　
+                <span style='color:#FF3B30;'>❌ {tp_wrong}</span>
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        st.progress((tp_pos + 1) / tp_total)
+
+        # フラッシュカード
+        tp_shown_key = f"tp_shown_{tp_pos}"
+        tp_is_shown = st.session_state.get(tp_shown_key, False)
+        tp_result = st.session_state.get(f"tp_result_{tp_pos}")
+
+        # 教科バッジ + メタ
+        subj_name = tp_current.get('subject_name', '')
+        genre_name = tp_current.get('genre_name', '')
+        subj_col = subject_color(subj_name)
+        tp_meta_parts = []
+        if tp_current.get('section_code'):
+            tp_meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
+        if tp_current.get('group_label'):
+            tp_meta_parts.append(tp_current['group_label'])
+        if tp_current.get('textbook_ref'):
+            tp_meta_parts.append(tp_current['textbook_ref'])
+
+        subject_badge_html = (
+            f'<div style="display:inline-block; background:{subj_col["light"]}; '
+            f'color:{subj_col["primary"]}; padding:4px 14px; border-radius:14px; '
+            f'font-size:13px; font-weight:700; margin-bottom:6px;">'
+            f'{subj_col["emoji"]} {subj_name}'
+            + (f' / {genre_name}' if genre_name else '')
+            + '</div>'
+        )
+
+        tp_card_html = f"""
+        <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
+            <div class='wb-fc-header'>
+                {subject_badge_html}
+                <div class='wb-fc-meta'>{' ／ '.join(tp_meta_parts)}</div>
+                <div class='wb-fc-lesson'>{tp_current.get('lesson_title','')}</div>
+            </div>
+            <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current['q']}</div>
+            <div class='wb-fc-divider'></div>
+            <div class='wb-fc-a-area'>
+        """
+        if tp_is_shown:
+            tp_card_html += f"<div class='wb-fc-a-shown'>{tp_current['a']}</div>"
+        else:
+            tp_card_html += "<div class='wb-fc-a-hidden'>?</div>"
+        tp_card_html += "</div></div>"
+        st.markdown(tp_card_html, unsafe_allow_html=True)
+
+        if tp_is_shown:
+            tp_info_lines = []
+            if tp_current.get('note'):
+                tp_info_lines.append(f"※ {tp_current['note']}")
+            if tp_current.get('context'):
+                tp_info_lines.append(f"💭 {tp_current['context']}")
+            if tp_info_lines:
+                st.caption(" ／ ".join(tp_info_lines))
+            if tp_result == "maru":
+                st.markdown("<div class='wb-result-badge maru'>⭕ 正解として記録</div>", unsafe_allow_html=True)
+            elif tp_result == "batsu":
+                st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>", unsafe_allow_html=True)
+        else:
+            with st.container(key="tp_reveal_wrap"):
+                if st.button("👆 タップで答えを見る", key=f"tp_reveal_{tp_pos}",
+                             use_container_width=True):
+                    st.session_state[tp_shown_key] = True
+                    st.rerun()
+
+        # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
+        with st.container(key="tp_nav_row"):
+            tp_nav_cols = st.columns(5)
+            with tp_nav_cols[0]:
+                if st.button("◀", key=f"tp_prev_{tp_pos}",
+                            disabled=(tp_pos == 0), use_container_width=True):
+                    st.session_state[tp_idx_key] = tp_pos - 1
+                    st.rerun()
+            with tp_nav_cols[1]:
+                if st.button("⭕", key=f"tp_maru_{tp_pos}",
+                            disabled=(not tp_is_shown), use_container_width=True,
+                            help="覚えた！"):
+                    st.session_state[f"tp_result_{tp_pos}"] = "maru"
+                    # ログ保存（教科横断で記録）
+                    try:
+                        entry = answer_log.question_to_log_entry(
+                            tp_current,
+                            tp_current.get('subject_key', ''),
+                            tp_current.get('subject_name', ''),
+                            tp_current.get('genre_key', ''),
+                            tp_current.get('genre_name', ''),
+                            "maru"
+                        )
+                        answer_log.append_log(entry)
+                    except Exception:
+                        pass
+                    if tp_pos < tp_total - 1:
+                        st.session_state[tp_idx_key] = tp_pos + 1
+                    st.rerun()
+            with tp_nav_cols[2]:
+                if st.button("❌", key=f"tp_batsu_{tp_pos}",
+                            disabled=(not tp_is_shown), use_container_width=True,
+                            help="まだ覚えてない"):
+                    st.session_state[f"tp_result_{tp_pos}"] = "batsu"
+                    try:
+                        entry = answer_log.question_to_log_entry(
+                            tp_current,
+                            tp_current.get('subject_key', ''),
+                            tp_current.get('subject_name', ''),
+                            tp_current.get('genre_key', ''),
+                            tp_current.get('genre_name', ''),
+                            "batsu"
+                        )
+                        answer_log.append_log(entry)
+                    except Exception:
+                        pass
+                    if tp_pos < tp_total - 1:
+                        st.session_state[tp_idx_key] = tp_pos + 1
+                    st.rerun()
+            with tp_nav_cols[3]:
+                if st.button("💡", key=f"tp_explain_{tp_pos}",
+                            disabled=(not tp_is_shown), use_container_width=True,
+                            help="解説を見る"):
+                    with st.spinner("解説生成中..."):
+                        st.session_state[f"tp_explain_{tp_pos}"] = (
+                            generate_workbook_explanation(
+                                tp_current,
+                                tp_current.get('subject_name', '社会')
+                            )
+                        )
+                    st.rerun()
+            with tp_nav_cols[4]:
+                if st.button("▶", key=f"tp_next_{tp_pos}",
+                            disabled=(tp_pos >= tp_total - 1), use_container_width=True):
+                    st.session_state[tp_idx_key] = tp_pos + 1
+                    st.rerun()
+
+        # 解説表示
+        tp_explain_key = f"tp_explain_{tp_pos}"
+        if st.session_state.get(tp_explain_key):
+            st.markdown("")
+            render_point_box(st.session_state[tp_explain_key], color="yellow")
+
+        # 完了時のリロード
+        if tp_pos == tp_total - 1 and tp_is_shown:
+            st.markdown("---")
+            tp_still_wrong = sum(1 for i in range(tp_total)
+                                if st.session_state.get(f"tp_result_{i}") == "batsu")
+            if tp_still_wrong > 0:
+                st.warning(f"❌ まだ {tp_still_wrong} 問 覚えきれてません")
+            else:
+                st.success("🎉 全問正解！")
+            if st.button("🔄 「今日の問題」を再読み込み", key="tp_reload",
+                         use_container_width=True, type="primary"):
+                # キャッシュと state をクリア
+                keys_to_clear = [k for k in list(st.session_state.keys())
+                                if k.startswith("tp_")]
+                for k in keys_to_clear:
+                    del st.session_state[k]
+                st.rerun()
 
 # ===== 今日の時間割 =====
 st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
@@ -783,16 +1167,15 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
     else:
         gkey = genre_keys[0]
     ginfo = sinfo["genres"][gkey]
-    
-    # データロード
+
     tb_data = load_textbook(skey, gkey)
     wb_data = load_workbook_answers(skey, gkey)
-    
+
     # 教科書/ワーク 切替
     material_options = []
     if tb_data: material_options.append("📖 教科書")
     if wb_data: material_options.append("📝 ワーク")
-    
+
     sel_material = None
     if not material_options:
         st.markdown('<div class="cover-ph">📖 教科書・ワーク 未登録</div>', unsafe_allow_html=True)
@@ -805,7 +1188,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         )
     else:
         sel_material = material_options[0]
-    
+
     # === 教科書モード ===
     if sel_material == "📖 教科書" and tb_data:
         tb = tb_data["textbook"]
@@ -826,7 +1209,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 st.session_state.detail_genre = gkey
                 st.session_state.detail_type = "textbook"
                 st.rerun()
-    
+
     # === ワークモード ===
     if sel_material == "📝 ワーク" and wb_data:
         if wb_data.get("cover_image"):
@@ -848,7 +1231,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 f'<small style="opacity:0.7;">表紙未登録</small></div>',
                 unsafe_allow_html=True
             )
-        
+
         with st.container(key="wb_open_btn_wrap"):
             if st.button("📋 解答を見る", key=f"open_wb_{skey}_{gkey}",
                          use_container_width=True, type="primary"):
@@ -858,7 +1241,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 st.rerun()
 
     # === 教科書詳細 (目次) ===
-    if (st.session_state.get("detail_type") == "textbook" 
+    if (st.session_state.get("detail_type") == "textbook"
         and st.session_state.get("detail_genre") == gkey
         and st.session_state.get("detail_subject") == skey):
         ddata = load_textbook(st.session_state.detail_subject, st.session_state.detail_genre)
@@ -903,7 +1286,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                 if st.session_state.get(pt_key):
                                     render_point_box(st.session_state[pt_key], color="yellow")
 
-    # === ワーク詳細 (解答ページ) ===
+    # === ワーク詳細 (フラッシュカード) ===
     if (st.session_state.get("detail_type") == "workbook"
         and st.session_state.get("detail_genre") == gkey
         and st.session_state.get("detail_subject") == skey):
@@ -911,11 +1294,10 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
         if wbd and wbd.get("pages"):
             st.markdown("---")
             st.markdown(
-                f"<div class='wb-detail-title'>📋 解答 — {wbd.get('workbook_title', '')}</div>",
+                f"<div class='wb-detail-title'>📋 {wbd.get('workbook_title', '')}</div>",
                 unsafe_allow_html=True
             )
-            st.caption("各問題のボタンをタップすると答えが表示されます")
-            
+
             # ページ選択
             page_options = [
                 f"P.{p['page_number']}　{p.get('lesson_title','')}"
@@ -928,77 +1310,227 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
             page_idx = page_options.index(sel_page_label)
             page = wbd["pages"][page_idx]
             page_num = page['page_number']
-            
-            # 章・参照
-            chap = f"{page.get('chapter_number','') or ''} {page.get('chapter_title','') or ''}".strip()
-            if chap:
-                st.markdown(f"📖 **{chap}**")
-            if page.get('question_pages_ref'):
-                st.caption(f"参照: {page['question_pages_ref']}")
-            
-            # 全部表示/隠す
-            col_a, col_b = st.columns(2)
-            with col_a:
-                if st.button("👁️ 全部表示", key=f"show_all_{page_num}",
-                            use_container_width=True):
-                    for si, sec in enumerate(page['sections']):
-                        for gi, grp in enumerate(sec['groups']):
-                            for ai in range(len(grp['answers'])):
-                                st.session_state[f"wb_shown_{page_num}_{si}_{gi}_{ai}"] = True
-                    st.rerun()
-            with col_b:
-                if st.button("🔒 全部隠す", key=f"hide_all_{page_num}",
-                            use_container_width=True):
-                    for si, sec in enumerate(page['sections']):
-                        for gi, grp in enumerate(sec['groups']):
-                            for ai in range(len(grp['answers'])):
-                                st.session_state[f"wb_shown_{page_num}_{si}_{gi}_{ai}"] = False
-                    st.rerun()
-            
-            # セクション
-            for si, section in enumerate(page['sections']):
-                sec_head_text = f"{section['code']} {section['name']}"
-                if section.get('textbook_ref'):
-                    sec_head_text += f"　— {section['textbook_ref']}"
-                st.markdown(f"<div class='wb-section-head'>{sec_head_text}</div>",
-                            unsafe_allow_html=True)
-                if section.get('subtitle'):
-                    st.caption(section['subtitle'])
-                
-                for gi, group in enumerate(section['groups']):
-                    if group.get('label'):
-                        st.markdown(f"<div class='wb-group-label'>{group['label']}</div>",
+
+            # 問題フラット化
+            questions = flatten_workbook_questions(page)
+            total = len(questions)
+
+            if total == 0:
+                st.warning("このページに登録された問題がありません")
+            else:
+                # モード判定
+                mode_key = f"wb_mode_{page_num}"
+                mode = st.session_state.get(mode_key, "normal")
+
+                # アクティブインデックスリスト
+                if mode == "normal":
+                    active = list(range(total))
+                else:
+                    active = [i for i in range(total)
+                             if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
+                    if not active:
+                        st.session_state[mode_key] = "normal"
+                        active = list(range(total))
+                        mode = "normal"
+
+                n_active = len(active)
+
+                # 現在位置
+                idx_key = f"wb_idx_{page_num}_{mode}"
+                if idx_key not in st.session_state:
+                    st.session_state[idx_key] = 0
+                cur_pos = max(0, min(st.session_state[idx_key], n_active - 1))
+                st.session_state[idx_key] = cur_pos
+                original_idx = active[cur_pos]
+                current = questions[original_idx]
+
+                # モードバッジ
+                if mode == "retest":
+                    st.markdown(
+                        f"<div class='wb-mode-badge wb-mode-retest'>🔄 再テストモード（×問題のみ）</div>",
+                        unsafe_allow_html=True
+                    )
+
+                # 進捗
+                correct = sum(1 for i in range(total)
+                             if st.session_state.get(f"wb_result_{page_num}_{i}") == "maru")
+                wrong = sum(1 for i in range(total)
+                           if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
+
+                st.markdown(f"""
+                <div class='wb-progress-row'>
+                    <span>問題 <b>{cur_pos + 1}</b> / {n_active}</span>
+                    <span>
+                        <span style='color:#007AFF;'>⭕ {correct}</span>　
+                        <span style='color:#FF3B30;'>❌ {wrong}</span>
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+                st.progress((cur_pos + 1) / n_active)
+
+                # フラッシュカード
+                shown_key = f"wb_shown_{page_num}_{original_idx}"
+                is_shown = st.session_state.get(shown_key, False)
+                result = st.session_state.get(f"wb_result_{page_num}_{original_idx}")
+
+                # ヘッダー情報
+                meta_parts = []
+                meta_parts.append(f"{current.get('section_code','')} {current.get('section_name','')}")
+                if current.get('group_label'):
+                    meta_parts.append(current['group_label'])
+                if current.get('textbook_ref'):
+                    meta_parts.append(current['textbook_ref'])
+
+                card_html = f"""
+                <div class='wb-flashcard'>
+                    <div class='wb-fc-header'>
+                        <div class='wb-fc-meta'>{' ／ '.join(meta_parts)}</div>
+                        <div class='wb-fc-lesson'>{current.get('lesson_title','')}</div>
+                    </div>
+                    <div class='wb-fc-q'>{current['q']}</div>
+                    <div class='wb-fc-divider'></div>
+                    <div class='wb-fc-a-area'>
+                """
+                if is_shown:
+                    card_html += f"<div class='wb-fc-a-shown'>{current['a']}</div>"
+                else:
+                    card_html += "<div class='wb-fc-a-hidden'>?</div>"
+                card_html += "</div></div>"
+                st.markdown(card_html, unsafe_allow_html=True)
+
+                if is_shown:
+                    info_lines = []
+                    if current.get('note'):
+                        info_lines.append(f"※ {current['note']}")
+                    if current.get('context'):
+                        info_lines.append(f"💭 {current['context']}")
+                    if info_lines:
+                        st.caption(" ／ ".join(info_lines))
+                    if result == "maru":
+                        st.markdown("<div class='wb-result-badge maru'>⭕ 正解として記録</div>",
                                     unsafe_allow_html=True)
-                    
-                    for ai, ans in enumerate(group['answers']):
-                        shown_key = f"wb_shown_{page_num}_{si}_{gi}_{ai}"
-                        is_shown = st.session_state.get(shown_key, False)
-                        
-                        with st.container(key=f"wb_ans_row_{page_num}_{si}_{gi}_{ai}"):
-                            cols = st.columns([1, 5])
-                            with cols[0]:
-                                st.markdown(f"<div class='wb-ans-q'>{ans['q']}</div>",
-                                            unsafe_allow_html=True)
-                            with cols[1]:
-                                if is_shown:
-                                    note_html = (
-                                        f"<span class='wb-ans-note'>※ {ans['note']}</span>"
-                                        if ans.get('note') else ""
+                    elif result == "batsu":
+                        st.markdown("<div class='wb-result-badge batsu'>❌ 間違いとして記録</div>",
+                                    unsafe_allow_html=True)
+                else:
+                    # 答えを見るボタン
+                    with st.container(key="wb_reveal_wrap"):
+                        if st.button("👆 タップで答えを見る",
+                                     key=f"reveal_{page_num}_{original_idx}",
+                                     use_container_width=True):
+                            st.session_state[shown_key] = True
+                            st.rerun()
+
+                # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
+                with st.container(key="wb_nav_row"):
+                    nav_cols = st.columns(5)
+
+                    with nav_cols[0]:
+                        if st.button("◀", key=f"prev_{page_num}_{original_idx}",
+                                    disabled=(cur_pos == 0), use_container_width=True,
+                                    help="前の問題"):
+                            st.session_state[idx_key] = cur_pos - 1
+                            st.rerun()
+
+                    with nav_cols[1]:
+                        if st.button("⭕", key=f"maru_{page_num}_{original_idx}",
+                                    disabled=(not is_shown), use_container_width=True,
+                                    help="正解として記録"):
+                            st.session_state[f"wb_result_{page_num}_{original_idx}"] = "maru"
+                            # GitHub にログを保存
+                            if ANSWER_LOG_AVAILABLE:
+                                try:
+                                    entry = answer_log.question_to_log_entry(
+                                        current, skey, sinfo['name'],
+                                        gkey, ginfo['name'], "maru"
                                     )
-                                    st.markdown(
-                                        f"<div class='wb-ans-revealed'>{ans['a']}{note_html}</div>",
-                                        unsafe_allow_html=True
+                                    answer_log.append_log(entry)
+                                except Exception:
+                                    pass
+                            if cur_pos < n_active - 1:
+                                st.session_state[idx_key] = cur_pos + 1
+                            st.rerun()
+
+                    with nav_cols[2]:
+                        if st.button("❌", key=f"batsu_{page_num}_{original_idx}",
+                                    disabled=(not is_shown), use_container_width=True,
+                                    help="間違いとして記録"):
+                            st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
+                            # GitHub にログを保存
+                            if ANSWER_LOG_AVAILABLE:
+                                try:
+                                    entry = answer_log.question_to_log_entry(
+                                        current, skey, sinfo['name'],
+                                        gkey, ginfo['name'], "batsu"
                                     )
-                                    if ans.get('context'):
-                                        st.caption(f"💭 {ans['context']}")
-                                else:
-                                    if st.button("👆 タップで答えを見る",
-                                                key=f"reveal_{shown_key}",
-                                                use_container_width=True):
-                                        st.session_state[shown_key] = True
-                                        st.rerun()
-                st.markdown("")
+                                    answer_log.append_log(entry)
+                                except Exception:
+                                    pass
+                            if cur_pos < n_active - 1:
+                                st.session_state[idx_key] = cur_pos + 1
+                            st.rerun()
+
+                    with nav_cols[3]:
+                        if st.button("💡", key=f"explain_{page_num}_{original_idx}",
+                                    disabled=(not is_shown), use_container_width=True,
+                                    help="解説を見る"):
+                            with st.spinner("解説生成中..."):
+                                st.session_state[f"wb_explain_{page_num}_{original_idx}"] = (
+                                    generate_workbook_explanation(current, sinfo['name'])
+                                )
+                            st.rerun()
+
+                    with nav_cols[4]:
+                        if st.button("▶", key=f"next_{page_num}_{original_idx}",
+                                    disabled=(cur_pos >= n_active - 1), use_container_width=True,
+                                    help="次の問題"):
+                            st.session_state[idx_key] = cur_pos + 1
+                            st.rerun()
+
+                # 解説表示
+                explain_key = f"wb_explain_{page_num}_{original_idx}"
+                if st.session_state.get(explain_key):
+                    st.markdown("")
+                    render_point_box(st.session_state[explain_key], color="yellow")
+
+                # ページ完了時の再テスト・リセット
+                if cur_pos == n_active - 1 and is_shown:
+                    wrong_indices = [i for i in range(total)
+                                    if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
+                    st.markdown("---")
+                    if mode == "normal":
+                        if wrong_indices:
+                            st.warning(f"❌ {len(wrong_indices)} 問 間違えました")
+                            if st.button(f"🔄 ×の {len(wrong_indices)} 問で再テスト",
+                                        use_container_width=True, type="primary",
+                                        key=f"start_retest_{page_num}"):
+                                st.session_state[mode_key] = "retest"
+                                st.session_state[f"wb_idx_{page_num}_retest"] = 0
+                                for i in wrong_indices:
+                                    st.session_state[f"wb_shown_{page_num}_{i}"] = False
+                                st.rerun()
+                        else:
+                            st.success("🎉 全問正解！")
+                    else:  # retest
+                        st.success("🎉 再テスト完了！")
+                        if st.button("↩️ 通常モードに戻る",
+                                    use_container_width=True,
+                                    key=f"back_normal_{page_num}"):
+                            st.session_state[mode_key] = "normal"
+                            st.rerun()
+
+                    # リセットボタン
+                    if st.button("🗑️ このページの○×をリセット",
+                                key=f"reset_{page_num}",
+                                use_container_width=True):
+                        for i in range(total):
+                            st.session_state.pop(f"wb_result_{page_num}_{i}", None)
+                            st.session_state.pop(f"wb_shown_{page_num}_{i}", None)
+                            st.session_state.pop(f"wb_explain_{page_num}_{i}", None)
+                        st.session_state[mode_key] = "normal"
+                        st.session_state[f"wb_idx_{page_num}_normal"] = 0
+                        st.rerun()
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v1.2")
+st.caption("🌟 RIA | TOP ページ v1.3")

@@ -1,83 +1,96 @@
-"""GitHub Contents API ヘルパー（RIA用）.
-
-Streamlit CloudからリポジトリにファイルをPUT/UPDATEするための薄いラッパ。
-PAT は st.secrets['GITHUB_TOKEN'] に登録しておくこと。
+"""GitHub Contents API helper for RIA
+- 404 (新規ファイル) を SHA なしで PUT する処理に対応
 """
-from __future__ import annotations
+import os
 import base64
 import requests
 import streamlit as st
 
-# --- 設定 ---------------------------------------------------------
-OWNER  = "MinobeHiroshi"
-REPO   = "RIA"           # ← 実リポジトリ名に合わせて変更
+OWNER = "MinobeHiroshi"
+REPO = "RIA"
 BRANCH = "main"
 
-_API = "https://api.github.com"
+
+def _get_token():
+    return st.secrets.get("GITHUB_PAT") or os.environ.get("GITHUB_PAT", "")
 
 
-def _hdr() -> dict:
+def _headers_json():
     return {
-        "Authorization": f"Bearer {st.secrets['GITHUB_TOKEN']}",
+        "Authorization": f"Bearer {_get_token()}",
         "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
     }
 
 
-def _get_sha(path: str) -> str | None:
-    """ファイルが既に存在すれば sha を返す。無ければ None。"""
-    url = f"{_API}/repos/{OWNER}/{REPO}/contents/{path}"
-    r = requests.get(url, headers=_hdr(), params={"ref": BRANCH}, timeout=15)
-    if r.status_code == 200:
-        data = r.json()
-        # 1MB超のファイルは配列で返るが、ここでは小さいJSON想定
-        if isinstance(data, dict):
-            return data.get("sha")
+def _api_url(path: str) -> str:
+    return f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{path}"
+
+
+def gh_get_text(path: str) -> str | None:
+    """ファイルをテキストで取得。存在しなければ None。"""
+    headers = {
+        "Authorization": f"Bearer {_get_token()}",
+        "Accept": "application/vnd.github.v3.raw",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    url = _api_url(path) + f"?ref={BRANCH}"
+    try:
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code == 200:
+            return r.text
+        if r.status_code == 404:
+            return None
+        # 200 で empty content の場合は raw fallback
+        if r.status_code == 200 and not r.text:
+            return None
+    except Exception:
+        pass
     return None
 
 
-def gh_put(path: str, content_bytes: bytes, message: str) -> dict:
-    """ファイルを作成 or 更新（Contents API）。
+def _get_sha(path: str) -> str | None:
+    """既存ファイルの SHA を取得。新規ファイル (404) の場合は None。"""
+    url = _api_url(path) + f"?ref={BRANCH}"
+    try:
+        r = requests.get(url, headers=_headers_json(), timeout=15)
+        if r.status_code == 200:
+            return r.json().get("sha")
+        # 404 = 新規ファイル → None を返す（エラーにしない）
+        return None
+    except Exception:
+        return None
 
-    既存ファイル更新時の 409 Conflict（sha 古い）には1度だけ自動リトライする。
+
+def gh_put(path: str, content_bytes: bytes, message: str, max_retry: int = 2):
+    """ファイル新規作成または更新。
+    - 新規ファイル (SHA = None) でも作成できる
+    - 409 Conflict 時に SHA を再取得して再試行
     """
-    url = f"{_API}/repos/{OWNER}/{REPO}/contents/{path}"
+    url = _api_url(path)
+    sha = _get_sha(path)
 
-    def _put(sha: str | None) -> requests.Response:
+    for attempt in range(max_retry + 1):
         body = {
             "message": message,
-            "content": base64.b64encode(content_bytes).decode(),
+            "content": base64.b64encode(content_bytes).decode("ascii"),
             "branch": BRANCH,
         }
         if sha:
             body["sha"] = sha
-        return requests.put(url, headers=_hdr(), json=body, timeout=20)
 
-    sha = _get_sha(path)
-    r = _put(sha)
+        r = requests.put(url, headers=_headers_json(), json=body, timeout=60)
 
-    # 409 や 422（sha競合）は最新shaで1度だけリトライ
-    if r.status_code in (409, 422):
-        sha = _get_sha(path)
-        r = _put(sha)
+        # 成功
+        if r.status_code in (200, 201):
+            return r.json()
 
-    r.raise_for_status()
-    return r.json()
+        # 409 Conflict (SHA 不一致) → SHA 再取得してリトライ
+        if r.status_code == 409 and attempt < max_retry:
+            sha = _get_sha(path)
+            continue
 
+        # その他のエラー
+        r.raise_for_status()
 
-def gh_get_text(path: str) -> str | None:
-    """ファイル内容を文字列で取得。存在しなければ None。"""
-    url = f"{_API}/repos/{OWNER}/{REPO}/contents/{path}"
-    r = requests.get(url, headers=_hdr(), params={"ref": BRANCH}, timeout=15)
-    if r.status_code != 200:
-        return None
-    data = r.json()
-    if isinstance(data, dict) and data.get("content"):
-        return base64.b64decode(data["content"]).decode("utf-8")
-    # >1MB 等の場合は raw API でフォールバック
-    raw = requests.get(
-        f"{_API}/repos/{OWNER}/{REPO}/contents/{path}",
-        headers={**_hdr(), "Accept": "application/vnd.github.raw"},
-        params={"ref": BRANCH},
-        timeout=20,
-    )
-    return raw.text if raw.status_code == 200 else None
+    raise RuntimeError(f"gh_put failed after retries: {path}")
