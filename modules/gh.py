@@ -12,7 +12,27 @@ BRANCH = "main"
 
 
 def _get_token():
-    return st.secrets.get("GITHUB_PAT") or os.environ.get("GITHUB_PAT", "")
+    """Streamlit secrets から PAT を取得（複数のキー名にフォールバック）"""
+    # Streamlit secrets を順番にチェック
+    candidates = [
+        "GITHUB_PAT", "github_pat",
+        "GH_TOKEN", "gh_token",
+        "GITHUB_TOKEN", "github_token",
+    ]
+    for key in candidates:
+        try:
+            val = st.secrets[key] if key in st.secrets else None
+            if val:
+                return val
+        except Exception:
+            continue
+    # 環境変数フォールバック
+    return (
+        os.environ.get("GITHUB_PAT")
+        or os.environ.get("GH_TOKEN")
+        or os.environ.get("GITHUB_TOKEN")
+        or ""
+    )
 
 
 def _headers_json():

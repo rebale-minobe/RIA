@@ -246,12 +246,12 @@ st.markdown("""
         margin-top: 2px;
     }
     .wb-fc-q {
-        font-size: 44px;
+        font-size: 32px;
         font-weight: 800;
         color: #FF9500;
         text-align: center;
         line-height: 1.0;
-        margin: 14px 0 8px 0;
+        margin: 10px 0 6px 0;
     }
     .wb-fc-divider {
         border-top: 1px dashed #e5e5ea;
@@ -266,7 +266,7 @@ st.markdown("""
         padding: 12px 0;
     }
     .wb-fc-a-shown {
-        font-size: 30px;
+        font-size: 38px;
         font-weight: 700;
         color: #1c1c1e;
         line-height: 1.4;
@@ -417,8 +417,8 @@ st.markdown("""
         .st-key-tb_open_btn_wrap, .st-key-wb_open_btn_wrap { max-width: 260px !important; }
 
         .wb-detail-title { font-size: 24px; }
-        .wb-fc-q { font-size: 60px; }
-        .wb-fc-a-shown { font-size: 40px; }
+        .wb-fc-q { font-size: 42px; }
+        .wb-fc-a-shown { font-size: 52px; }
         .wb-fc-a-hidden { font-size: 72px; }
         .wb-fc-meta { font-size: 13px; }
         .wb-fc-lesson { font-size: 17px; }
