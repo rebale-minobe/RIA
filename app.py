@@ -460,36 +460,183 @@ JP_WD = ["月", "火", "水", "木", "金", "土", "日"]
 DURATION_OPTIONS = ["10分", "15分", "20分", "30分", "45分", "60分", "90分", "120分"]
 
 
-def load_textbook(subject_key, genre_key):
-    filename = f"{subject_key}_{genre_key}_textbook.json"
+def _load_excel(subject_key):
+    """subject_data.xlsx を GitHub から取得して openpyxl で開く（キャッシュあり）"""
+    cache_key = f"_excel_wb_{subject_key}"
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+    import openpyxl, io
+    filename = f"{subject_key}_data.xlsx"
     local_path = DATA_DIR / filename
+    wb = None
     if local_path.exists():
-        with open(local_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    try:
-        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}"
-        r = requests.get(url, timeout=5)
-        if r.status_code == 200:
-            return r.json()
-    except:
-        pass
-    return None
+        wb = openpyxl.load_workbook(local_path, data_only=True)
+    else:
+        try:
+            url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}"
+            r = requests.get(url, timeout=10)
+            if r.status_code == 200:
+                wb = openpyxl.load_workbook(io.BytesIO(r.content), data_only=True)
+        except Exception:
+            pass
+    st.session_state[cache_key] = wb
+    return wb
+
+
+# ジャンルキー → 日本語シート名マッピング
+_GENRE_SHEET_MAP = {
+    "history":   "歴史",
+    "geography": "地理",
+    "civics":    "公民",
+    "reading":   "読解",
+    "classic":   "古文漢文",
+    "kanji":     "漢字語彙",
+    "grammar":   "文法",
+    "field1":    "第1分野",
+    "field2":    "第2分野",
+    "general":   "一般",
+}
+
+
+def _genre_jp(genre_key):
+    return _GENRE_SHEET_MAP.get(genre_key, genre_key)
+
+
+def load_textbook(subject_key, genre_key):
+    """Excelの「目次_{ジャンル}」シートからJSONと同等の辞書を返す"""
+    wb = _load_excel(subject_key)
+    if wb is None:
+        return None
+    sheet_name = f"目次_{_genre_jp(genre_key)}"
+    if sheet_name not in wb.sheetnames:
+        return None
+    ws = wb[sheet_name]
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    if not rows:
+        return None
+
+    # ヘッダー: 編/章番号/章タイトル/節番号/節タイトル/小節番号/小節タイトル/ページ/備考
+    chapters_dict = {}
+    for row in rows:
+        if not any(row):
+            continue
+        _, ch_num, ch_title, sec_num, sec_title, sub_num, sub_title, page, note = (
+            (row + (None,) * 9)[:9]
+        )
+        if not ch_title:
+            continue
+        ch_key = ch_num or ch_title
+        if ch_key not in chapters_dict:
+            chapters_dict[ch_key] = {
+                "chapter_number": ch_num or "",
+                "title": ch_title,
+                "sections": []
+            }
+        ch = chapters_dict[ch_key]
+        # 節を探す or 追加
+        sec_key = sec_num or sec_title or "__default__"
+        sec = next((s for s in ch["sections"] if s.get("_key") == sec_key), None)
+        if sec is None:
+            sec = {"_key": sec_key, "title": sec_title or "", "subsections": []}
+            ch["sections"].append(sec)
+        # 小節を追加
+        if sub_title:
+            sub_id = f"{subject_key}_{genre_key}_{len(sec['subsections'])}_{''.join(c for c in str(sub_title) if c.isalnum() or c in '_')[:20]}"
+            sec["subsections"].append({
+                "id": sub_id,
+                "number": str(sub_num) if sub_num else "",
+                "title": str(sub_title),
+                "page": page,
+                "note": note or "",
+            })
+
+    if not chapters_dict:
+        return None
+
+    # JSON互換構造を返す
+    genre_jp = _genre_jp(genre_key)
+    return {
+        "textbook": {
+            "subject": subject_key,
+            "genre": genre_key,
+            "name": f"{genre_jp}教科書",
+            "cover_image": f"textbook_covers/{subject_key}_{genre_key}.jpg",
+            "chapters": list(chapters_dict.values()),
+        }
+    }
 
 
 def load_workbook_answers(subject_key, genre_key):
-    filename = f"{subject_key}_{genre_key}_workbook_answers.json"
-    local_path = DATA_DIR / filename
-    if local_path.exists():
-        with open(local_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    try:
-        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}"
-        r = requests.get(url, timeout=5)
-        if r.status_code == 200:
-            return r.json()
-    except:
-        pass
-    return None
+    """Excelの「ワーク{ジャンル}_解答」シートからJSONと同等の辞書を返す"""
+    wb = _load_excel(subject_key)
+    if wb is None:
+        return None
+    genre_jp = _genre_jp(genre_key)
+    sheet_name = f"ワーク{genre_jp}_解答"
+    if sheet_name not in wb.sheetnames:
+        return None
+    ws = wb[sheet_name]
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    if not rows:
+        return None
+
+    # ヘッダー: page_number/chapter_number/chapter_title/lesson_title/
+    #           section_code/section_name/textbook_ref/workbook_ref/
+    #           group_label/q/a/note/context
+    pages_dict = {}
+    for row in rows:
+        if not any(row):
+            continue
+        r = (row + (None,) * 13)[:13]
+        (page_num, ch_num, ch_title, lesson_title,
+         sec_code, sec_name, tb_ref, wb_ref,
+         group_label, q, a, note, context) = r
+        if page_num is None or q is None or a is None:
+            continue
+        page_num = int(page_num)
+        if page_num not in pages_dict:
+            pages_dict[page_num] = {
+                "page_number": page_num,
+                "workbook_ref": wb_ref or "",
+                "chapter_number": ch_num or "",
+                "chapter_title": ch_title or "",
+                "lesson_title": lesson_title or "",
+                "sections": []
+            }
+        pg = pages_dict[page_num]
+        # セクション
+        sec = next((s for s in pg["sections"]
+                    if s["code"] == str(sec_code or "") and s.get("textbook_ref") == (tb_ref or "")), None)
+        if sec is None:
+            sec = {
+                "code": str(sec_code) if sec_code else "",
+                "name": str(sec_name) if sec_name else "",
+                "textbook_ref": tb_ref or "",
+                "groups": []
+            }
+            pg["sections"].append(sec)
+        # グループ
+        grp = next((g for g in sec["groups"] if g["label"] == (group_label or "")), None)
+        if grp is None:
+            grp = {"label": group_label or "", "answers": []}
+            sec["groups"].append(grp)
+        grp["answers"].append({
+            "q": str(q),
+            "a": str(a),
+            "note": str(note) if note else None,
+            "context": str(context) if context else None,
+        })
+
+    if not pages_dict:
+        return None
+
+    return {
+        "subject": subject_key,
+        "genre": genre_key,
+        "workbook_title": f"{genre_jp}ワーク",
+        "cover_image": f"workbook_covers/{subject_key}_{genre_key}.jpg",
+        "pages": list(pages_dict.values()),
+    }
 
 
 def flatten_workbook_questions(page):
@@ -500,6 +647,7 @@ def flatten_workbook_questions(page):
             for ans in group['answers']:
                 flat.append({
                     'page_number': page['page_number'],
+                    'workbook_ref': page.get('workbook_ref', ''),
                     'lesson_title': page.get('lesson_title', ''),
                     'chapter_title': page.get('chapter_title', ''),
                     'section_code': section['code'],
@@ -901,6 +1049,8 @@ else:
             tp_meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
         if tp_current.get('group_label'):
             tp_meta_parts.append(tp_current['group_label'])
+        if tp_current.get('workbook_ref'):
+            tp_meta_parts.append(tp_current['workbook_ref'])
         if tp_current.get('textbook_ref'):
             tp_meta_parts.append(tp_current['textbook_ref'])
 
@@ -1378,6 +1528,8 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 meta_parts.append(f"{current.get('section_code','')} {current.get('section_name','')}")
                 if current.get('group_label'):
                     meta_parts.append(current['group_label'])
+                if current.get('workbook_ref'):
+                    meta_parts.append(current['workbook_ref'])
                 if current.get('textbook_ref'):
                     meta_parts.append(current['textbook_ref'])
 
