@@ -1,12 +1,12 @@
 """
-RIA TOP ページ v0.9
-更新点 (v0.9):
-- フォント: Apple system (-apple-system / Hiragino Sans)、Material Icons 壊さない
-- 全体トーン: Apple iOS 風（system colors、白背景、控えめシャドウ、10-12px 角丸）
-- 順序変更: 日時 → NEXT TEST → カレンダー → TEST詳細 → ToDo → 今日 → 明日 → 教科書
-- ToDo: 3列グリッド（st.columns(3)）
-- 今日の時間割: expander 廃止、全教科を1フォームで一気に記録
-- 教科書: カバー表示 + 「📖 目次を見る」ボタン（query_params やめて session 保護）
+RIA TOP ページ v1.0
+更新点 (v1.0):
+- 今日の時間割を expander 形式に戻す（明日の予習と同じ表記）
+- 各 expander の下に「✅ 全部記録する」ボタンで一気に記録
+- TOC の 💡 ポイントボタンを左へ移動
+- 「目次を見る」ボタンの横幅を 240px に制限（教科書カバー幅とほぼ揃える）
+- セクションタイトルを全て 30px に統一
+- 教科書/ワークの教科 segmented control を大きく（font-size + padding）
 """
 
 import streamlit as st
@@ -46,7 +46,6 @@ def subject_color(name):
 # ===== スタイル =====
 st.markdown("""
 <style>
-    /* Apple system font - .stApp のみに指定して icon font を壊さない */
     .stApp {
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
                      "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
@@ -55,17 +54,18 @@ st.markdown("""
         background: #fafafa;
     }
 
-    /* ========== ベース（モバイル）========== */
+    /* ===== セクションタイトル (全部 30px に統一) ===== */
+    .section-title {
+        font-size: 30px; font-weight: 700;
+        margin: 32px 0 14px 0;
+        color: #1c1c1e; letter-spacing: -0.02em;
+    }
+
     .test-card {
         background: linear-gradient(135deg, #FF3B30 0%, #FF2D55 100%);
         color: white; border-radius: 16px; padding: 24px 20px; text-align: center;
         box-shadow: 0 4px 16px rgba(255, 59, 48, 0.2);
     }
-    .section-title {
-        font-size: 22px; font-weight: 700; margin: 28px 0 12px 0;
-        color: #1c1c1e; letter-spacing: -0.02em;
-    }
-    .section-title.big { font-size: 28px; margin-top: 36px; }
 
     .range-item {
         background: white; padding: 14px 16px; border-radius: 12px;
@@ -162,23 +162,6 @@ st.markdown("""
     }
     .todo-task { font-size: 13px; color: #3a3a3c; line-height: 1.5; }
 
-    /* ===== 時間割（1フォーム式）===== */
-    .tt-row {
-        margin: 14px 0 4px 0; padding: 10px 14px;
-        border-left: 4px solid #ccc;
-        background: #fff;
-        border-radius: 10px;
-        display: flex; align-items: center; gap: 10px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    .tt-num {
-        background: #F2F2F7; color: #1c1c1e;
-        width: 26px; height: 26px; border-radius: 50%;
-        display: inline-flex; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 700;
-    }
-    .tt-name { font-size: 16px; font-weight: 700; }
-
     /* ===== ポイントボックス ===== */
     .point-box, .point-box-blue {
         padding: 14px 18px; border-radius: 12px;
@@ -207,7 +190,7 @@ st.markdown("""
     }
     .toc-sub {
         font-size: 13px; line-height: 1.7;
-        padding: 10px 4px 10px 8px;
+        padding: 10px 4px 10px 4px;
     }
     .toc-sub .toc-page { color: #8E8E93; font-size: 0.9em; }
 
@@ -226,12 +209,24 @@ st.markdown("""
     .st-key-tb_toc div[data-testid="stHorizontalBlock"]:last-child {
         border-bottom: none;
     }
+    /* TOC 内の 💡 ボタンをコンパクトに */
+    .st-key-tb_toc div[data-testid="stButton"] button {
+        min-height: 36px !important;
+        padding: 4px 8px !important;
+        font-size: 16px !important;
+    }
 
     /* 教科書カバー */
     .tb-cover-wrap { text-align: center; padding: 16px 0 8px 0; }
     .tb-cover {
         width: 220px; max-width: 70%; border-radius: 12px;
         box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    }
+
+    /* 目次を見るボタンを狭く (cover幅とほぼ揃える) */
+    .st-key-tb_open_btn_wrap {
+        max-width: 240px !important;
+        margin: 4px auto 16px auto !important;
     }
 
     /* ボタン基本 - Apple っぽく */
@@ -241,24 +236,29 @@ st.markdown("""
         font-weight: 600;
         transition: all 0.15s ease;
     }
-    div.stButton > button:hover {
-        transform: translateY(-1px);
-    }
-    div.stButton > button[kind="primary"] {
-        background: #007AFF;
-        border: none;
-    }
-    div.stButton > button[kind="primary"]:hover {
-        background: #0066d6;
-    }
+    div.stButton > button:hover { transform: translateY(-1px); }
+    div.stButton > button[kind="primary"] { background: #007AFF; border: none; }
+    div.stButton > button[kind="primary"]:hover { background: #0066d6; }
 
     div[role="radiogroup"] { justify-content: flex-start; }
+
+    /* ===== 教科書/ワーク - 教科 segmented control を大きく ===== */
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
+    div[data-testid="stSegmentedControl"] button,
+    div[data-testid="stSegmentedControl"] [role="group"] button {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        padding: 10px 20px !important;
+        min-height: 50px !important;
+    }
+    div[data-testid="stSegmentedControl"] button p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+    }
 
     /* ========== iPad / タブレット以上 (≥768px) ========== */
     @media (min-width: 768px) {
-        .section-title { font-size: 28px; }
-        .section-title.big { font-size: 36px; }
+        .section-title { font-size: 36px; }
         .now-badge { font-size: 15px; }
 
         .day-card { width: 110px; min-height: 156px; padding: 14px 10px; }
@@ -270,10 +270,6 @@ st.markdown("""
         .todo-subj { font-size: 18px; }
         .todo-task { font-size: 15px; }
         .todo-time { font-size: 13px; padding: 5px 12px; }
-
-        .tt-row { padding: 14px 18px; }
-        .tt-num { width: 30px; height: 30px; font-size: 15px; }
-        .tt-name { font-size: 18px; }
 
         .range-item { padding: 16px 20px; }
         .range-item strong { font-size: 18px; }
@@ -291,7 +287,7 @@ st.markdown("""
         .point-box h3, .point-box-blue h3 { font-size: 19px !important; }
 
         .toc-sect-title { font-size: 17px; margin: 14px 0 6px; }
-        .toc-sub { font-size: 16px; line-height: 1.9; padding: 12px 4px 12px 8px; }
+        .toc-sub { font-size: 16px; line-height: 1.9; padding: 12px 4px; }
 
         .st-key-tb_toc div[data-testid="stExpander"] summary,
         .st-key-tb_toc div[data-testid="stExpander"] summary p {
@@ -301,7 +297,19 @@ st.markdown("""
         div.stButton > button { font-size: 16px; min-height: 52px; }
         div[data-testid="stCheckbox"] label p { font-size: 16px; }
 
+        /* segmented control iPad bigger */
+        div[data-testid="stSegmentedControl"] button,
+        div[data-testid="stSegmentedControl"] [role="group"] button {
+            font-size: 22px !important;
+            padding: 14px 28px !important;
+            min-height: 58px !important;
+        }
+        div[data-testid="stSegmentedControl"] button p {
+            font-size: 22px !important;
+        }
+
         .tb-cover { width: 240px; }
+        .st-key-tb_open_btn_wrap { max-width: 260px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -535,7 +543,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ===== NEXT TEST（カレンダーより上）=====
+# ===== NEXT TEST =====
 st.markdown('<div class="section-title">⏳ NEXT TEST</div>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="test-card">
@@ -618,65 +626,57 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
 
 st.caption("💡 To Do は RIA が自動生成（予定）")
 
-# ===== 今日の時間割（1フォーム式・一気に記録）=====
+# ===== 今日の時間割（expander 形式）=====
 st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
 
 for p in TODAY_TIMETABLE:
     pn = p['period']
     col = subject_color(p['subject'])
-    skey = p.get("subject_key")
-    gtocs = get_genres_with_toc(skey) if skey else []
+    with st.expander(f"**{pn}**　{col['emoji']} {p['subject']}", expanded=False):
+        skey = p.get("subject_key")
+        gtocs = get_genres_with_toc(skey) if skey else []
 
-    # ヘッダー
-    st.markdown(f"""
-    <div class="tt-row" style="border-left-color:{col['primary']};">
-        <div class="tt-num">{pn}</div>
-        <div class="tt-name" style="color:{col['primary']};">{col['emoji']} {p['subject']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if gtocs:
-        # 目次あり: ジャンル → 章 → 項目
-        if len(gtocs) > 1:
-            gnames = [g[1] for g in gtocs]
-            sel_gname = st.radio(
-                "ジャンル", gnames, horizontal=True,
-                key=f"today_grad_{pn}", label_visibility="collapsed"
-            )
-            _, _, tdata = next(g for g in gtocs if g[1] == sel_gname)
-        else:
-            _, _, tdata = gtocs[0]
-
-        chapters = tdata["textbook"]["chapters"]
-        chapter_labels = [
-            f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
-            for c in chapters
-        ]
-        sel_ch = st.selectbox(
-            "章", chapter_labels,
-            index=None, placeholder="章を選択...",
-            key=f"today_ch_{pn}", label_visibility="collapsed"
-        )
-        if sel_ch:
-            ch_idx = chapter_labels.index(sel_ch)
-            chap = chapters[ch_idx]
-            sub_opts = []
-            for sec in chap.get("sections", []):
-                for sub in sec.get("subsections", []):
-                    sub_opts.append(f"{sub['title']} (p.{sub['page']})")
-            if sub_opts:
-                st.multiselect(
-                    "項目", sub_opts,
-                    placeholder="やった項目を選択...",
-                    key=f"today_subs_{pn}", label_visibility="collapsed"
+        if gtocs:
+            if len(gtocs) > 1:
+                gnames = [g[1] for g in gtocs]
+                sel_gname = st.radio(
+                    "ジャンル", gnames, horizontal=True,
+                    key=f"today_grad_{pn}", label_visibility="collapsed"
                 )
-    else:
-        st.text_input(
-            "範囲", placeholder="今日やった範囲（例: P30-45）",
-            key=f"today_range_{pn}", label_visibility="collapsed"
-        )
+                _, _, tdata = next(g for g in gtocs if g[1] == sel_gname)
+            else:
+                _, _, tdata = gtocs[0]
 
-# まとめて記録ボタン
+            chapters = tdata["textbook"]["chapters"]
+            chapter_labels = [
+                f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
+                for c in chapters
+            ]
+            sel_ch = st.selectbox(
+                "章", chapter_labels,
+                index=None, placeholder="章を選択...",
+                key=f"today_ch_{pn}", label_visibility="collapsed"
+            )
+            if sel_ch:
+                ch_idx = chapter_labels.index(sel_ch)
+                chap = chapters[ch_idx]
+                sub_opts = []
+                for sec in chap.get("sections", []):
+                    for sub in sec.get("subsections", []):
+                        sub_opts.append(f"{sub['title']} (p.{sub['page']})")
+                if sub_opts:
+                    st.multiselect(
+                        "項目", sub_opts,
+                        placeholder="やった項目を選択（複数可）",
+                        key=f"today_subs_{pn}", label_visibility="collapsed"
+                    )
+        else:
+            st.text_input(
+                "範囲", placeholder="今日やった範囲（例: P30-45）",
+                key=f"today_range_{pn}", label_visibility="collapsed"
+            )
+
+# 全部記録ボタン（expander の下）
 if st.button("✅ 全部記録する", use_container_width=True, type="primary", key="record_today_all"):
     records = []
     for p in TODAY_TIMETABLE:
@@ -695,7 +695,7 @@ if st.button("✅ 全部記録する", use_container_width=True, type="primary",
     if records:
         st.success("📝 " + str(len(records)) + " 件記録しました！\n\n" + "\n\n".join(f"・ {r}" for r in records))
     else:
-        st.warning("記録する内容がありません。範囲を入力/選択してください。")
+        st.warning("記録する内容がありません。各教科を開いて範囲を入力してください。")
 
 # ===== 明日の予習 =====
 st.markdown('<div class="section-title">🔮 明日の予習</div>', unsafe_allow_html=True)
@@ -714,7 +714,7 @@ for p in TOMORROW_TIMETABLE:
 
 # ===== Study (教科書/ワーク) =====
 
-st.markdown('<div class="section-title big">📚 教科書/ワーク</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📚 教科書/ワーク</div>', unsafe_allow_html=True)
 
 subject_keys = list(SUBJECTS.keys())
 subject_labels = [SUBJECTS[k]['name'] for k in subject_keys]
@@ -776,8 +776,8 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
             </div>
             """, unsafe_allow_html=True)
-        bc1, bc2, bc3 = st.columns([1, 2, 1])
-        with bc2:
+        # 目次を見るボタン（横幅 240px に制限）
+        with st.container(key="tb_open_btn_wrap"):
             if st.button("📖 目次を見る", key=f"open_tb_{skey}_{gkey}",
                          use_container_width=True, type="primary"):
                 st.session_state.detail_subject = skey
@@ -799,7 +799,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
             )
             st.markdown(
                 "<div style='font-size:13px; color:#8E8E93; margin-bottom:10px;'>"
-                "章を開いて、項目の「💡」でポイントを見られます ✨</div>",
+                "章を開いて、各項目の「💡」でポイントを見られます ✨</div>",
                 unsafe_allow_html=True
             )
 
@@ -814,26 +814,26 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     unsafe_allow_html=True
                                 )
                             for sub in section.get("subsections", []):
-                                c1, c2 = st.columns([6, 1])
+                                # 💡 を左に
+                                c1, c2 = st.columns([1, 6])
                                 with c1:
-                                    st.markdown(
-                                        f"<div class='toc-sub'>　• {sub['title']} "
-                                        f"<span class='toc-page'>(p.{sub['page']})</span></div>",
-                                        unsafe_allow_html=True
-                                    )
-                                with c2:
-                                    pt_key = f"pt_text_{sub['id']}"
                                     if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
                                         with st.spinner("生成中..."):
-                                            st.session_state[pt_key] = generate_point(
+                                            st.session_state[f"pt_text_{sub['id']}"] = generate_point(
                                                 sub["title"],
                                                 subject_name=sinfo['name'],
                                                 genre_name=ginfo['name']
                                             )
+                                with c2:
+                                    st.markdown(
+                                        f"<div class='toc-sub'>{sub['title']} "
+                                        f"<span class='toc-page'>(p.{sub['page']})</span></div>",
+                                        unsafe_allow_html=True
+                                    )
                                 pt_key = f"pt_text_{sub['id']}"
                                 if st.session_state.get(pt_key):
                                     render_point_box(st.session_state[pt_key], color="yellow")
 
 # ===== フッター =====
 st.markdown("---")
-st.caption("🌟 RIA | TOP ページ v0.9")
+st.caption("🌟 RIA | TOP ページ v1.0")
