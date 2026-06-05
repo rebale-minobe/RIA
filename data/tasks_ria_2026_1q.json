@@ -181,16 +181,6 @@
       "done": false
     },
     {
-      "id": "7608c2a9",
-      "type": "test",
-      "subject": "理科",
-      "title": "積み上げ No.12 ①周目",
-      "duration_min": 45,
-      "note": "先生イチオシの積み上げプリント。まず1周。間違えた問題に✕をつけて繰り返す準備を。理科は反復が点に直結するよ。",
-      "due_date": "2026-06-08",
-      "done": false
-    },
-    {
       "id": "e6490d27",
       "type": "test",
       "subject": "数学",
