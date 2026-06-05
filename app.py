@@ -1251,19 +1251,18 @@ st.markdown('<div class="section-title">📌 今日の問題 <span style="font-s
 
 def _get_batsu_questions():
     """
-    教科別CSVから最新結果がbatsuの問題を全教科分取得
-    リロード後も永続 + session_stateの未保存分も合わせる
+    CSVから最新がbatsuの問題を取得（永続）
+    + session_stateの未保存batsuも合わせて返す
     """
     batsu_list = []
     seen_keys = set()
 
-    # ① 教科別CSVから取得（永続データ）
+    # ① CSVから取得（永続・教科別）
     if ALM_AVAILABLE:
-        try:
-            for skey in SUBJECTS:
-                sname = SUBJECTS[skey]["name"]
-                csv_batsu = alm.get_batsu_questions(skey)
-                for row in csv_batsu:
+        for skey in SUBJECTS:
+            try:
+                csv_rows = alm.get_batsu_questions(skey)
+                for row in csv_rows:
                     ukey = (skey, row.get("genre_key",""),
                             str(row.get("page_num","")), row.get("q",""))
                     if ukey in seen_keys:
@@ -1281,14 +1280,15 @@ def _get_batsu_questions():
                         "note":         row.get("note", "") or None,
                         "context":      None,
                         "subject_key":  skey,
-                        "subject_name": sname,
+                        "subject_name": SUBJECTS[skey]["name"],
                         "genre_key":    row.get("genre_key", ""),
-                        "genre_name":   row.get("genre_name", ""),
+                        "genre_name":   SUBJECTS[skey]["genres"].get(
+                            row.get("genre_key",""), {}).get("name", ""),
                     })
-        except Exception:
-            pass
+            except Exception:
+                pass
 
-    # ② session_stateの未保存batsuも追加（即時反映）
+    # ② session_stateの未保存batsuも追加
     for key, val in st.session_state.items():
         if val != "batsu" or not key.startswith("wb_result_"):
             continue
@@ -1324,6 +1324,7 @@ def _get_batsu_questions():
 
     random.shuffle(batsu_list)
     return batsu_list
+
 
 # キャッシュせず毎回session_stateから直接取得
 # （ワークで❌を押すたびに即反映させるため）
@@ -1938,7 +1939,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     )
                                     # 5件溜まったら一括push
                                     if len(st.session_state["alm_pending"][skey]) >= 5:
-                                        alm.append_batch(skey, st.session_state["alm_pending"][skey])
+                                        alm.append_logs_batch(skey, st.session_state["alm_pending"][skey])
                                         st.session_state["alm_pending"][skey] = []
                             st.rerun()
 
@@ -1966,7 +1967,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 # ページ完了時にpendingをflush
                 if ALM_AVAILABLE and st.session_state.get("alm_pending", {}).get(skey):
                     if cur_pos == n_active - 1:
-                        alm.append_batch(skey, st.session_state["alm_pending"][skey])
+                        alm.append_logs_batch(skey, st.session_state["alm_pending"][skey])
                         st.session_state["alm_pending"][skey] = []
 
                 # 解説表示
@@ -1977,13 +1978,22 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
                 # ページ完了時（最後の問題に到達）
                 if cur_pos == n_active - 1:
-                    # pending logs flush
+                    # answer_log flush
                     if ANSWER_LOG_AVAILABLE and st.session_state.get("wb_pending_logs"):
                         try:
                             answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
                             st.session_state["wb_pending_logs"] = []
                         except Exception:
                             pass
+                    # ALM CSV flush（教科別）
+                    if ALM_AVAILABLE and st.session_state.get("alm_pending"):
+                        for sk, entries in st.session_state["alm_pending"].items():
+                            if entries:
+                                try:
+                                    alm.append_logs_batch(sk, entries)
+                                except Exception:
+                                    pass
+                        st.session_state["alm_pending"] = {}
 
                     wrong_indices = [i for i in range(total)
                                      if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
