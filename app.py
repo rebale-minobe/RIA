@@ -15,6 +15,31 @@ import random
 from datetime import datetime
 from pathlib import Path
 
+# ===== JST（日本時間）ヘルパー — Streamlit CloudはUTCなので必須 =====
+from datetime import timezone, timedelta
+_JST = timezone(timedelta(hours=9))
+def _now_jst():
+    return datetime.now(_JST)
+
+# ===== gh_put ロバストインポート（root/modules両対応・成否を返す）=====
+def _gh_put(path, content_bytes, message):
+    """gh_put をどちらのパスでもインポートして実行。成功/失敗を返す。"""
+    gh_put = None
+    try:
+        from gh import gh_put as _gp
+        gh_put = _gp
+    except Exception:
+        try:
+            from modules.gh import gh_put as _gp
+            gh_put = _gp
+        except Exception:
+            return False
+    try:
+        gh_put(path, content_bytes, message)
+        return True
+    except Exception:
+        return False
+
 # 解答ログ管理（CSV → GitHub 永続化）
 try:
     from modules import answer_log
@@ -632,14 +657,11 @@ def _save_todo_duration(task_id, dur_key):
             _t["duration_min"] = mins
             changed = True
     if changed:
-        try:
-            from gh import gh_put
-            gh_put(_task_filename(_u, _y, _tm),
-                   _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
-                   "Update task duration via ToDo")
+        ok = _gh_put(_task_filename(_u, _y, _tm),
+                     _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                     "Update task duration via ToDo")
+        if ok:
             load_tasks_data.clear()
-        except Exception:
-            pass
 
 def _save_todo_done(task_id, done_val):
     """ToDoの「できた！」をtasks.jsonに保存（STUDY TIMEに反映）"""
@@ -656,14 +678,13 @@ def _save_todo_done(task_id, done_val):
             _t["done"] = bool(done_val)
             changed = True
     if changed:
-        try:
-            from gh import gh_put
-            gh_put(_task_filename(_u, _y, _tm),
-                   _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
-                   "Update task done via ToDo")
+        ok = _gh_put(_task_filename(_u, _y, _tm),
+                     _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                     "Update task done via ToDo")
+        if ok:
             load_tasks_data.clear()
-        except Exception:
-            pass
+        else:
+            st.session_state["_save_warn"] = True
 
 def load_study_log():
     """学習ログ（今日の時間割の記録）を取得"""
@@ -678,14 +699,9 @@ def load_study_log():
 def save_study_log(data):
     """学習ログを tasks.json と同じ仕組みで永続保存"""
     import json as _json
-    try:
-        from gh import gh_put
-        gh_put("data/study_log.json",
-               _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
-               "Update study_log")
-        return True
-    except Exception:
-        return False
+    return _gh_put("data/study_log.json",
+                   _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                   "Update study_log")
 
 def load_textbook_progress():
     """各教科×ジャンルの「最後にやった項目」を取得"""
@@ -699,14 +715,9 @@ def load_textbook_progress():
 
 def save_textbook_progress(data):
     import json as _json
-    try:
-        from gh import gh_put
-        gh_put("data/textbook_progress.json",
-               _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
-               "Update textbook_progress")
-        return True
-    except Exception:
-        return False
+    return _gh_put("data/textbook_progress.json",
+                   _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                   "Update textbook_progress")
 
 def _flatten_toc(tdata):
     """教科書の目次を 章→項目 の通し順にフラット化"""
@@ -1291,7 +1302,7 @@ def _build_timetable(date_obj):
     return result
 
 
-today = datetime.now()
+today = _now_jst()
 
 STUDY_SCHEDULE = _build_study_schedule(today.year, today.month)
 if not STUDY_SCHEDULE:
@@ -1523,6 +1534,9 @@ st.markdown(f'<div class="subj-time-row">{_stc_html}</div>', unsafe_allow_html=T
 
 # ===== Today's To Do =====
 st.markdown('<div class="section-title">📌 Today\'s To Do</div>', unsafe_allow_html=True)
+if st.session_state.get("_save_warn"):
+    st.warning("⚠️ GitHubへの保存に失敗しました。表示は反映されますが、リロードで戻る可能性があります。ネットワーク／トークン設定を確認してください。")
+    st.session_state["_save_warn"] = False
 done_count = sum(1 for v in st.session_state.todo_done.values() if v)
 st.markdown(f"今日のタスク: **{done_count}/{len(TODO_TODAY)}** 完了 🎯")
 
