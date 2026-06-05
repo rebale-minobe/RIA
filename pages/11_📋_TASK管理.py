@@ -71,7 +71,7 @@ def gh_put_json(path, data, message):
 # ===== データ読み込み =====
 @st.cache_data(ttl=30)
 def load_tasks():
-    data = gh_get_json("data/tasks.json")
+    data = gh_get_json("data/tasks_ria_2026_1q.json")
     return data if data else {"tasks": []}
 
 @st.cache_data(ttl=30)
@@ -81,7 +81,7 @@ def load_task_schedule():
 
 def save_tasks(data):
     load_tasks.clear()
-    return gh_put_json("data/tasks.json", data, "Update tasks.json")
+    return gh_put_json("data/tasks_ria_2026_1q.json", data, "Update tasks_ria_2026_1q.json")
 
 def save_task_schedule(data):
     load_task_schedule.clear()
@@ -598,6 +598,41 @@ with tab4:
     st.markdown("### タスクをカレンダーに配置")
     st.caption("日付を割り当てると TOP の Today's ToDo に表示されます")
 
+    # ===== STUDY TIME 教科別カード（TOPと同じ集計：6/5以降の完了タスク）=====
+    _subj_order = ["国語", "社会", "数学", "理科", "英語", "技術家庭", "保健体育"]
+    _subj_label = {"技術家庭": "技術", "保健体育": "保健"}
+    _subj_min = {}
+    for _t in tasks_data.get("tasks", []):
+        if not _t.get("done"):
+            continue
+        if _t.get("due_date", "") < "2026-06-05":
+            continue
+        _sj = _t.get("subject", "")
+        _subj_min[_sj] = _subj_min.get(_sj, 0) + int(_t.get("duration_min", 0) or 0)
+    _cards_html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px;">'
+    for _sj in _subj_order:
+        _m = _subj_min.get(_sj, 0)
+        _h, _mm = divmod(_m, 60)
+        if _h and _mm:
+            _disp = f"{_h}<span style='font-size:13px;'>h{_mm}m</span>"
+        elif _h:
+            _disp = f"{_h}<span style='font-size:13px;'>h</span>"
+        else:
+            _disp = f"{_mm}<span style='font-size:13px;'>m</span>"
+        _c = subj_color(_sj)
+        _lbl = _subj_label.get(_sj, _sj)
+        _cards_html += (
+            f'<div style="flex:1;min-width:78px;background:white;border:1px solid #eee;'
+            f'border-top:3px solid {_c["primary"]};border-radius:10px;padding:8px 4px;text-align:center;">'
+            f'<div style="color:{_c["primary"]};font-size:12px;font-weight:700;">{_c["emoji"]}{_lbl}</div>'
+            f'<div style="font-size:20px;font-weight:800;color:#1d1d1f;">{_disp}</div>'
+            f'</div>'
+        )
+    _cards_html += '</div>'
+    st.markdown('<div style="font-weight:700;font-size:15px;margin-top:8px;">⏱ STUDY TIME</div>', unsafe_allow_html=True)
+    st.markdown(_cards_html, unsafe_allow_html=True)
+    st.markdown("---")
+
     # 未割当タスク
     unscheduled = [t for t in tasks_data["tasks"] if not t.get("due_date") and not t.get("done")]
     scheduled   = [t for t in tasks_data["tasks"] if t.get("due_date")]
@@ -693,5 +728,32 @@ with tab4:
                                           if task["id"] != t["id"]]
                     save_tasks(tasks_data)
                     st.rerun()
+            # ── カード内容の編集（過去のカードも編集可）──
+            with st.expander("✏️ 編集"):
+                _e_subj = st.selectbox(
+                    "教科", list(SUBJECT_COLOR.keys()),
+                    index=list(SUBJECT_COLOR.keys()).index(t.get("subject", "国語"))
+                          if t.get("subject", "") in SUBJECT_COLOR else 0,
+                    key=f"edit_subj_{t['id']}"
+                )
+                _e_title = st.text_input("タスク内容", value=t.get("title", ""),
+                                         key=f"edit_title_{t['id']}")
+                _e_dur = st.number_input("時間（分）", min_value=5, max_value=300, step=5,
+                                         value=int(t.get("duration_min", 30) or 30),
+                                         key=f"edit_dur_{t['id']}")
+                _e_note = st.text_area("やり方メモ", value=t.get("note", ""),
+                                       key=f"edit_note_{t['id']}", height=80)
+                if st.button("💾 保存", key=f"edit_save_{t['id']}", use_container_width=True):
+                    for task in tasks_data["tasks"]:
+                        if task["id"] == t["id"]:
+                            task["subject"] = _e_subj
+                            task["title"] = _e_title
+                            task["duration_min"] = int(_e_dur)
+                            task["note"] = _e_note
+                    if save_tasks(tasks_data):
+                        st.success("保存しました！")
+                        st.rerun()
+                    else:
+                        st.error("保存に失敗しました")
     else:
         st.caption("まだタスクが配置されていません")
