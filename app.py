@@ -986,19 +986,8 @@ def _build_study_schedule(year: int, month: int) -> dict:
             for ev in day_info["events"]:
                 items.append({"subj": ev, "type": "event"})
         else:
-            # 通常日 → 時間割から教科を取得
-            try:
-                import datetime as _dt2
-                d = _dt2.datetime.strptime(date_str, "%Y-%m-%d")
-                periods = get_timetable_for_date(d)
-                seen = set()
-                for p in periods:
-                    s = p["subject"]
-                    if s not in seen:
-                        items.append({"subj": s})
-                        seen.add(s)
-            except Exception:
-                pass
+            # 通常日 → イベントなし（時間割は表示しない）
+            pass
         if items:
             result[date_str] = items
     return result
@@ -1251,222 +1240,257 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
 
 st.caption("💡 タスクや時間をタップして編集できます")
 
-# ===== 今日の問題（過去に間違えた問題を反復出題） =====
+# ===== 今日の問題（バツがついた問題をランダム出題） =====
 st.markdown('<div class="section-title">📌 今日の問題 <span style="font-size:14px; color:#8E8E93; font-weight:500;">— 反復学習</span></div>', unsafe_allow_html=True)
 
-if not ANSWER_LOG_AVAILABLE:
-    st.info("⏳ 解答ログ機能の準備中（modules/answer_log.py を配置してください）")
-else:
-    # キャッシュキー: 教科横断の未解決問題リスト
-    cache_key = "tp_questions_cache"
-    if cache_key not in st.session_state:
-        with st.spinner("間違えた問題を読み込み中..."):
-            try:
-                unsolved = answer_log.get_unsolved_questions()
-                random.shuffle(unsolved)
-                st.session_state[cache_key] = [
-                    answer_log.log_to_question(log) for log in unsolved
-                ]
-            except Exception as e:
-                st.error(f"ログ読み込みエラー: {e}")
-                st.session_state[cache_key] = []
-
-    tp_questions = st.session_state.get(cache_key, [])
-    tp_total = len(tp_questions)
-
-    if tp_total == 0:
-        st.success("🎉 反復学習する問題がありません！全問正解おめでとう！")
-        st.caption("ワークで×を付けた問題が、次の日からここに自動で出題されます。")
-    else:
-        st.markdown(
-            f"📚 復習する問題: **{tp_total} 問**  "
-            f"<span style='color:#8E8E93;'>（過去に間違えた問題を教科横断でシャッフル出題）</span>",
-            unsafe_allow_html=True
-        )
-
-        # 現在位置
-        tp_idx_key = "tp_idx"
-        if tp_idx_key not in st.session_state:
-            st.session_state[tp_idx_key] = 0
-        tp_pos = max(0, min(st.session_state[tp_idx_key], tp_total - 1))
-        st.session_state[tp_idx_key] = tp_pos
-        tp_current = tp_questions[tp_pos]
-
-        # 進捗
-        tp_correct = sum(1 for i in range(tp_total)
-                        if st.session_state.get(f"tp_result_{i}") == "maru")
-        tp_wrong = sum(1 for i in range(tp_total)
-                      if st.session_state.get(f"tp_result_{i}") == "batsu")
-        st.markdown(f"""
-        <div class='wb-progress-row'>
-            <span>問題 <b>{tp_pos + 1}</b> / {tp_total}</span>
-            <span>
-                <span style='color:#007AFF;'>⭕ {tp_correct}</span>　
-                <span style='color:#FF3B30;'>❌ {tp_wrong}</span>
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
-        st.progress((tp_pos + 1) / tp_total)
-
-        # フラッシュカード（答え常時表示）
-        tp_result = st.session_state.get(f"tp_result_{tp_pos}")
-
-        # 教科バッジ + メタ
-        subj_name = tp_current.get('subject_name', '')
-        genre_name = tp_current.get('genre_name', '')
-        subj_col = subject_color(subj_name)
-        tp_meta_parts = []
-        if tp_current.get('section_code'):
-            tp_meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
-        if tp_current.get('group_label'):
-            tp_meta_parts.append(tp_current['group_label'])
-        if tp_current.get('workbook_ref'):
-            tp_meta_parts.append(tp_current['workbook_ref'])
-        if tp_current.get('textbook_ref'):
-            tp_meta_parts.append(tp_current['textbook_ref'])
-
-        subject_badge_html = (
-            f'<div style="display:inline-block; background:{subj_col["light"]}; '
-            f'color:{subj_col["primary"]}; padding:4px 14px; border-radius:14px; '
-            f'font-size:13px; font-weight:700; margin-bottom:6px;">'
-            f'{subj_col["emoji"]} {subj_name}'
-            + (f' / {genre_name}' if genre_name else '')
-            + '</div>'
-        )
-
-        tp_card_html = f"""
-        <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
-            <div class='wb-fc-header'>
-                {subject_badge_html}
-                <div class='wb-fc-meta'>{' ／ '.join(tp_meta_parts)}</div>
-                <div class='wb-fc-lesson'>{tp_current.get('lesson_title','')}</div>
-            </div>
-            <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current['q']}</div>
-            <div class='wb-fc-divider'></div>
-            <div class='wb-fc-a-area'>
-                <div class='wb-fc-a-shown'>{tp_current['a']}</div>
-            </div>
-        </div>
-        """
-        st.markdown(tp_card_html, unsafe_allow_html=True)
-
-        # 注記と結果バッジ
-        tp_info_lines = []
-        if tp_current.get('note'):
-            tp_info_lines.append(f"※ {tp_current['note']}")
-        if tp_current.get('context'):
-            tp_info_lines.append(f"💭 {tp_current['context']}")
-        if tp_info_lines:
-            st.caption(" ／ ".join(tp_info_lines))
-        if tp_result == "maru":
-            st.markdown("<div class='wb-result-badge maru'>⭕ 覚えた！</div>", unsafe_allow_html=True)
-        elif tp_result == "batsu":
-            st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>", unsafe_allow_html=True)
-
-        # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
-        with st.container(key="tp_nav_row"):
-            tp_nav_cols = st.columns(5)
-            with tp_nav_cols[0]:
-                if st.button("◀", key=f"tp_prev_{tp_pos}",
-                            disabled=(tp_pos == 0), use_container_width=True):
-                    st.session_state[tp_idx_key] = tp_pos - 1
-                    st.rerun()
-            with tp_nav_cols[1]:
-                if st.button("⭕", key=f"tp_maru_{tp_pos}",
-                            use_container_width=True, help="覚えた！"):
-                    st.session_state[f"tp_result_{tp_pos}"] = "maru"
-                    # バッファに追加（5件溜まったら一括 push）
-                    if "tp_pending_logs" not in st.session_state:
-                        st.session_state["tp_pending_logs"] = []
-                    try:
-                        entry = answer_log.question_to_log_entry(
-                            tp_current,
-                            tp_current.get('subject_key', ''),
-                            tp_current.get('subject_name', ''),
-                            tp_current.get('genre_key', ''),
-                            tp_current.get('genre_name', ''),
-                            "maru"
-                        )
-                        st.session_state["tp_pending_logs"].append(entry)
-                        if len(st.session_state["tp_pending_logs"]) >= 5:
-                            answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
-                            st.session_state["tp_pending_logs"] = []
-                    except Exception:
-                        pass
-                    if tp_pos < tp_total - 1:
-                        st.session_state[tp_idx_key] = tp_pos + 1
-                    st.rerun()
-            with tp_nav_cols[2]:
-                if st.button("❌", key=f"tp_batsu_{tp_pos}",
-                            use_container_width=True, help="まだ覚えてない"):
-                    st.session_state[f"tp_result_{tp_pos}"] = "batsu"
-                    if "tp_pending_logs" not in st.session_state:
-                        st.session_state["tp_pending_logs"] = []
-                    try:
-                        entry = answer_log.question_to_log_entry(
-                            tp_current,
-                            tp_current.get('subject_key', ''),
-                            tp_current.get('subject_name', ''),
-                            tp_current.get('genre_key', ''),
-                            tp_current.get('genre_name', ''),
-                            "batsu"
-                        )
-                        st.session_state["tp_pending_logs"].append(entry)
-                        if len(st.session_state["tp_pending_logs"]) >= 5:
-                            answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
-                            st.session_state["tp_pending_logs"] = []
-                    except Exception:
-                        pass
-                    if tp_pos < tp_total - 1:
-                        st.session_state[tp_idx_key] = tp_pos + 1
-                    st.rerun()
-            with tp_nav_cols[3]:
-                if st.button("💡", key=f"tp_explain_{tp_pos}",
-                            use_container_width=True, help="解説を見る"):
-                    with st.spinner("解説生成中..."):
-                        st.session_state[f"tp_explain_{tp_pos}"] = (
-                            generate_workbook_explanation(
-                                tp_current,
-                                tp_current.get('subject_name', '社会')
-                            )
-                        )
-                    st.rerun()
-            with tp_nav_cols[4]:
-                if st.button("▶", key=f"tp_next_{tp_pos}",
-                            disabled=(tp_pos >= tp_total - 1), use_container_width=True):
-                    st.session_state[tp_idx_key] = tp_pos + 1
-                    st.rerun()
-
-        # 解説表示
-        tp_explain_key = f"tp_explain_{tp_pos}"
-        if st.session_state.get(tp_explain_key):
-            st.markdown("")
-            render_point_box(st.session_state[tp_explain_key], color="yellow")
-
-        # 完了時のリロード（最後の問題に答えたタイミング）
-        if tp_pos == tp_total - 1 and tp_result is not None:
-            # pending logs を flush
-            if st.session_state.get("tp_pending_logs"):
+def _get_batsu_questions():
+    """session_stateからバツ(batsu)がついた問題を全件収集してランダムに返す"""
+    batsu_list = []
+    # ワークのバツ問題を収集
+    for key, val in st.session_state.items():
+        if val == "batsu" and key.startswith("wb_result_"):
+            # key形式: wb_result_{page_num}_{original_idx}
+            parts = key.split("_")
+            if len(parts) >= 4:
                 try:
-                    answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
-                    st.session_state["tp_pending_logs"] = []
+                    page_num = int(parts[2])
+                    orig_idx = int(parts[3])
+                    # wb_dataから問題を取得（social/historyを対象）
+                    for skey in SUBJECTS:
+                        for gkey in SUBJECTS[skey]["genres"]:
+                            wb = load_workbook_answers(skey, gkey)
+                            if not wb:
+                                continue
+                            for page in wb.get("pages", []):
+                                if page["page_number"] == page_num:
+                                    flat = flatten_workbook_questions(page)
+                                    if orig_idx < len(flat):
+                                        q = flat[orig_idx].copy()
+                                        q["subject_key"] = skey
+                                        q["subject_name"] = SUBJECTS[skey]["name"]
+                                        q["genre_key"] = gkey
+                                        q["genre_name"] = SUBJECTS[skey]["genres"][gkey]["name"]
+                                        q["_batsu_key"] = key
+                                        batsu_list.append(q)
                 except Exception:
                     pass
 
-            st.markdown("---")
-            tp_still_wrong = sum(1 for i in range(tp_total)
-                                if st.session_state.get(f"tp_result_{i}") == "batsu")
-            if tp_still_wrong > 0:
-                st.warning(f"❌ まだ {tp_still_wrong} 問 覚えきれてません")
-            else:
-                st.success("🎉 全問正解！")
-            if st.button("🔄 「今日の問題」を再読み込み", key="tp_reload",
-                         use_container_width=True, type="primary"):
-                keys_to_clear = [k for k in list(st.session_state.keys())
-                                if k.startswith("tp_")]
-                for k in keys_to_clear:
-                    del st.session_state[k]
+    # answer_logからも取得（利用可能な場合）
+    if ANSWER_LOG_AVAILABLE and not batsu_list:
+        try:
+            logs = answer_log.get_unsolved_questions()
+            for log in logs:
+                q = answer_log.log_to_question(log)
+                if q:
+                    batsu_list.append(q)
+        except Exception:
+            pass
+
+    random.shuffle(batsu_list)
+    return batsu_list
+
+cache_key = "tp_questions_cache"
+# 🔄ボタンで再読み込みされた場合はキャッシュクリア済み
+if cache_key not in st.session_state:
+    tp_raw = _get_batsu_questions()
+    st.session_state[cache_key] = tp_raw
+
+tp_questions = st.session_state.get(cache_key, [])
+tp_total = len(tp_questions)
+
+if tp_total == 0:
+    st.success("🎉 バツがついた問題はありません！")
+    st.caption("ワークで ❌ を付けた問題がここに自動で出題されます。")
+else:
+    st.markdown(
+        f"📚 バツがついた問題: **{tp_total} 問**  "
+        f"<span style='color:#8E8E93;'>（ランダム出題）</span>",
+        unsafe_allow_html=True
+    )
+
+    # 現在位置
+    tp_idx_key = "tp_idx"
+    if tp_idx_key not in st.session_state:
+        st.session_state[tp_idx_key] = 0
+    tp_pos = max(0, min(st.session_state[tp_idx_key], tp_total - 1))
+    st.session_state[tp_idx_key] = tp_pos
+    tp_current = tp_questions[tp_pos]
+
+    # 進捗
+    tp_correct = sum(1 for i in range(tp_total)
+                    if st.session_state.get(f"tp_result_{i}") == "maru")
+    tp_wrong = sum(1 for i in range(tp_total)
+                  if st.session_state.get(f"tp_result_{i}") == "batsu")
+    st.markdown(f"""
+    <div class='wb-progress-row'>
+        <span>問題 <b>{tp_pos + 1}</b> / {tp_total}</span>
+        <span>
+            <span style='color:#007AFF;'>⭕ {tp_correct}</span>　
+            <span style='color:#FF3B30;'>❌ {tp_wrong}</span>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    st.progress((tp_pos + 1) / tp_total)
+
+    # フラッシュカード（答え常時表示）
+    tp_result = st.session_state.get(f"tp_result_{tp_pos}")
+
+    # 教科バッジ + メタ
+    subj_name = tp_current.get('subject_name', '')
+    genre_name = tp_current.get('genre_name', '')
+    subj_col = subject_color(subj_name)
+    tp_meta_parts = []
+    if tp_current.get('section_code'):
+        tp_meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
+    if tp_current.get('group_label'):
+        tp_meta_parts.append(tp_current['group_label'])
+    if tp_current.get('workbook_ref'):
+        tp_meta_parts.append(tp_current['workbook_ref'])
+    if tp_current.get('textbook_ref'):
+        tp_meta_parts.append(tp_current['textbook_ref'])
+
+    subject_badge_html = (
+        f'<div style="display:inline-block; background:{subj_col["light"]}; '
+        f'color:{subj_col["primary"]}; padding:4px 14px; border-radius:14px; '
+        f'font-size:13px; font-weight:700; margin-bottom:6px;">'
+        f'{subj_col["emoji"]} {subj_name}'
+        + (f' / {genre_name}' if genre_name else '')
+        + '</div>'
+    )
+
+    tp_card_html = f"""
+    <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
+        <div class='wb-fc-header'>
+            {subject_badge_html}
+            <div class='wb-fc-meta'>{' ／ '.join(tp_meta_parts)}</div>
+            <div class='wb-fc-lesson'>{tp_current.get('lesson_title','')}</div>
+        </div>
+        <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current['q']}</div>
+        <div class='wb-fc-divider'></div>
+        <div class='wb-fc-a-area'>
+            <div class='wb-fc-a-shown'>{tp_current['a']}</div>
+        </div>
+    </div>
+    """
+    st.markdown(tp_card_html, unsafe_allow_html=True)
+
+    # 注記と結果バッジ
+    tp_info_lines = []
+    if tp_current.get('note'):
+        tp_info_lines.append(f"※ {tp_current['note']}")
+    if tp_current.get('context'):
+        tp_info_lines.append(f"💭 {tp_current['context']}")
+    if tp_info_lines:
+        st.caption(" ／ ".join(tp_info_lines))
+    if tp_result == "maru":
+        st.markdown("<div class='wb-result-badge maru'>⭕ 覚えた！</div>", unsafe_allow_html=True)
+    elif tp_result == "batsu":
+        st.markdown("<div class='wb-result-badge batsu'>❌ もう一度</div>", unsafe_allow_html=True)
+
+    # ナビゲーション (◀ ⭕ ❌ 💡 ▶)
+    with st.container(key="tp_nav_row"):
+        tp_nav_cols = st.columns(5)
+        with tp_nav_cols[0]:
+            if st.button("◀", key=f"tp_prev_{tp_pos}",
+                        disabled=(tp_pos == 0), use_container_width=True):
+                st.session_state[tp_idx_key] = tp_pos - 1
                 st.rerun()
+        with tp_nav_cols[1]:
+            if st.button("⭕", key=f"tp_maru_{tp_pos}",
+                        use_container_width=True, help="覚えた！"):
+                st.session_state[f"tp_result_{tp_pos}"] = "maru"
+                # バッファに追加（5件溜まったら一括 push）
+                if "tp_pending_logs" not in st.session_state:
+                    st.session_state["tp_pending_logs"] = []
+                try:
+                    entry = answer_log.question_to_log_entry(
+                        tp_current,
+                        tp_current.get('subject_key', ''),
+                        tp_current.get('subject_name', ''),
+                        tp_current.get('genre_key', ''),
+                        tp_current.get('genre_name', ''),
+                        "maru"
+                    )
+                    st.session_state["tp_pending_logs"].append(entry)
+                    if len(st.session_state["tp_pending_logs"]) >= 5:
+                        answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
+                        st.session_state["tp_pending_logs"] = []
+                except Exception:
+                    pass
+                if tp_pos < tp_total - 1:
+                    st.session_state[tp_idx_key] = tp_pos + 1
+                st.rerun()
+        with tp_nav_cols[2]:
+            if st.button("❌", key=f"tp_batsu_{tp_pos}",
+                        use_container_width=True, help="まだ覚えてない"):
+                st.session_state[f"tp_result_{tp_pos}"] = "batsu"
+                if "tp_pending_logs" not in st.session_state:
+                    st.session_state["tp_pending_logs"] = []
+                try:
+                    entry = answer_log.question_to_log_entry(
+                        tp_current,
+                        tp_current.get('subject_key', ''),
+                        tp_current.get('subject_name', ''),
+                        tp_current.get('genre_key', ''),
+                        tp_current.get('genre_name', ''),
+                        "batsu"
+                    )
+                    st.session_state["tp_pending_logs"].append(entry)
+                    if len(st.session_state["tp_pending_logs"]) >= 5:
+                        answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
+                        st.session_state["tp_pending_logs"] = []
+                except Exception:
+                    pass
+                if tp_pos < tp_total - 1:
+                    st.session_state[tp_idx_key] = tp_pos + 1
+                st.rerun()
+        with tp_nav_cols[3]:
+            if st.button("💡", key=f"tp_explain_{tp_pos}",
+                        use_container_width=True, help="解説を見る"):
+                with st.spinner("解説生成中..."):
+                    st.session_state[f"tp_explain_{tp_pos}"] = (
+                        generate_workbook_explanation(
+                            tp_current,
+                            tp_current.get('subject_name', '社会')
+                        )
+                    )
+                st.rerun()
+        with tp_nav_cols[4]:
+            if st.button("▶", key=f"tp_next_{tp_pos}",
+                        disabled=(tp_pos >= tp_total - 1), use_container_width=True):
+                st.session_state[tp_idx_key] = tp_pos + 1
+                st.rerun()
+
+    # 解説表示
+    tp_explain_key = f"tp_explain_{tp_pos}"
+    if st.session_state.get(tp_explain_key):
+        st.markdown("")
+        render_point_box(st.session_state[tp_explain_key], color="yellow")
+
+    # 完了時のリロード（最後の問題に答えたタイミング）
+    if tp_pos == tp_total - 1 and tp_result is not None:
+        # pending logs を flush
+        if st.session_state.get("tp_pending_logs"):
+            try:
+                answer_log.append_logs_batch(st.session_state["tp_pending_logs"])
+                st.session_state["tp_pending_logs"] = []
+            except Exception:
+                pass
+
+        st.markdown("---")
+        tp_still_wrong = sum(1 for i in range(tp_total)
+                            if st.session_state.get(f"tp_result_{i}") == "batsu")
+        if tp_still_wrong > 0:
+            st.warning(f"❌ まだ {tp_still_wrong} 問 覚えきれてません")
+        else:
+            st.success("🎉 全問正解！")
+        if st.button("🔄 「今日の問題」を再読み込み", key="tp_reload",
+                     use_container_width=True, type="primary"):
+            keys_to_clear = [k for k in list(st.session_state.keys())
+                                if k.startswith("tp_")]
+            for k in keys_to_clear:
+                del st.session_state[k]
+            st.rerun()
 
 # ===== 今日の時間割 =====
 _today_label = f"{today.month}月{today.day}日（{JP_WD[today.weekday()]}）"
