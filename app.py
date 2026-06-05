@@ -19,7 +19,8 @@ from pathlib import Path
 from datetime import timezone, timedelta
 _JST = timezone(timedelta(hours=9))
 def _now_jst():
-    return datetime.now(_JST)
+    # JSTの壁時計をナイーブdatetimeで返す（既存のnaive演算と互換）
+    return datetime.now(_JST).replace(tzinfo=None)
 
 # ===== gh_put ロバストインポート（root/modules両対応・成否を返す）=====
 def _gh_put(path, content_bytes, message):
@@ -1406,7 +1407,9 @@ TODO_TODAY = [
 ]
 
 test_date = datetime.strptime(NEXT_TEST["start_date"], "%Y-%m-%d")
-days_until_test = (test_date - today).days
+# tz差異に関わらず安全に日数計算（date同士で減算）
+_today_naive = today.replace(tzinfo=None) if getattr(today, "tzinfo", None) else today
+days_until_test = (test_date.date() - _today_naive.date()).days
 test_wd = JP_WD[test_date.weekday()]
 today_wd = JP_WD[today.weekday()]
 
