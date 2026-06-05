@@ -1923,24 +1923,17 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                             else:
                                 # トグルON → batsu記録
                                 st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
-                                # CSV永続化（バッチ）
+                                # CSV永続化（即時push）
                                 if ALM_AVAILABLE:
                                     q_data = current.copy()
                                     q_data["subject_key"]  = skey
                                     q_data["subject_name"] = sinfo["name"]
                                     q_data["genre_key"]    = gkey
                                     q_data["genre_name"]   = ginfo["name"]
-                                    if "alm_pending" not in st.session_state:
-                                        st.session_state["alm_pending"] = {}
-                                    if skey not in st.session_state["alm_pending"]:
-                                        st.session_state["alm_pending"][skey] = []
-                                    st.session_state["alm_pending"][skey].append(
-                                        alm.make_entry(q_data, "batsu")
-                                    )
-                                    # 5件溜まったら一括push
-                                    if len(st.session_state["alm_pending"][skey]) >= 5:
-                                        alm.append_logs_batch(skey, st.session_state["alm_pending"][skey])
-                                        st.session_state["alm_pending"][skey] = []
+                                    try:
+                                        alm.append_log(skey, q_data, "batsu")
+                                    except Exception:
+                                        pass
                             st.rerun()
 
                     # 💡 解説
