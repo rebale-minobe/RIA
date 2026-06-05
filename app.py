@@ -1289,13 +1289,9 @@ def _get_batsu_questions():
     random.shuffle(batsu_list)
     return batsu_list
 
-cache_key = "tp_questions_cache"
-# 🔄ボタンで再読み込みされた場合はキャッシュクリア済み
-if cache_key not in st.session_state:
-    tp_raw = _get_batsu_questions()
-    st.session_state[cache_key] = tp_raw
-
-tp_questions = st.session_state.get(cache_key, [])
+# キャッシュせず毎回session_stateから直接取得
+# （ワークで❌を押すたびに即反映させるため）
+tp_questions = _get_batsu_questions()
 tp_total = len(tp_questions)
 
 if tp_total == 0:
@@ -1484,11 +1480,10 @@ else:
             st.warning(f"❌ まだ {tp_still_wrong} 問 覚えきれてません")
         else:
             st.success("🎉 全問正解！")
-        if st.button("🔄 「今日の問題」を再読み込み", key="tp_reload",
+        if st.button("🔄 シャッフルして再出題", key="tp_reload",
                      use_container_width=True, type="primary"):
-            keys_to_clear = [k for k in list(st.session_state.keys())
-                                if k.startswith("tp_")]
-            for k in keys_to_clear:
+            # tp_結果をクリアして再シャッフル
+            for k in [k for k in list(st.session_state.keys()) if k.startswith("tp_")]:
                 del st.session_state[k]
             st.rerun()
 
