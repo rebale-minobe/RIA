@@ -1,3 +1,54 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "40301be7",
+      "type": "test",
+      "subject": "社会",
+      "title": "P105-120を読む",
+      "duration_min": 60,
+      "note": "歴史の基本的な内容を理解するために",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "44638e7c",
+      "type": "test",
+      "subject": "社会",
+      "title": "P121-140を読む",
+      "duration_min": 60,
+      "note": "重要な出来事を押さえる",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "8c5ef1c2",
+      "type": "test",
+      "subject": "社会",
+      "title": "P141-160を読む",
+      "duration_min": 60,
+      "note": "最近の歴史についても理解を深める",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "41868895",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワークP.1-5を解く",
+      "duration_min": 30,
+      "note": "問題を解くことで理解を確認する",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "a096e2b7",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワークP.6-10を解く",
+      "duration_min": 30,
+      "note": "さらなる問題演習で自信をつける",
+      "due_date": null,
+      "done": false
+    }
+  ]
 }
