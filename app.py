@@ -1449,8 +1449,9 @@ else:
                 <div class='wb-fc-meta'>{" ／ ".join(meta_parts)}</div>
                 <div class='wb-fc-lesson'>{tp_current.get("lesson_title","")}</div>
             </div>
+            <div class='wb-fc-divider'></div>
             <div style='font-size:18px; font-weight:700; color:#1c1c1e;
-                        text-align:center; padding:16px 8px 8px; line-height:1.6;'>
+                        text-align:center; padding:8px 8px 16px; line-height:1.6;'>
                 {quiz["question"]}
             </div>
         </div>
@@ -1477,10 +1478,14 @@ else:
                     f'<div style="{div_style}">{label}</div>',
                     unsafe_allow_html=True
                 )
-            # 解説
-            if quiz.get("explanation"):
+            # 解説を常に表示
+            expl_text = quiz.get("explanation","")
+            if expl_text:
                 st.markdown(
-                    f'<div style="background:#FFF8E1; border-left:3px solid #FFCC00;                     padding:12px 16px; border-radius:8px; margin-top:8px;                     font-size:15px; line-height:1.7;">                    💡 {quiz["explanation"]}</div>',
+                    f'<div style="background:#FFF8E1; border-left:3px solid #FFCC00; '
+                    f'padding:12px 16px; border-radius:8px; margin-top:12px; '
+                    f'font-size:15px; line-height:1.7;">'
+                    f'💡 {expl_text}</div>',
                     unsafe_allow_html=True
                 )
         else:
@@ -1499,7 +1504,7 @@ else:
                             alm.append_log(skey, tp_current, result_val)
                         except Exception:
                             pass
-                    st.rerun()
+                    st.rerun()  # 正誤・解説を表示するためにrerun
 
     else:
         # AI生成失敗時はフラッシュカード表示にフォールバック
@@ -1540,11 +1545,18 @@ else:
             st.rerun()
     with nav_c[4]:
         if tp_pos < tp_total - 1:
+            # 回答済みなら「NEXT」、未回答なら「スキップ」
             btn_label = "NEXT ▶" if tp_result else "スキップ ▶"
+            btn_type  = "primary" if tp_result else "secondary"
             if st.button(btn_label, key=f"tp_next_{tp_pos}",
-                         use_container_width=True):
+                         use_container_width=True, type=btn_type):
                 st.session_state[tp_idx_key] = tp_pos + 1
                 st.rerun()
+        else:
+            # 最後の問題で回答済み
+            if tp_result:
+                st.button("完了 ✓", key=f"tp_next_{tp_pos}",
+                          use_container_width=True, disabled=True)
 
     # 独立解説表示（AI生成失敗時）
     tp_explain_key = f"tp_explain_{tp_pos}"
