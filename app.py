@@ -880,9 +880,26 @@ _GENRE_SHEET_MAP = {
     "general":   "一般",
 }
 
+# UI表示名マッピング（シート名と別に管理）
+_GENRE_DISPLAY_MAP = {
+    "history":   "歴史",
+    "geography": "地理",
+    "civics":    "公民",
+    "reading":   "読解",
+    "classic":   "古文・漢文",
+    "kanji":     "漢字・語彙",
+    "grammar":   "文法",
+    "field1":    "サイエンス1",
+    "field2":    "サイエンス2",
+    "general":   "",
+}
+
 
 def _genre_jp(genre_key):
     return _GENRE_SHEET_MAP.get(genre_key, genre_key)
+
+def _genre_display(genre_key):
+    return _GENRE_DISPLAY_MAP.get(genre_key, _GENRE_SHEET_MAP.get(genre_key, genre_key))
 
 
 def load_textbook(subject_key, genre_key):
@@ -938,11 +955,12 @@ def load_textbook(subject_key, genre_key):
 
     # JSON互換構造を返す
     genre_jp = _genre_jp(genre_key)
+    genre_display = _genre_display(genre_key)
     return {
         "textbook": {
             "subject": subject_key,
             "genre": genre_key,
-            "name": f"{genre_jp}教科書",
+            "name": f"{genre_display}教科書",
             "cover_image": f"textbook_covers/{subject_key}_{genre_key}.jpg",
             "chapters": list(chapters_dict.values()),
         }
