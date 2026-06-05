@@ -1308,7 +1308,7 @@ def _get_batsu_questions():
             except Exception:
                 pass
 
-    # ② session_stateの未保存batsuも追加
+    # ② session_stateのbatsuも常に追加（ALM未使用時はこれがメイン）
     for key, val in st.session_state.items():
         if val != "batsu" or not key.startswith("wb_result_"):
             continue
@@ -1348,8 +1348,18 @@ def _get_batsu_questions():
 
 # ===== 今日の問題：AI 4択出題 =====
 # 問題リストはセッション内で固定（シャッフル結果を保持）
-if "tp_questions_list" not in st.session_state:
+# ただしsession_stateにbatsuが増えた場合は再取得
+_current_batsu_count = sum(
+    1 for k, v in st.session_state.items()
+    if k.startswith("wb_result_") and v == "batsu"
+)
+_cached_count = st.session_state.get("tp_batsu_count_at_cache", 0)
+
+if ("tp_questions_list" not in st.session_state
+        or _current_batsu_count != _cached_count):
     st.session_state["tp_questions_list"] = _get_batsu_questions()
+    st.session_state["tp_batsu_count_at_cache"] = _current_batsu_count
+
 tp_questions = st.session_state["tp_questions_list"]
 tp_total = len(tp_questions)
 
