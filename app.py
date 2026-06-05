@@ -1857,9 +1857,8 @@ for p in TODAY_TIMETABLE:
                 f"{c.get('chapter_number','').strip()} {c.get('title','').strip()}".strip()
                 for c in chapters
             ]
-            sel_ch = st.selectbox("章", chapter_labels, index=None,
-                                  placeholder="章を選択...",
-                                  key=f"today_ch_{pn}", label_visibility="collapsed")
+            sel_ch = st.radio("章", chapter_labels, index=None,
+                              key=f"today_ch_{pn}", label_visibility="collapsed")
             if sel_ch:
                 ch_idx = chapter_labels.index(sel_ch)
                 chap = chapters[ch_idx]
@@ -1868,9 +1867,8 @@ for p in TODAY_TIMETABLE:
                     for sub in sec.get("subsections", []):
                         sub_opts.append(f"{sub['title']} (p.{sub['page']})")
                 if sub_opts:
-                    st.multiselect("項目", sub_opts,
-                                   placeholder="やった項目を選択（複数可）",
-                                   key=f"today_subs_{pn}", label_visibility="collapsed")
+                    st.pills("項目", sub_opts, selection_mode="multi",
+                             key=f"today_subs_{pn}", label_visibility="collapsed")
         else:
             st.text_input("範囲", placeholder="今日やった範囲（例: P30-45）",
                           key=f"today_range_{pn}", label_visibility="collapsed")
