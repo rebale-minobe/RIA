@@ -517,10 +517,10 @@ with tab4:
                     unsafe_allow_html=True
                 )
             with c2:
-                # 今日から14日分の日付を選択肢に
+                # 6/3〜6/17の全期間から選べる（過去日にも配置可）
                 date_options = {}
-                for i in range(14):
-                    d = today + timedelta(days=i)
+                for i in range(_STUDY_DAYS):
+                    d = _STUDY_START + timedelta(days=i)
                     wd = JP_WD[d.weekday()]
                     label = f"{d.month}/{d.day}（{wd}）"
                     date_options[label] = d.strftime("%Y-%m-%d")
@@ -559,10 +559,10 @@ with tab4:
             is_done = t.get("done", False)
             opacity = "0.5" if is_done else "1"
             status = "　✅ 完了" if is_done else ""
-            # 移動先（同じ行のプルダウンで即移動）
+            # 移動先（同じ行のプルダウンで即移動／6/3〜6/17の全期間）
             _opts = {}
-            for _i in range(14):
-                _dd = today + timedelta(days=_i)
+            for _i in range(_STUDY_DAYS):
+                _dd = _STUDY_START + timedelta(days=_i)
                 _opts[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
             _choices = ["📅 別の日へ"] + list(_opts.keys())
             c1, c2, c3, c4 = st.columns([3.4, 2, 0.8, 0.8])
