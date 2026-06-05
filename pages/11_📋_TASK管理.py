@@ -407,7 +407,7 @@ with tab1:
                     for t in _groups[_cat]:
                         date_str = t.get("due_date","未割当")
                         done_mark = "✅" if t.get("done") else "⬜"
-                        _e1, _e2 = st.columns([3.4, 2])
+                        _e1, _e2, _e3 = st.columns([3.2, 1.8, 0.6])
                         with _e1:
                             st.markdown(
                                 f'<div class="task-card" style="border-left-color:{col["primary"]};">'
@@ -423,6 +423,12 @@ with tab1:
                                          on_change=_move_task_cb,
                                          args=(t["id"], _eopts, f"mv1_{t['id']}"),
                                          label_visibility="collapsed")
+                        with _e3:
+                            if st.button("🗑️", key=f"del1_{t['id']}", use_container_width=True):
+                                tasks_data["tasks"] = [x for x in tasks_data["tasks"]
+                                                       if x["id"] != t["id"]]
+                                save_tasks(tasks_data)
+                                st.rerun()
                 if st.button("🗑️ リセットして再生成", key=f"reset_{subj}"):
                     tasks_data["tasks"] = [t for t in tasks_data["tasks"]
                                           if not (t.get("type")=="test" and t.get("subject")==subj)]

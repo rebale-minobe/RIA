@@ -1324,7 +1324,7 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
 st.caption("💡 タスクや時間をタップして編集できます")
 
 # ===== 今日の問題（バツがついた問題をランダム出題） =====
-st.markdown('<div class="section-title">📌 今日の問題</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📌 再TEST</div>', unsafe_allow_html=True)
 
 # モード選択
 _mode_col1, _mode_col2, _mode_col3 = st.columns([1,1,2])
@@ -1332,6 +1332,9 @@ with _mode_col1:
     _mode_batsu  = st.checkbox("❌ 不正解問題", value=True,  key="tp_mode_batsu")
 with _mode_col2:
     _mode_random = st.checkbox("🎲 ランダム",   value=False, key="tp_mode_random")
+with _mode_col3:
+    st.radio("教科", ["社会", "理科"], horizontal=True, index=0,
+             key="tp_quiz_subj", label_visibility="collapsed")
 # 両方オフの場合はbatsuをデフォルトに
 if not _mode_batsu and not _mode_random:
     _mode_batsu = True
@@ -1465,10 +1468,13 @@ if _need_refresh:
     st.session_state["tp_batsu_count_at_cache"] = _current_batsu_count
     # モードが変わったら進捗もリセット
     if _tp_mode != _prev_mode:
-        for _k in [_k for _k in list(st.session_state.keys()) if _k.startswith("tp_") and _k not in ("tp_mode_batsu","tp_mode_random","tp_prev_mode","tp_questions_list","tp_batsu_count_at_cache")]:
+        for _k in [_k for _k in list(st.session_state.keys()) if _k.startswith("tp_") and _k not in ("tp_mode_batsu","tp_mode_random","tp_prev_mode","tp_questions_list","tp_batsu_count_at_cache","tp_quiz_subj")]:
             del st.session_state[_k]
 
 tp_questions = st.session_state["tp_questions_list"]
+# 教科で絞り込み（再TESTの教科ラジオ・デフォルト社会）
+_qsubj = st.session_state.get("tp_quiz_subj", "社会")
+tp_questions = [q for q in tp_questions if q.get("subject_name") == _qsubj]
 tp_total = len(tp_questions)
 
 if tp_total == 0:
@@ -1478,13 +1484,6 @@ if tp_total == 0:
         st.success("🎉 全問3回連続正解達成！完璧です！")
         st.caption("ランダム出題モードで復習することもできます。")
 else:
-    _mode_label = "🎲 ランダム出題" if _tp_mode == "random" else "❌ 不正解問題（3回連続正解で卒業）"
-    st.markdown(
-        f"📚 **{tp_total} 問**　"
-        f"<span style='color:#8E8E93; font-size:13px;'>{_mode_label} ／ AI が4択問題を生成</span>",
-        unsafe_allow_html=True
-    )
-
     # 現在位置
     tp_idx_key = "tp_idx"
     if tp_idx_key not in st.session_state:
