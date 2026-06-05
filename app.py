@@ -998,11 +998,15 @@ def _build_study_schedule(year: int, month: int) -> dict:
 
 
 def render_calendar(schedule, today):
+    import datetime as _dt
     today_d = today.date()
+    # 今日を中心に前3日・後3日（計7日）
+    dates_to_show = [today_d + _dt.timedelta(days=i) for i in range(-3, 4)]
+
     days_html = []
-    for date_str in sorted(schedule.keys()):
-        items = schedule[date_str]
-        d = datetime.strptime(date_str, "%Y-%m-%d").date()
+    for d in dates_to_show:
+        date_str = d.strftime("%Y-%m-%d")
+        items = schedule.get(date_str, [])
         is_today = d == today_d
         is_past = d < today_d
         is_test = any(i.get("type") == "test" for i in items)
@@ -1015,7 +1019,7 @@ def render_calendar(schedule, today):
         wd = JP_WD[d.weekday()]
         if d.weekday() == 5: wd_color = "#007AFF"
         elif d.weekday() == 6: wd_color = "#FF3B30"
-        else: wd_color = "#8E8E93"
+        else: wd_color = "#1c1c1e"
 
         chips_html = ""
         for it in items:
@@ -1023,8 +1027,12 @@ def render_calendar(schedule, today):
             ctype = it.get("type", "study")
             if ctype == "test":
                 chips_html += '<div class="chip chip-test">TEST</div>'
+            elif ctype == "test_subject":
+                chips_html += f'<div class="chip chip-test" style="font-size:10px;">{subj}</div>'
             elif ctype == "submit":
                 chips_html += f'<div class="chip chip-submit">{subj.replace("📝 ", "")}</div>'
+            elif ctype == "holiday":
+                chips_html += f'<div class="chip" style="background:#FFE5E2;color:#FF3B30;border:1px solid #FF3B30;">{subj}</div>'
             else:
                 col = subject_color(subj)
                 chips_html += (
@@ -1038,12 +1046,13 @@ def render_calendar(schedule, today):
             f'<div class="{" ".join(classes)}">'
             f'{today_marker}'
             f'<div class="day-num">{d.month}/{d.day}</div>'
-            f'<div class="day-wd" style="color:{wd_color};">({wd})</div>'
+            f'<div class="day-wd" style="color:{wd_color}; font-weight:700;">({wd})</div>'
             f'<div class="chips">{chips_html}</div>'
             f'</div>'
         )
 
     return f'<div class="calendar-scroll">{"".join(days_html)}</div>'
+
 
 
 # ===== データ =====
@@ -1449,7 +1458,8 @@ else:
                 st.rerun()
 
 # ===== 今日の時間割 =====
-st.markdown('<div class="section-title">📅 今日の時間割</div>', unsafe_allow_html=True)
+_today_label = f"{today.month}月{today.day}日（{JP_WD[today.weekday()]}）"
+st.markdown(f'<div class="section-title">📅 今日の時間割 <span style="font-size:16px;font-weight:500;color:#8E8E93;">— {_today_label}</span></div>', unsafe_allow_html=True)
 
 for p in TODAY_TIMETABLE:
     pn = p['period']
@@ -1511,8 +1521,17 @@ if st.button("✅ 全部記録する", use_container_width=True, type="primary",
         st.warning("記録する内容がありません。各教科を開いて範囲を入力してください。")
 
 # ===== 明日の予習 =====
-st.markdown('<div class="section-title">🔮 明日の予習</div>', unsafe_allow_html=True)
-for p in TOMORROW_TIMETABLE:
+import datetime as _dt2
+_next_school = _tomorrow
+# 金曜→月曜、土曜→月曜 にスキップ
+while _next_school.weekday() >= 5:
+    _next_school = _next_school + _dt2.timedelta(days=1)
+# 月曜の場合は「来週月曜」表示
+_tmr_label = f"{_next_school.month}月{_next_school.day}日（{JP_WD[_next_school.weekday()]}）"
+NEXT_SCHOOL_TIMETABLE = _build_timetable(_next_school) or TOMORROW_TIMETABLE_RAW
+NEXT_SCHOOL_TT = [{**p, "next_chapter": "—", "page": ""} for p in NEXT_SCHOOL_TIMETABLE]
+st.markdown(f'<div class="section-title">🔮 明日の予習 <span style="font-size:16px;font-weight:500;color:#8E8E93;">— {_tmr_label}</span></div>', unsafe_allow_html=True)
+for p in NEXT_SCHOOL_TT:
     pn = p['period']
     col = subject_color(p['subject'])
     with st.expander(f"**{pn}**　{col['emoji']} {p['subject']}", expanded=False):
@@ -1954,7 +1973,12 @@ fs  = st.session_state.get("font_size", 17)
 ans = st.session_state.get("ans_size", 40)
 st.markdown(f"""
 <style>
-    .stApp, .stApp p, .stApp li, .stApp span, .stApp div {{
+    /* 基本フォント（重要クラスは除外） */
+    .stApp p, .stApp li {{
+        font-size: {fs}px !important;
+    }}
+    /* Streamlit UI要素 */
+    .stMarkdown, .stCaption, .stText {{
         font-size: {fs}px !important;
     }}
     .wb-fc-q {{
