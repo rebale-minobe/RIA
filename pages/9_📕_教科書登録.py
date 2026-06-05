@@ -50,7 +50,7 @@ SUBJECTS = {
     "math": {
         "name": "数学", "emoji": "📐",
         "genres": {
-            "general": {"name": "数学", "emoji": "📐"},
+            "math2": {"name": "数学2", "emoji": "📐"},
         }
     },
     "science": {
@@ -121,6 +121,7 @@ _GENRE_SHEET_MAP = {
     "kanji": "漢字語彙", "grammar": "文法",
     "field1": "第1分野", "field2": "第2分野",
     "jp2": "国語2",
+    "math2": "数学2",
     "general": "一般",
 }
 

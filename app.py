@@ -825,7 +825,7 @@ SUBJECTS = {
         "jp2": {"name": "国語2", "emoji": "📘"},
     }},
     "math": {"name": "数学", "emoji": "📐", "genres": {
-        "general": {"name": "数学", "emoji": "📐"},
+        "math2": {"name": "数学2", "emoji": "📐"},
     }},
     "science": {"name": "理科", "emoji": "🔬", "genres": {
         "field2": {"name": "サイエンス2", "emoji": "🌱"},
@@ -875,6 +875,7 @@ _GENRE_SHEET_MAP = {
     "field1":    "第1分野",
     "field2":    "第2分野",
     "jp2":       "国語2",
+    "math2":     "数学2",
     "general":   "一般",
 }
 
@@ -890,6 +891,7 @@ _GENRE_DISPLAY_MAP = {
     "field1":    "サイエンス1",
     "field2":    "サイエンス2",
     "jp2":       "国語2",
+    "math2":     "数学2",
     "general":   "",
 }
 
