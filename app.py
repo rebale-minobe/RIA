@@ -113,6 +113,18 @@ st.markdown("""
         margin: 28px 0 12px 0;
         color: #1c1c1e; letter-spacing: -0.01em;
     }
+    .subj-time-row {
+        display: flex; gap: 8px; overflow-x: auto;
+        padding: 4px 2px 10px; -webkit-overflow-scrolling: touch;
+    }
+    .subj-time-card {
+        flex: 1 0 auto; min-width: 76px;
+        background: #fff; border-radius: 14px; padding: 12px 6px 10px;
+        text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .stc-label { font-size: 12px; font-weight: 700; margin-bottom: 6px; white-space: nowrap; }
+    .stc-time { font-size: 22px; font-weight: 800; color: #1c1c1e; line-height: 1; }
+    .stc-unit { font-size: 12px; font-weight: 600; color: #8E8E93; }
 
     .test-card {
         background: linear-gradient(135deg, #FF3B30 0%, #FF2D55 100%);
@@ -1269,6 +1281,33 @@ if st.session_state.get("show_test_detail"):
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+# ===== 教科別 合計勉強時間 =====
+_subj_order = [("国語","国語"),("社会","社会"),("数学","数学"),("理科","理科"),
+               ("英語","英語"),("技術","技術家庭"),("保健","保健体育")]
+_all_for_sum = load_tasks_data().get("tasks", [])
+_subj_min = {}
+for _t in _all_for_sum:
+    _sj = _t.get("subject","")
+    _subj_min[_sj] = _subj_min.get(_sj, 0) + int(_t.get("duration_min", 0) or 0)
+_stc_html = ""
+for _label, _skey in _subj_order:
+    _m = _subj_min.get(_skey, 0)
+    _h, _mm = divmod(_m, 60)
+    if _h and _mm:
+        _tnum, _tunit = f"{_h}", f"h{_mm}m"
+    elif _h:
+        _tnum, _tunit = f"{_h}", "h"
+    else:
+        _tnum, _tunit = f"{_mm}", "m"
+    _c = subject_color(_skey)
+    _stc_html += (
+        f'<div class="subj-time-card" style="border-top:3px solid {_c["primary"]};">'
+        f'<div class="stc-label" style="color:{_c["primary"]};">{_c["emoji"]}{_label}</div>'
+        f'<div class="stc-time">{_tnum}<span class="stc-unit">{_tunit}</span></div>'
+        f'</div>'
+    )
+st.markdown(f'<div class="subj-time-row">{_stc_html}</div>', unsafe_allow_html=True)
 
 # ===== Today's To Do =====
 st.markdown('<div class="section-title">📌 Today\'s To Do</div>', unsafe_allow_html=True)

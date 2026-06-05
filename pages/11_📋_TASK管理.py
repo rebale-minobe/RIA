@@ -429,6 +429,24 @@ with tab1:
                                                        if x["id"] != t["id"]]
                                 save_tasks(tasks_data)
                                 st.rerun()
+                        with st.expander("✏️ 編集"):
+                            _edur_opts = [15, 20, 30, 45, 60, 90, 120]
+                            _edur_idx = _edur_opts.index(t["duration_min"]) if t.get("duration_min") in _edur_opts else 2
+                            _et = st.text_input("タスク名", value=t["title"], key=f"et_{t['id']}")
+                            _ed = st.selectbox("時間", _edur_opts, index=_edur_idx,
+                                               format_func=lambda x: f"{x}分", key=f"ed_{t['id']}")
+                            _en = st.text_area("💡 やり方（任意）", value=t.get("note","") or "",
+                                               key=f"en_{t['id']}", height=80)
+                            if st.button("💾 保存", key=f"esave_{t['id']}", type="primary"):
+                                for task in tasks_data["tasks"]:
+                                    if task["id"] == t["id"]:
+                                        if _et.strip():
+                                            task["title"] = _et.strip()
+                                        task["duration_min"] = _ed
+                                        task["note"] = _en.strip()
+                                save_tasks(tasks_data)
+                                st.success("保存しました！")
+                                st.rerun()
                 if st.button("🗑️ リセットして再生成", key=f"reset_{subj}"):
                     tasks_data["tasks"] = [t for t in tasks_data["tasks"]
                                           if not (t.get("type")=="test" and t.get("subject")==subj)]
@@ -454,6 +472,38 @@ with tab1:
                             save_tasks(tasks_data)
                             st.success(f"✅ {len(new_tasks)}件のタスクを生成しました！")
                             st.rerun()
+
+            # ➕ このタスクを手動で追加（教材を見ながら自由に登録）
+            with st.form(f"add_test_{subj}", clear_on_submit=True):
+                st.markdown("**➕ タスクを追加**")
+                _at_title = st.text_input("タスク名",
+                    placeholder="例：教科書 P◯◯ 通読 / ワーク P◯◯", key=f"at_title_{subj}")
+                _afc1, _afc2 = st.columns(2)
+                with _afc1:
+                    _at_dur = st.selectbox("時間", [15,20,30,45,60,90], index=2,
+                        format_func=lambda x: f"{x}分", key=f"at_dur_{subj}")
+                with _afc2:
+                    _at_dates = {"未割当（あとで）": None}
+                    for _i in range(_STUDY_DAYS):
+                        _dd = _STUDY_START + timedelta(days=_i)
+                        _at_dates[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
+                    _at_date_lab = st.selectbox("日付", list(_at_dates.keys()), key=f"at_date_{subj}")
+                if st.form_submit_button("➕ 追加", type="primary"):
+                    if _at_title.strip():
+                        import uuid
+                        tasks_data["tasks"].append({
+                            "id":           str(uuid.uuid4())[:8],
+                            "type":         "test",
+                            "subject":      subj,
+                            "title":        _at_title.strip(),
+                            "duration_min": _at_dur,
+                            "note":         "",
+                            "due_date":     _at_dates[_at_date_lab],
+                            "done":         False,
+                        })
+                        save_tasks(tasks_data)
+                        st.success("追加しました！")
+                        st.rerun()
 
 # ===== TAB2: 定期TASK =====
 with tab2:
