@@ -467,6 +467,26 @@ st.markdown("""
     div.stButton > button[kind="primary"] { background: #007AFF; border: none; }
     div.stButton > button[kind="primary"]:hover { background: #0066d6; }
 
+    /* 今日の問題：選択肢ボタン（st-key-tp_choice_で識別） */
+    [class*="st-key-tp_choice_"] button {
+        min-height: 52px !important;
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        border-radius: 14px !important;
+        border: 2px solid #E5E5EA !important;
+        background: white !important;
+        color: #1c1c1e !important;
+        text-align: center !important;
+        width: 100% !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+        letter-spacing: 0.01em !important;
+    }
+    [class*="st-key-tp_choice_"] button:hover {
+        border-color: #007AFF !important;
+        background: #F0F7FF !important;
+        transform: translateY(-1px) !important;
+    }
+
     div[role="radiogroup"] { justify-content: flex-start; }
 
     div[data-testid="stSegmentedControl"] { display: flex; justify-content: center; }
@@ -1460,54 +1480,64 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 回答済みの場合
+        selected    = st.session_state.get(f"tp_selected_{tp_pos}", "")
+        correct_ans = quiz.get("answer", "")
+
+        # 選択肢CSS（回答前後で統一）
+        _div_base = (
+            "width:100%; text-align:center; padding:14px 20px; "
+            "border-radius:14px; margin:8px 0; font-size:17px; font-weight:700; "
+            "line-height:1.4; box-sizing:border-box; "
+            "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;"
+        )
+
         if tp_result:
-            selected = st.session_state.get(f"tp_selected_{tp_pos}", "")
-            correct_ans = quiz.get("answer", "")
+            # 回答済み：HTML div で正誤をカラー表示
+            html = ""
             for ch in quiz["choices"]:
-                is_correct = ch == correct_ans
+                is_correct  = ch == correct_ans
                 is_selected = ch == selected
                 if is_correct:
-                    btn_style = "background:#E5F8EE; border:2px solid #34C759; color:#1a8a3c;"
-                    label = f"⭕ {ch}"
+                    s = _div_base + "background:#E5F8EE; border:2px solid #34C759; color:#1a8a3c;"
+                    lbl = "⭕ " + ch
                 elif is_selected:
-                    btn_style = "background:#FFE5E2; border:2px solid #FF3B30; color:#FF3B30;"
-                    label = f"❌ {ch}"
+                    s = _div_base + "background:#FFE5E2; border:2px solid #FF3B30; color:#c0392b;"
+                    lbl = "❌ " + ch
                 else:
-                    btn_style = "background:#F2F2F7; border:1px solid #ddd; color:#1c1c1e;"
-                    label = ch
-                div_style = f"padding:12px 16px; border-radius:12px; margin:6px 0; {btn_style} font-size:16px; font-weight:600;"
-                st.markdown(
-                    f'<div style="{div_style}">{label}</div>',
-                    unsafe_allow_html=True
+                    s = _div_base + "background:#F9F9F9; border:1px solid #E5E5EA; color:#8E8E93;"
+                    lbl = ch
+                html += "<div style=\"" + s + "\">" + lbl + "</div>"
+            st.markdown(html, unsafe_allow_html=True)
+            # 解説
+            expl = quiz.get("explanation", "")
+            if expl:
+                expl_s = (
+                    "background:#FFF8E1; border-left:4px solid #FFCC00; "
+                    "padding:14px 16px; border-radius:10px; margin-top:12px; "
+                    "font-size:15px; line-height:1.8; font-weight:500; "
+                    "font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
                 )
-            # 解説を常に表示
-            expl_text = quiz.get("explanation","")
-            if expl_text:
                 st.markdown(
-                    f'<div style="background:#FFF8E1; border-left:3px solid #FFCC00; '
-                    f'padding:12px 16px; border-radius:8px; margin-top:12px; '
-                    f'font-size:15px; line-height:1.7;">'
-                    f'💡 {expl_text}</div>',
+                    "<div style=\"" + expl_s + "\">💡 " + expl + "</div>",
                     unsafe_allow_html=True
                 )
         else:
-            # 未回答：選択肢ボタン
+            # 未回答：st.button（CSSで見た目を統一）
             for i, ch in enumerate(quiz["choices"]):
                 if st.button(ch, key=f"tp_choice_{tp_pos}_{i}",
                              use_container_width=True):
                     st.session_state[f"tp_selected_{tp_pos}"] = ch
-                    correct = ch == quiz.get("answer","")
-                    result_val = "maru" if correct else "batsu"
+                    result_val = "maru" if ch == correct_ans else "batsu"
                     st.session_state[f"tp_result_{tp_pos}"] = result_val
-                    # CSV記録
                     if ALM_AVAILABLE:
                         try:
-                            skey = tp_current.get("subject_key", "social")
-                            alm.append_log(skey, tp_current, result_val)
+                            alm.append_log(
+                                tp_current.get("subject_key", "social"),
+                                tp_current, result_val
+                            )
                         except Exception:
                             pass
-                    st.rerun()  # 正誤・解説を表示するためにrerun
+                    st.rerun()
 
     else:
         # AI生成失敗時はフラッシュカード表示にフォールバック
