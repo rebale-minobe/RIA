@@ -145,18 +145,62 @@ def append_logs_batch(subject_key: str, entries: list[dict]) -> bool:
 
 def get_batsu_questions(subject_key: str) -> list[dict]:
     """
-    最新結果がbatsuの問題一覧を返す
-    同じ問題（genre+page+q）の最後のログで判定
+    3回連続正解していない問題を返す
+    同じ問題の末尾3件が全部maruなら卒業
     """
     rows = load_csv(subject_key)
     if not rows:
         return []
-    # 後勝ち（追記型なので末尾が最新）
+    # 問題ごとに全履歴を収集
+    history: dict[tuple, list[str]] = {}
+    for row in rows:
+        key = (row.get("genre_key",""), str(row.get("page_num","")), row.get("q",""))
+        if key not in history:
+            history[key] = []
+        history[key].append(row.get("result", "batsu"))
+
+    result_rows = {}
+    for row in rows:
+        key = (row.get("genre_key",""), str(row.get("page_num","")), row.get("q",""))
+        result_rows[key] = row  # 最新行を保持
+
+    graduated = set()
+    for key, results in history.items():
+        # 末尾3件が全部maru → 卒業
+        if len(results) >= 3 and all(r == "maru" for r in results[-3:]):
+            graduated.add(key)
+        # 1件もbatsuがない（最初からmaruのみ）も卒業
+        elif all(r == "maru" for r in results):
+            graduated.add(key)
+
+    return [v for k, v in result_rows.items() if k not in graduated]
+
+
+def get_all_questions(subject_key: str) -> list[dict]:
+    """全問題を返す（ランダム出題用）"""
+    rows = load_csv(subject_key)
+    if not rows:
+        return []
     latest = {}
     for row in rows:
         key = (row.get("genre_key",""), str(row.get("page_num","")), row.get("q",""))
         latest[key] = row
-    return [v for v in latest.values() if v.get("result") == "batsu"]
+    return list(latest.values())
+
+
+def get_consecutive_correct(subject_key: str, genre_key: str, page_num: str, q: str) -> int:
+    """末尾から連続正解数を返す"""
+    rows = load_csv(subject_key)
+    key = (genre_key, str(page_num), q)
+    results = [r.get("result","") for r in rows
+               if (r.get("genre_key",""), str(r.get("page_num","")), r.get("q","")) == key]
+    count = 0
+    for r in reversed(results):
+        if r == "maru":
+            count += 1
+        else:
+            break
+    return count
 
 
 def get_all_batsu_questions(subject_keys: list[str]) -> list[dict]:

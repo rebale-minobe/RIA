@@ -1267,7 +1267,17 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
 st.caption("💡 タスクや時間をタップして編集できます")
 
 # ===== 今日の問題（バツがついた問題をランダム出題） =====
-st.markdown('<div class="section-title">📌 今日の問題 <span style="font-size:14px; color:#8E8E93; font-weight:500;">— 反復学習</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📌 今日の問題</div>', unsafe_allow_html=True)
+
+# モード選択
+_mode_col1, _mode_col2, _mode_col3 = st.columns([1,1,2])
+with _mode_col1:
+    _mode_batsu  = st.checkbox("❌ 不正解問題", value=True,  key="tp_mode_batsu")
+with _mode_col2:
+    _mode_random = st.checkbox("🎲 ランダム",   value=False, key="tp_mode_random")
+# 両方オフの場合はbatsuをデフォルトに
+if not _mode_batsu and not _mode_random:
+    _mode_batsu = True
 
 def _get_batsu_questions():
     """
@@ -1347,29 +1357,74 @@ def _get_batsu_questions():
 
 
 # ===== 今日の問題：AI 4択出題 =====
-# 問題リストはセッション内で固定（シャッフル結果を保持）
-# ただしsession_stateにbatsuが増えた場合は再取得
+# モードに応じて問題リストを取得
+_tp_mode = "random" if _mode_random else "batsu"
+_prev_mode = st.session_state.get("tp_prev_mode", "")
 _current_batsu_count = sum(
     1 for k, v in st.session_state.items()
     if k.startswith("wb_result_") and v == "batsu"
 )
 _cached_count = st.session_state.get("tp_batsu_count_at_cache", 0)
 
-if ("tp_questions_list" not in st.session_state
-        or _current_batsu_count != _cached_count):
-    st.session_state["tp_questions_list"] = _get_batsu_questions()
+_need_refresh = (
+    "tp_questions_list" not in st.session_state
+    or _tp_mode != _prev_mode
+    or _current_batsu_count != _cached_count
+)
+
+if _need_refresh:
+    if _tp_mode == "random" and ALM_AVAILABLE:
+        # ランダム：全問題からシャッフル
+        _all = []
+        import random as _rnd
+        for _sk in SUBJECTS:
+            try:
+                _rows = alm.get_all_questions(_sk)
+                for _row in _rows:
+                    _all.append({
+                        "page_number":  int(_row.get("page_num", 0) or 0),
+                        "workbook_ref": _row.get("workbook_ref", ""),
+                        "lesson_title": _row.get("lesson_title", ""),
+                        "section_code": _row.get("section_code", ""),
+                        "section_name": _row.get("section_name", ""),
+                        "group_label":  _row.get("group_label", ""),
+                        "q":            _row.get("q", ""),
+                        "a":            _row.get("a", ""),
+                        "note":         _row.get("note") or None,
+                        "context":      None,
+                        "subject_key":  _sk,
+                        "subject_name": SUBJECTS[_sk]["name"],
+                        "genre_key":    _row.get("genre_key", ""),
+                        "genre_name":   SUBJECTS[_sk]["genres"].get(
+                            _row.get("genre_key",""), {}).get("name", ""),
+                    })
+            except Exception:
+                pass
+        _rnd.shuffle(_all)
+        st.session_state["tp_questions_list"] = _all
+    else:
+        st.session_state["tp_questions_list"] = _get_batsu_questions()
+    st.session_state["tp_prev_mode"] = _tp_mode
     st.session_state["tp_batsu_count_at_cache"] = _current_batsu_count
+    # モードが変わったら進捗もリセット
+    if _tp_mode != _prev_mode:
+        for _k in [_k for _k in list(st.session_state.keys()) if _k.startswith("tp_") and _k not in ("tp_mode_batsu","tp_mode_random","tp_prev_mode","tp_questions_list","tp_batsu_count_at_cache")]:
+            del st.session_state[_k]
 
 tp_questions = st.session_state["tp_questions_list"]
 tp_total = len(tp_questions)
 
 if tp_total == 0:
-    st.success("🎉 バツがついた問題はありません！")
-    st.caption("ワークで ❌ を付けた問題がここにAI問題として出題されます。")
+    if _tp_mode == "random":
+        st.info("📚 ワークで問題を解いて記録を作りましょう！")
+    else:
+        st.success("🎉 全問3回連続正解達成！完璧です！")
+        st.caption("ランダム出題モードで復習することもできます。")
 else:
+    _mode_label = "🎲 ランダム出題" if _tp_mode == "random" else "❌ 不正解問題（3回連続正解で卒業）"
     st.markdown(
-        f"📚 バツがついた問題: **{tp_total} 問**  "
-        f"<span style='color:#8E8E93;'>（AI が4択問題を生成）</span>",
+        f"📚 **{tp_total} 問**　"
+        f"<span style='color:#8E8E93; font-size:13px;'>{_mode_label} ／ AI が4択問題を生成</span>",
         unsafe_allow_html=True
     )
 
