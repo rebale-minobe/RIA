@@ -15,12 +15,18 @@ import random
 from datetime import datetime
 from pathlib import Path
 
-# 解答ログ管理（GitHub 永続化）
+# 解答ログ管理（CSV → GitHub 永続化）
 try:
     from modules import answer_log
     ANSWER_LOG_AVAILABLE = True
 except Exception:
     ANSWER_LOG_AVAILABLE = False
+
+try:
+    from modules import answer_log_manager as alm
+    ALM_AVAILABLE = True
+except Exception:
+    ALM_AVAILABLE = False
 
 st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_sidebar_state="collapsed")
 
@@ -1244,45 +1250,75 @@ st.caption("💡 タスクや時間をタップして編集できます")
 st.markdown('<div class="section-title">📌 今日の問題 <span style="font-size:14px; color:#8E8E93; font-weight:500;">— 反復学習</span></div>', unsafe_allow_html=True)
 
 def _get_batsu_questions():
-    """session_stateからバツ(batsu)がついた問題を全件収集してランダムに返す"""
+    """
+    教科別CSVから最新結果がbatsuの問題を全教科分取得
+    リロード後も永続 + session_stateの未保存分も合わせる
+    """
     batsu_list = []
-    # ワークのバツ問題を収集
-    for key, val in st.session_state.items():
-        if val == "batsu" and key.startswith("wb_result_"):
-            # key形式: wb_result_{page_num}_{original_idx}
-            parts = key.split("_")
-            if len(parts) >= 4:
-                try:
-                    page_num = int(parts[2])
-                    orig_idx = int(parts[3])
-                    # wb_dataから問題を取得（social/historyを対象）
-                    for skey in SUBJECTS:
-                        for gkey in SUBJECTS[skey]["genres"]:
-                            wb = load_workbook_answers(skey, gkey)
-                            if not wb:
-                                continue
-                            for page in wb.get("pages", []):
-                                if page["page_number"] == page_num:
-                                    flat = flatten_workbook_questions(page)
-                                    if orig_idx < len(flat):
-                                        q = flat[orig_idx].copy()
-                                        q["subject_key"] = skey
-                                        q["subject_name"] = SUBJECTS[skey]["name"]
-                                        q["genre_key"] = gkey
-                                        q["genre_name"] = SUBJECTS[skey]["genres"][gkey]["name"]
-                                        q["_batsu_key"] = key
-                                        batsu_list.append(q)
-                except Exception:
-                    pass
+    seen_keys = set()
 
-    # answer_logからも取得（利用可能な場合）
-    if ANSWER_LOG_AVAILABLE and not batsu_list:
+    # ① 教科別CSVから取得（永続データ）
+    if ALM_AVAILABLE:
         try:
-            logs = answer_log.get_unsolved_questions()
-            for log in logs:
-                q = answer_log.log_to_question(log)
-                if q:
-                    batsu_list.append(q)
+            for skey in SUBJECTS:
+                sname = SUBJECTS[skey]["name"]
+                csv_batsu = alm.get_batsu_questions(skey)
+                for row in csv_batsu:
+                    ukey = (skey, row.get("genre_key",""),
+                            str(row.get("page_num","")), row.get("q",""))
+                    if ukey in seen_keys:
+                        continue
+                    seen_keys.add(ukey)
+                    batsu_list.append({
+                        "page_number":  int(row.get("page_num", 0) or 0),
+                        "workbook_ref": row.get("workbook_ref", ""),
+                        "lesson_title": row.get("lesson_title", ""),
+                        "section_code": row.get("section_code", ""),
+                        "section_name": row.get("section_name", ""),
+                        "group_label":  row.get("group_label", ""),
+                        "q":            row.get("q", ""),
+                        "a":            row.get("a", ""),
+                        "note":         row.get("note", "") or None,
+                        "context":      None,
+                        "subject_key":  skey,
+                        "subject_name": sname,
+                        "genre_key":    row.get("genre_key", ""),
+                        "genre_name":   row.get("genre_name", ""),
+                    })
+        except Exception:
+            pass
+
+    # ② session_stateの未保存batsuも追加（即時反映）
+    for key, val in st.session_state.items():
+        if val != "batsu" or not key.startswith("wb_result_"):
+            continue
+        parts = key.split("_")
+        if len(parts) < 4:
+            continue
+        try:
+            page_num = int(parts[2])
+            orig_idx = int(parts[3])
+            for skey in SUBJECTS:
+                for gkey in SUBJECTS[skey]["genres"]:
+                    wb = load_workbook_answers(skey, gkey)
+                    if not wb:
+                        continue
+                    for page in wb.get("pages", []):
+                        if page["page_number"] != page_num:
+                            continue
+                        flat = flatten_workbook_questions(page)
+                        if orig_idx >= len(flat):
+                            continue
+                        q = flat[orig_idx].copy()
+                        ukey = (skey, gkey, str(page_num), q.get("q",""))
+                        if ukey in seen_keys:
+                            continue
+                        seen_keys.add(ukey)
+                        q["subject_key"]  = skey
+                        q["subject_name"] = SUBJECTS[skey]["name"]
+                        q["genre_key"]    = gkey
+                        q["genre_name"]   = SUBJECTS[skey]["genres"][gkey]["name"]
+                        batsu_list.append(q)
         except Exception:
             pass
 
@@ -1886,20 +1922,24 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                             else:
                                 # トグルON → batsu記録
                                 st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
-                                if ANSWER_LOG_AVAILABLE:
-                                    if "wb_pending_logs" not in st.session_state:
-                                        st.session_state["wb_pending_logs"] = []
-                                    try:
-                                        entry = answer_log.question_to_log_entry(
-                                            current, skey, sinfo['name'],
-                                            gkey, ginfo['name'], "batsu"
-                                        )
-                                        st.session_state["wb_pending_logs"].append(entry)
-                                        if len(st.session_state["wb_pending_logs"]) >= 5:
-                                            answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
-                                            st.session_state["wb_pending_logs"] = []
-                                    except Exception:
-                                        pass
+                                # CSV永続化（バッチ）
+                                if ALM_AVAILABLE:
+                                    q_data = current.copy()
+                                    q_data["subject_key"]  = skey
+                                    q_data["subject_name"] = sinfo["name"]
+                                    q_data["genre_key"]    = gkey
+                                    q_data["genre_name"]   = ginfo["name"]
+                                    if "alm_pending" not in st.session_state:
+                                        st.session_state["alm_pending"] = {}
+                                    if skey not in st.session_state["alm_pending"]:
+                                        st.session_state["alm_pending"][skey] = []
+                                    st.session_state["alm_pending"][skey].append(
+                                        alm.make_entry(q_data, "batsu")
+                                    )
+                                    # 5件溜まったら一括push
+                                    if len(st.session_state["alm_pending"][skey]) >= 5:
+                                        alm.append_batch(skey, st.session_state["alm_pending"][skey])
+                                        st.session_state["alm_pending"][skey] = []
                             st.rerun()
 
                     # 💡 解説
@@ -1922,6 +1962,12 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                         else:
                             st.button("最後", key=f"next_{page_num}_{original_idx}",
                                       use_container_width=True, disabled=True)
+
+                # ページ完了時にpendingをflush
+                if ALM_AVAILABLE and st.session_state.get("alm_pending", {}).get(skey):
+                    if cur_pos == n_active - 1:
+                        alm.append_batch(skey, st.session_state["alm_pending"][skey])
+                        st.session_state["alm_pending"][skey] = []
 
                 # 解説表示
                 explain_key = f"wb_explain_{page_num}_{original_idx}"
