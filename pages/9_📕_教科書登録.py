@@ -62,7 +62,7 @@ SUBJECTS = {
     "english": {
         "name": "英語", "emoji": "🌐",
         "genres": {
-            "general": {"name": "英語", "emoji": "🌐"},
+            "eng2": {"name": "英語2", "emoji": "🌐"},
         }
     },
 }
