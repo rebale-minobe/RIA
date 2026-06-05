@@ -135,19 +135,28 @@ st.markdown("""
 
     /* カレンダー */
     .calendar-scroll {
-        display: flex; gap: 8px;
-        overflow-x: auto; padding: 20px 4px 12px;
+        display: flex; gap: 6px;
+        overflow-x: auto; padding: 20px 0 12px;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
+        width: 100%;
     }
     .calendar-scroll::-webkit-scrollbar { height: 6px; }
     .calendar-scroll::-webkit-scrollbar-thumb { background: #d1d1d6; border-radius: 3px; }
+    /* 最初の7枚：画面幅を均等分割 */
     .day-card {
-        flex-shrink: 0; width: 86px; min-height: 128px;
+        flex: 1 0 calc((100% - 6px * 6) / 7);
+        min-width: 80px;
+        min-height: 140px;
         background: white; border-radius: 12px; padding: 10px 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         border: 1px solid rgba(0,0,0,0.05);
         scroll-snap-align: start; position: relative;
+    }
+    /* 8枚目以降は固定幅でスクロール */
+    .day-card.extra {
+        flex: 0 0 120px;
+        min-width: 120px;
     }
     .day-card.today {
         border-color: #007AFF; border-width: 2px;
@@ -1000,27 +1009,31 @@ def _build_study_schedule(year: int, month: int) -> dict:
 def render_calendar(schedule, today):
     import datetime as _dt
     today_d = today.date()
-    # 今日を中心に前3日・後3日（計7日）
-    dates_to_show = [today_d + _dt.timedelta(days=i) for i in range(-3, 4)]
-
+    core_dates = [today_d + _dt.timedelta(days=i) for i in range(-3, 4)]
+    all_sched_dates = sorted([
+        _dt.datetime.strptime(ds, "%Y-%m-%d").date()
+        for ds in schedule.keys()
+        if _dt.datetime.strptime(ds, "%Y-%m-%d").date() not in core_dates
+        and _dt.datetime.strptime(ds, "%Y-%m-%d").date() > core_dates[-1]
+    ])
+    all_dates = core_dates + all_sched_dates
     days_html = []
-    for d in dates_to_show:
+    for idx, d in enumerate(all_dates):
         date_str = d.strftime("%Y-%m-%d")
         items = schedule.get(date_str, [])
         is_today = d == today_d
         is_past = d < today_d
         is_test = any(i.get("type") == "test" for i in items)
-
+        is_extra = idx >= 7
         classes = ["day-card"]
         if is_today: classes.append("today")
         if is_test: classes.append("test-day")
         if is_past and not is_today: classes.append("past")
-
+        if is_extra: classes.append("extra")
         wd = JP_WD[d.weekday()]
         if d.weekday() == 5: wd_color = "#007AFF"
         elif d.weekday() == 6: wd_color = "#FF3B30"
         else: wd_color = "#1c1c1e"
-
         chips_html = ""
         for it in items:
             subj = it["subj"]
@@ -1036,55 +1049,22 @@ def render_calendar(schedule, today):
             else:
                 col = subject_color(subj)
                 chips_html += (
-                    f'<div class="chip" style="'
-                    f'background:{col["light"]}; color:{col["primary"]}; '
+                    f'<div class="chip" style="background:{col["light"]}; color:{col["primary"]}; '
                     f'border:1px solid {col["primary"]};">{subj}</div>'
                 )
-
-        today_marker = '<div class="today-badge">今日</div>' if is_today else ''
+        today_marker = '<div class="today-badge">今日</div>' if is_today else ""
+        class_str = " ".join(classes)
         days_html.append(
-            f'<div class="{" ".join(classes)}">'
+            f'<div class="{class_str}">'
             f'{today_marker}'
             f'<div class="day-num">{d.month}/{d.day}</div>'
             f'<div class="day-wd" style="color:{wd_color}; font-weight:700;">({wd})</div>'
             f'<div class="chips">{chips_html}</div>'
             f'</div>'
         )
-
     return f'<div class="calendar-scroll">{"".join(days_html)}</div>'
 
 
-
-# ===== データ =====
-NEXT_TEST = {
-    "name": "1学期 期末テスト", "start_date": "2026-06-18",
-    "subjects": [
-        {"subject": "技術家庭", "date": "6/18(木)", "time": "9:00", "range": "教科書 P30-55", "study_hours": 2},
-        {"subject": "国語", "date": "6/18(木)", "time": "9:45", "range": "漢字 + 文法 + 読解「故郷」 / 📝ワーク提出", "study_hours": 5},
-        {"subject": "社会", "date": "6/18(木)", "time": "10:45", "range": "歴史 P105-160", "study_hours": 8},
-        {"subject": "保健体育", "date": "6/18(木)", "time": "11:45", "range": "教科書 P20-40", "study_hours": 2},
-        {"subject": "数学", "date": "6/19(金)", "time": "9:00", "range": "1年範囲 + 文章題 + 連立方程式", "study_hours": 12},
-        {"subject": "英語", "date": "6/19(金)", "time": "10:00", "range": "Unit 1-3 + 英作文", "study_hours": 3},
-        {"subject": "理科", "date": "6/19(金)", "time": "10:55", "range": "化学変化 + 生物", "study_hours": 4},
-    ]
-}
-
-today = datetime.now()
-
-TODO_TODAY = [
-    {"subject_name": "社会",  "task": "歴史 P105-130 教科書通読", "duration": "60分", "done": False},
-    {"subject_name": "数学",  "task": "1年範囲 P225-248 復習",     "duration": "30分", "done": False},
-    {"subject_name": "国語",  "task": "漢字テスト範囲 10個",       "duration": "20分", "done": True},
-]
-
-STUDY_SCHEDULE = _build_study_schedule(today.year, today.month)
-if not STUDY_SCHEDULE:
-    STUDY_SCHEDULE = {
-        "2026-06-18": [{"subj": "TEST", "type": "test"}],
-        "2026-06-19": [{"subj": "TEST", "type": "test"}],
-    }
-
-# 今日・明日の時間割をJSONから動的生成
 def _build_timetable(date_obj):
     periods = get_timetable_for_date(date_obj)
     result = []
