@@ -44,10 +44,7 @@ SUBJECTS = {
     "japanese": {
         "name": "国語", "emoji": "📘",
         "genres": {
-            "reading": {"name": "読解", "emoji": "📖"},
-            "classic": {"name": "古文・漢文", "emoji": "📜"},
-            "kanji": {"name": "漢字・語彙", "emoji": "✍️"},
-            "grammar": {"name": "文法", "emoji": "📝"},
+            "jp2": {"name": "国語2", "emoji": "📘"},
         }
     },
     "math": {

@@ -822,10 +822,7 @@ SUBJECTS = {
         "civics": {"name": "公民", "emoji": "⚖️"},
     }},
     "japanese": {"name": "国語", "emoji": "📘", "genres": {
-        "reading": {"name": "読解", "emoji": "📖"},
-        "classic": {"name": "古文・漢文", "emoji": "📜"},
-        "kanji": {"name": "漢字・語彙", "emoji": "✍️"},
-        "grammar": {"name": "文法", "emoji": "📝"},
+        "jp2": {"name": "国語2", "emoji": "📘"},
     }},
     "math": {"name": "数学", "emoji": "📐", "genres": {
         "general": {"name": "数学", "emoji": "📐"},
@@ -877,6 +874,7 @@ _GENRE_SHEET_MAP = {
     "grammar":   "文法",
     "field1":    "第1分野",
     "field2":    "第2分野",
+    "jp2":       "国語2",
     "general":   "一般",
 }
 
@@ -891,6 +889,7 @@ _GENRE_DISPLAY_MAP = {
     "grammar":   "文法",
     "field1":    "サイエンス1",
     "field2":    "サイエンス2",
+    "jp2":       "国語2",
     "general":   "",
 }
 
