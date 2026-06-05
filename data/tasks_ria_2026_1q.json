@@ -608,7 +608,7 @@
       "duration_min": 30,
       "note": "",
       "due_date": "2026-06-05",
-      "done": false
+      "done": true
     }
   ]
 }
