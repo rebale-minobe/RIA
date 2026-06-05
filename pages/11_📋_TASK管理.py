@@ -88,131 +88,17 @@ def save_task_schedule(data):
     return gh_put_json("data/task_schedule.json", data, "Update task_schedule.json")
 
 # ===== NEXT_TEST（app.pyと同期） =====
-# 勉強時間の正確な計算
-# 平日: 2h / 土日: 5h  / 6/3(水)〜6/17(月)
-_STUDY_START    = datetime(2026, 6, 3)
-_TEST_DATE      = datetime(2026, 6, 18)
-_STUDY_DAYS     = (_TEST_DATE - _STUDY_START).days  # 15日
-_WEEKDAY_HOURS  = 2
-_WEEKEND_HOURS  = 5
-
-# 実際の合計時間を計算
-_TOTAL_HOURS = 0
-_d = _STUDY_START
-while _d < _TEST_DATE:
-    _TOTAL_HOURS += _WEEKEND_HOURS if _d.weekday() >= 5 else _WEEKDAY_HOURS
-    _d += timedelta(days=1)
-# → 平日11日×2h + 土日4日×5h = 42h
-
-# 教科別配分（重要度・範囲量・テスト日ベース）
-_RATIO = {
-    "数学":     0.28,  # 12h - 範囲最多・思考問題あり
-    "社会":     0.22,  # 9h  - 4教材（教科書・資料集・プリント・ワーク）
-    "国語":     0.19,  # 8h  - 聞き取り・漢字・文法・読解の多岐にわたる範囲
-    "英語":     0.12,  # 5h  - Round1-8+英作文
-    "理科":     0.12,  # 5h  - 積み上げプリント+2範囲
-    "技術家庭": 0.05,  # 2h  - 技術・家庭の両分野
-    "保健体育": 0.02,  # 1h  - 用語暗記中心
-}
-
-def _calc_hours(subj):
-    return max(1, round(_TOTAL_HOURS * _RATIO.get(subj, 0.05)))
-
 NEXT_TEST = {
     "name": "1学期 期末テスト",
     "start_date": "2026-06-18",
-    "study_start": "2026-06-03",
-    "study_days":  _STUDY_DAYS,
-    "total_hours": _TOTAL_HOURS,
     "subjects": [
-        {
-            "subject": "技術家庭", "date": "6/18(木) 1校時",
-            "study_hours": _calc_hours("技術家庭"),
-            "range_detail": {
-                "技術 ワーク・ノートC": "P2-6",
-                "家庭 教科書": "P234-247, P264-267, P270-273, P280-281",
-                "家庭 ワーク・ノート衣生活・住生活": "P36-38, P40-44",
-                "家庭 消費生活・環境": "P3-14",
-            },
-            "point": "教科書の太字や学習ノートの内容を確認。授業で特においさえた内容を重点確認",
-            "submission": "振り返りカード（試験前最後の授業日）",
-        },
-        {
-            "subject": "国語", "date": "6/18(木) 2校時",
-            "study_hours": _calc_hours("国語"),
-            "range_detail": {
-                "国語I": "「見えないだけ」「アイスプラネット」「枕草子」「クマゼミが増加の原因を探る」",
-                "国語II": "教科書P308-310",
-                "漢字": "P4-39（P29除く）",
-                "文法": "文法プリント①〜⑤",
-                "熟語": "熟語プリント⑤",
-                "ワーク": "P4-39（P29除く）、P41-42",
-            },
-            "point": "放送による聞き取り試験あり。ノート・学習プリント（小テスト）をよく見直す。学んだことを自分の言葉で説明できるように。ワークで問題形式に慣れる",
-            "submission": "ワーク提出 6/18(木)、ノート国語I・IIは授業中に指示",
-        },
-        {
-            "subject": "社会", "date": "6/18(木) 3校時",
-            "study_hours": _calc_hours("社会"),
-            "range_detail": {
-                "教科書 [歴史]": "P105-160",
-                "資料集": "P80-115",
-                "プリント": "No.1-15",
-                "ワーク": "P2-23",
-            },
-            "point": "教科書を何回も読む。基本知識を確認してからワークを解く。ノート整理と思考力問題にも取り組む",
-            "submission": "ノート提出（日程は再度連絡）",
-        },
-        {
-            "subject": "保健体育", "date": "6/18(木) 4校時",
-            "study_hours": _calc_hours("保健体育"),
-            "range_detail": {
-                "体育 器械運動": "教科書P30-41",
-                "体育 陸上競技": "教科書P60-61, P74-85",
-                "体育理論": "スポーツが心身および社会性に及ぼす効果 / スポーツの学び方 / スポーツの安全な行い方（教科書P74-79）",
-            },
-            "point": "教科書・オリエンテーション資料・授業で扱った内容を復習。技能の名称やポイントを確認",
-            "submission": "なし",
-        },
-        {
-            "subject": "数学", "date": "6/19(金) 1校時",
-            "study_hours": _calc_hours("数学"),
-            "range_detail": {
-                "1年 教科書": "P225-248",
-                "1年 ワーク": "P134-141",
-                "2年 教科書": "P11-34",
-                "2年 ワーク": "P4-27",
-                "持ち物": "定規が必要",
-            },
-            "point": "解答は授業で教わった通りの書き方で。教科書・ノート・ワーク・プリントをよく復習。提出あり",
-            "submission": "ノートとワーク提出（試験日までの近い日、詳細は授業で提示）",
-        },
-        {
-            "subject": "英語", "date": "6/19(金) 2校時",
-            "study_hours": _calc_hours("英語"),
-            "range_detail": {
-                "英作文ノート": "全範囲",
-                "教科書 Round1": "Unit1-8",
-                "教科書 Round2": "Unit1-5",
-                "文法": "①過去形p.11 ②未来形p.13,37 ③when/if p.33 ④動名詞p.21 ⑤その他p.17,23,27,61",
-                "Daily Life": "p.18, 69",
-                "基礎の教科": "p.2-5, 18-19, 22-27, 30-31, 42-43",
-            },
-            "point": "聞き取り・選択・英作文の3形式あり。5Rワークを繰り返し。英作文ノートで発想力を養う。時間配分を意識",
-            "submission": "英作文ノート提出（試験日）",
-        },
-        {
-            "subject": "理科", "date": "6/19(金) 3校時",
-            "study_hours": _calc_hours("理科"),
-            "range_detail": {
-                "1年 教科書": "p161-189",
-                "2年 教科書": "p4-32",
-                "2年 地学": "p68-79",
-                "積み上げ": "No.12",
-            },
-            "point": "積み上げプリントを繰り返しやる。化学反応式・生物の図と用語をセットで覚える",
-            "submission": "試験当日の帰りの学活でノートと積み上げを提出",
-        },
+        {"subject": "技術家庭", "date": "6/18(木)", "range": "教科書 P30-55",                        "study_hours": 2},
+        {"subject": "国語",     "date": "6/18(木)", "range": "漢字+文法+読解「故郷」/📝ワーク提出",  "study_hours": 5},
+        {"subject": "社会",     "date": "6/18(木)", "range": "歴史 P105-160",                        "study_hours": 8},
+        {"subject": "保健体育", "date": "6/18(木)", "range": "教科書 P20-40",                        "study_hours": 2},
+        {"subject": "数学",     "date": "6/19(金)", "range": "1年範囲+文章題+連立方程式",            "study_hours": 12},
+        {"subject": "英語",     "date": "6/19(金)", "range": "Unit 1-3+英作文",                      "study_hours": 3},
+        {"subject": "理科",     "date": "6/19(金)", "range": "化学変化+生物",                        "study_hours": 4},
     ]
 }
 
@@ -232,50 +118,35 @@ def subj_color(name):
     return {"primary":"#8E8E93","light":"#F2F2F7","emoji":"📚"}
 
 # ===== AI タスク生成 =====
-def generate_tasks_ai(subject_info: dict, test_date_str: str) -> list:
-    """教科の詳細情報からAIが具体的なタスクを生成"""
+def generate_tasks_ai(subject, test_range, study_hours, test_date_str):
     try:
         from openai import OpenAI
         client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY",""))
-
-        subject    = subject_info["subject"]
-        study_hours = subject_info["study_hours"]
-        range_detail = subject_info.get("range_detail", {})
-        point        = subject_info.get("point", "")
-        submission   = subject_info.get("submission", "なし")
-
-        # 範囲を箇条書きに整形
-        range_text = "\n".join([f"  - {k}: {v}" for k, v in range_detail.items()])
-
         prompt = (
-            f"中学2年生の【{subject}】期末テスト対策の勉強タスクを生成してください。\n\n"
+            f"中学2年生の{subject}の期末テスト対策タスクを生成してください。\n\n"
             f"テスト日: {test_date_str}\n"
+            f"テスト範囲: {test_range}\n"
             f"合計勉強時間の目安: {study_hours}時間\n\n"
-            f"【テスト範囲（詳細）】\n{range_text}\n\n"
-            f"【先生からのポイント】\n{point}\n\n"
-            f"【提出物】{submission}\n\n"
-            f"【タスク生成ルール】\n"
-            f"- 範囲の全教材（教科書・資料集・プリント・ワーク）を網羅する\n"
-            f"- 1タスクは具体的で小さく（例:「教科書P105-120 通読」「ワークP2-7を解く」）\n"
-            f"- 提出物がある場合は提出物タスクも含める\n"
-            f"- duration_minは20〜60分の整数\n"
-            f"- 合計時間が {study_hours*60}分 に近くなるよう調整\n"
-            f"- 難易度順に並べる（基礎→応用の順）\n"
-            f"- JSONのみ出力（説明不要）\n\n"
-            f"出力: {{\"tasks\": [{{\"title\":\"タスク名\","
-            f"\"duration_min\":30,\"note\":\"補足\"}},...]}}"
+            f"【ルール】\n"
+            f"- タスクを3〜5個に分割する\n"
+            f"- 各タスクは具体的な内容（例：「P105-120を読む」「ワークP.2-5を解く」）\n"
+            f"- duration_minは15〜60の整数（分）\n"
+            f"- 合計時間が study_hours×60分 に近くなるようにする\n"
+            f"- JSONのみ出力\n\n"
+            f"出力フォーマット:\n"
+            f'[{{"title":"タスク名","duration_min":30,"note":"補足"}},...]'
         )
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            max_tokens=1000,
+            max_tokens=600,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": "中学生の勉強タスクをJSONで生成してください。"},
-                {"role": "user",   "content": prompt}
+                {"role":"system","content":"タスクリストをJSONで返してください。キー名は'tasks'で配列を返してください。"},
+                {"role":"user","content":prompt}
             ]
         )
         data = json.loads(resp.choices[0].message.content)
-        return data.get("tasks", []) if isinstance(data, dict) else []
+        return data.get("tasks", data) if isinstance(data, dict) else data
     except Exception as e:
         st.error(f"AI生成エラー: {e}")
         return []
@@ -318,18 +189,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 勉強時間サマリー
-_c1, _c2, _c3 = st.columns(3)
-with _c1:
-    st.metric("勉強開始〜テスト", f"{_STUDY_DAYS}日間")
-with _c2:
-    st.metric("合計勉強時間", f"{_TOTAL_HOURS}時間",
-              help=f"平日{_WEEKDAY_HOURS}h × 11日 ＋ 土日{_WEEKEND_HOURS}h × 4日")
-with _c3:
-    _elapsed = (today - _STUDY_START).days
-    _elapsed = max(0, min(_elapsed, _STUDY_DAYS))
-    st.metric("経過", f"{_elapsed}日目 / {_STUDY_DAYS}日")
-
 # ===== タブ =====
 tab1, tab2, tab3, tab4 = st.tabs(["📝 テスト対策TASK", "🔁 定期TASK", "✏️ 自由TASK", "📅 スケジュール"])
 
@@ -343,19 +202,10 @@ with tab1:
     for subj_info in NEXT_TEST["subjects"]:
         subj  = subj_info["subject"]
         col   = subj_color(subj)
-        hours = subj_info["study_hours"]
+        range_ = subj_info["range"]
+        hours  = subj_info["study_hours"]
 
-        # 範囲サマリー表示
-        range_summary = " / ".join([f"{k}: {v}" for k, v in subj_info.get("range_detail",{}).items()])
-        with st.expander(
-            f"{col['emoji']} {subj}　{subj_info['date']}　"
-            f"目安: {hours}h（{_STUDY_DAYS}日間で）",
-            expanded=False
-        ):
-            if subj_info.get("point"):
-                st.info(f"💡 {subj_info['point']}")
-            if subj_info.get("submission") and subj_info["submission"] != "なし":
-                st.warning(f"📝 提出物: {subj_info['submission']}")
+        with st.expander(f"{col['emoji']} {subj}　範囲: {range_}　目安: {hours}h", expanded=False):
             # 既存タスクを表示
             existing = [t for t in tasks_data["tasks"]
                        if t.get("type") == "test" and t.get("subject") == subj]
@@ -380,7 +230,7 @@ with tab1:
             else:
                 if st.button(f"✨ AIでタスクを生成", key=f"gen_{subj}", type="primary"):
                     with st.spinner(f"{subj}のタスクを生成中..."):
-                        new_tasks = generate_tasks_ai(subj_info, NEXT_TEST["start_date"])
+                        new_tasks = generate_tasks_ai(subj, range_, hours, NEXT_TEST["start_date"])
                         if new_tasks:
                             import uuid
                             for t in new_tasks:
