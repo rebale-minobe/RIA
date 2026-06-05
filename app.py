@@ -1123,6 +1123,27 @@ if not STUDY_SCHEDULE:
         "2026-06-19": [{"subj": "TEST", "type": "test"}],
     }
 
+# tasks.json の「その日に勉強する教科」をカレンダーへマージ（①TOPのScheduleに教科を表示）
+try:
+    _td = load_tasks_data()
+    _sub_by_date = {}
+    for _t in _td.get("tasks", []):
+        _dd = _t.get("due_date"); _sj = _t.get("subject", "")
+        if not _dd or not _sj or _t.get("done"):
+            continue
+        _sub_by_date.setdefault(_dd, [])
+        if _sj not in _sub_by_date[_dd]:
+            _sub_by_date[_dd].append(_sj)
+    for _dd, _subs in _sub_by_date.items():
+        _items = STUDY_SCHEDULE.setdefault(_dd, [])
+        if any(i.get("type") == "test" for i in _items):
+            continue
+        for _sj in _subs:
+            _c = subject_color(_sj)
+            _items.append({"subj": f'{_c["emoji"]}{_sj}', "type": "study"})
+except Exception:
+    pass
+
 TODAY_TIMETABLE     = _build_timetable(today) or [
     {"period": 1, "subject": "国語", "subject_key": "japanese"},
     {"period": 2, "subject": "数学", "subject_key": "math"},
@@ -1167,6 +1188,7 @@ TODO_TODAY = [
         "duration":     f'{t.get("duration_min",30)}分',
         "done":         t.get("done", False),
         "task_id":      t.get("id",""),
+        "note":         t.get("note",""),
     }
     for t in _raw_tasks
 ] or [
@@ -1291,6 +1313,9 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
                               label_visibility="collapsed", placeholder="タスク内容")
                 st.selectbox("時間", DURATION_OPTIONS,
                              key=f"todo_dur_{idx}", label_visibility="collapsed")
+                if todo.get("note"):
+                    with st.expander("💡 やり方"):
+                        st.markdown(todo["note"])
                 btn_label2 = "↩️ 戻す" if is_done else "✅ できた！"
                 if st.button(btn_label2, key=f"todo_btn_{idx}", use_container_width=True):
                     st.session_state.todo_done[idx] = not is_done
