@@ -605,8 +605,6 @@ with tab4:
     for _t in tasks_data.get("tasks", []):
         if not _t.get("done"):
             continue
-        if _t.get("due_date", "") < "2026-06-05":
-            continue
         _sj = _t.get("subject", "")
         _subj_min[_sj] = _subj_min.get(_sj, 0) + int(_t.get("duration_min", 0) or 0)
     _cards_html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px;">'

@@ -1507,8 +1507,6 @@ for _t in _all_for_sum:
         continue  # 今日のタスクはライブ状態で集計するのでスキップ
     if not _t.get("done"):
         continue
-    if _t.get("due_date", "") < "2026-06-05":
-        continue
     _sj = _t.get("subject", "")
     _subj_min[_sj] = _subj_min.get(_sj, 0) + int(_t.get("duration_min", 0) or 0)
 # (2) 今日のタスク（セッション状態から即時集計）
