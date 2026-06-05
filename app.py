@@ -1077,6 +1077,16 @@ def _build_timetable(date_obj):
         })
     return result
 
+
+today = datetime.now()
+
+STUDY_SCHEDULE = _build_study_schedule(today.year, today.month)
+if not STUDY_SCHEDULE:
+    STUDY_SCHEDULE = {
+        "2026-06-18": [{"subj": "TEST", "type": "test"}],
+        "2026-06-19": [{"subj": "TEST", "type": "test"}],
+    }
+
 TODAY_TIMETABLE     = _build_timetable(today) or [
     {"period": 1, "subject": "国語", "subject_key": "japanese"},
     {"period": 2, "subject": "数学", "subject_key": "math"},
