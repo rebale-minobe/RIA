@@ -725,7 +725,7 @@ def _flatten_toc(tdata):
 
 def get_today_tasks(date_obj):
     """今日の日付に割り当てられた未完了タスクを返す"""
-    data = load_tasks_data()
+    data = load_tasks_data(_active_user(), _active_year(), _active_term())
     date_str = date_obj.strftime("%Y-%m-%d")
     return [t for t in data.get("tasks", [])
             if t.get("due_date") == date_str and not t.get("done", False)]
@@ -1471,14 +1471,36 @@ if st.session_state.get("show_test_detail"):
 _subj_order = [("国語","国語"),("社会","社会"),("数学","数学"),("理科","理科"),
                ("英語","英語"),("技術","技術家庭"),("保健","保健体育")]
 _all_for_sum = load_active_tasks().get("tasks", [])
+
+# 今日のタスクはセッション状態（ライブ）から集計 → 「できた！」が即時反映される
+_today_live = {}
+for _idx, _todo in enumerate(TODO_TODAY):
+    _tid = _todo.get("task_id", "")
+    if not _tid:
+        continue
+    _live_done = st.session_state.todo_done.get(_idx, _todo.get("done", False))
+    _dur_sel = st.session_state.get(f"todo_dur_{_idx}", _todo.get("duration", "0分"))
+    try:
+        _dur_min = int(str(_dur_sel).replace("分", "").strip())
+    except Exception:
+        _dur_min = 0
+    _today_live[_tid] = {"subject": _todo.get("subject_name", ""), "done": _live_done, "min": _dur_min}
+
 _subj_min = {}
+# (1) 他の日の「できた！」済みタスク（ファイルから）
 for _t in _all_for_sum:
+    if _t.get("id", "") in _today_live:
+        continue  # 今日のタスクはライブ状態で集計するのでスキップ
     if not _t.get("done"):
         continue
     if _t.get("due_date", "") < "2026-06-05":
         continue
     _sj = _t.get("subject", "")
     _subj_min[_sj] = _subj_min.get(_sj, 0) + int(_t.get("duration_min", 0) or 0)
+# (2) 今日のタスク（セッション状態から即時集計）
+for _info in _today_live.values():
+    if _info["done"]:
+        _subj_min[_info["subject"]] = _subj_min.get(_info["subject"], 0) + _info["min"]
 _stc_html = ""
 for _label, _skey in _subj_order:
     _m = _subj_min.get(_skey, 0)
