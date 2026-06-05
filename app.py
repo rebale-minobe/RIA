@@ -565,18 +565,52 @@ st.markdown("""
 
 # ===== 教科 × ジャンル =====
 
+# ===== ユーザー・学期定義 =====
+USERS = {
+    "ria":   {"name": "莉亜",  "emoji": "👧", "grade": "中2→中3"},
+    "genki": {"name": "源也",  "emoji": "👦", "grade": "小6→中1"},
+    "yui":   {"name": "結衣",  "emoji": "🌸", "grade": "小2→小3"},
+}
+TERMS = {
+    "1q": "1学期・期末",
+    "2q": "2学期・期末",
+    "3q": "3学期・期末",
+    "1mid": "1学期・中間",
+    "2mid": "2学期・中間",
+}
+GITHUB_RAW = "https://raw.githubusercontent.com/rebale-minobe/RIA/main"
+
+def _task_filename(user: str, year: int, term: str) -> str:
+    return f"data/tasks_{user}_{year}_{term}.json"
+
+def _task_url(user: str, year: int, term: str) -> str:
+    return f"{GITHUB_RAW}/{_task_filename(user, year, term)}"
+
+def _active_user() -> str:
+    return st.session_state.get("active_user", "ria")
+
+def _active_year() -> int:
+    return st.session_state.get("active_year", 2026)
+
+def _active_term() -> str:
+    return st.session_state.get("active_term", "2q")
+
 # ===== TASKデータ読み込み =====
 @st.cache_data(ttl=30)
-def load_tasks_data():
-    """tasks.jsonからTODO TODAY用のタスクを取得"""
+def load_tasks_data(user: str = "ria", year: int = 2026, term: str = "2q"):
+    """tasks_{user}_{year}_{term}.jsonからタスクを取得"""
     try:
-        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/tasks.json"
+        url = _task_url(user, year, term)
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             return r.json()
     except Exception:
         pass
     return {"tasks": []}
+
+def load_active_tasks():
+    """現在選択中のユーザー・学期のタスクを取得"""
+    return load_tasks_data(_active_user(), _active_year(), _active_term())
 
 def _save_todo_duration(task_id, dur_key):
     """ToDoで変更した時間を tasks.json に保存（教科別合計に反映）"""
@@ -586,8 +620,9 @@ def _save_todo_duration(task_id, dur_key):
         mins = int(str(sel).replace("分", "").strip())
     except Exception:
         return
+    _u, _y, _tm = _active_user(), _active_year(), _active_term()
     try:
-        r = requests.get("https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/tasks.json", timeout=5)
+        r = requests.get(_task_url(_u, _y, _tm), timeout=5)
         data = r.json() if r.status_code == 200 else {"tasks": []}
     except Exception:
         return
@@ -599,7 +634,7 @@ def _save_todo_duration(task_id, dur_key):
     if changed:
         try:
             from gh import gh_put
-            gh_put("data/tasks.json",
+            gh_put(_task_filename(_u, _y, _tm),
                    _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
                    "Update task duration via ToDo")
             load_tasks_data.clear()
@@ -609,8 +644,9 @@ def _save_todo_duration(task_id, dur_key):
 def _save_todo_done(task_id, done_val):
     """ToDoの「できた！」をtasks.jsonに保存（STUDY TIMEに反映）"""
     import json as _json
+    _u, _y, _tm = _active_user(), _active_year(), _active_term()
     try:
-        r = requests.get("https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/tasks.json", timeout=5)
+        r = requests.get(_task_url(_u, _y, _tm), timeout=5)
         data = r.json() if r.status_code == 200 else {"tasks": []}
     except Exception:
         return
@@ -622,7 +658,7 @@ def _save_todo_done(task_id, done_val):
     if changed:
         try:
             from gh import gh_put
-            gh_put("data/tasks.json",
+            gh_put(_task_filename(_u, _y, _tm),
                    _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
                    "Update task done via ToDo")
             load_tasks_data.clear()
@@ -1266,7 +1302,7 @@ if not STUDY_SCHEDULE:
 
 # tasks.json の「その日に勉強する教科」をカレンダーへマージ（①TOPのScheduleに教科を表示）
 try:
-    _td = load_tasks_data()
+    _td = load_active_tasks()
     _sub_by_date = {}
     for _t in _td.get("tasks", []):
         _dd = _t.get("due_date"); _sj = _t.get("subject", "")
@@ -1321,6 +1357,26 @@ NEXT_TEST = {
 }
 
 # TODO_TODAYをtasks.jsonから動的生成
+# ユーザー・学期セレクター（サイドバー）
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 👤 学習者・学期")
+    _user_labels = {f"{v['emoji']} {v['name']}": k for k, v in USERS.items()}
+    _sel_user_label = st.selectbox("学習者", list(_user_labels.keys()),
+        index=list(_user_labels.keys()).index(next(f"{v['emoji']} {v['name']}" for k,v in USERS.items() if k==_active_user())),
+        key="sb_user")
+    st.session_state["active_user"] = _user_labels[_sel_user_label]
+    _term_labels = {v: k for k, v in TERMS.items()}
+    _sel_term_label = st.selectbox("学期", list(_term_labels.keys()),
+        index=list(_term_labels.keys()).index(TERMS.get(_active_term(), "2学期・期末")),
+        key="sb_term")
+    st.session_state["active_term"] = _term_labels[_sel_term_label]
+    _sel_year = st.number_input("年度", min_value=2025, max_value=2030,
+        value=_active_year(), step=1, key="sb_year")
+    st.session_state["active_year"] = int(_sel_year)
+    _u_info = USERS[_active_user()]
+    st.caption(f"{_u_info['emoji']} {_u_info['name']}さん / {TERMS[_active_term()]} / {_active_year()}年度")
+
 _raw_tasks = get_today_tasks(today)
 TODO_TODAY = [
     {
@@ -1414,7 +1470,7 @@ if st.session_state.get("show_test_detail"):
 # ===== STUDY TIME（6/5以降に「できた！」した時間の累計） =====
 _subj_order = [("国語","国語"),("社会","社会"),("数学","数学"),("理科","理科"),
                ("英語","英語"),("技術","技術家庭"),("保健","保健体育")]
-_all_for_sum = load_tasks_data().get("tasks", [])
+_all_for_sum = load_active_tasks().get("tasks", [])
 _subj_min = {}
 for _t in _all_for_sum:
     if not _t.get("done"):
