@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="TASK管理 - RIA", page_icon="📋", layout="wide")
 
+PAGE_VERSION = "v2026-06-06.3"  # カテゴリー対応版
+st.sidebar.markdown("---")
+st.sidebar.caption(f"📄 TASK管理.py　`{PAGE_VERSION}`")
+
 # ===== gh helper（app.pyと同じ設定） =====
 OWNER  = "rebale-minobe"
 REPO   = "RIA"

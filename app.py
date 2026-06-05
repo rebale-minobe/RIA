@@ -15,6 +15,8 @@ import random
 from datetime import datetime
 from pathlib import Path
 
+PAGE_VERSION = "v2026-06-06.4"  # app.py（TOP）
+
 # ===== JST（日本時間）ヘルパー — Streamlit CloudはUTCなので必須 =====
 from datetime import timezone, timedelta
 _JST = timezone(timedelta(hours=9))
@@ -1388,6 +1390,8 @@ with st.sidebar:
     st.session_state["active_year"] = int(_sel_year)
     _u_info = USERS[_active_user()]
     st.caption(f"{_u_info['emoji']} {_u_info['name']}さん / {TERMS[_active_term()]} / {_active_year()}年度")
+    st.markdown("---")
+    st.caption(f"📄 app.py　`{PAGE_VERSION}`")
 
 _raw_tasks = get_today_tasks(today)
 TODO_TODAY = [
