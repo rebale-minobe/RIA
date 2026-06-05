@@ -122,6 +122,7 @@ _GENRE_SHEET_MAP = {
     "field1": "第1分野", "field2": "第2分野",
     "jp2": "国語2",
     "math2": "数学2",
+    "eng2": "英語2",
     "general": "一般",
 }
 
