@@ -1425,8 +1425,7 @@ else:
                 f'{{\n'
                 f'  "question": "問題文",\n'
                 f'  "choices": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],\n'
-                f'  "answer": "正解の選択肢テキスト",\n'
-                f'  "explanation": "正解の解説（2文以内）"\n'
+                f'  "answer": "正解の選択肢テキスト"\n'
                 f'}}'
             )
             resp = client.chat.completions.create(
@@ -1508,9 +1507,9 @@ else:
                     lbl = ch
                 html += "<div style=\"" + s + "\">" + lbl + "</div>"
             st.markdown(html, unsafe_allow_html=True)
-            # 解説
-            expl = quiz.get("explanation", "")
-            if expl:
+            # 解説は💡ボタン押下時のみ表示
+            expl_key = f"tp_explain_{tp_pos}"
+            if st.session_state.get(expl_key):
                 expl_s = (
                     "background:#FFF8E1; border-left:4px solid #FFCC00; "
                     "padding:14px 16px; border-radius:10px; margin-top:12px; "
@@ -1518,7 +1517,7 @@ else:
                     "font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
                 )
                 st.markdown(
-                    "<div style=\"" + expl_s + "\">💡 " + expl + "</div>",
+                    "<div style=\"" + expl_s + "\">💡 " + st.session_state[expl_key] + "</div>",
                     unsafe_allow_html=True
                 )
         else:
@@ -1565,14 +1564,17 @@ else:
             st.session_state[tp_idx_key] = tp_pos - 1
             st.rerun()
     with nav_c[2]:
-        if st.button("💡", key=f"tp_explain_{tp_pos}",
-                     use_container_width=True, help="解説を見る"):
-            if quiz and quiz.get("explanation"):
-                # 解説はカード内に表示済み
-                pass
+        explain_key = f"tp_explain_{tp_pos}"
+        expl_label = "💡 非表示" if st.session_state.get(explain_key) else "💡"
+        if st.button(expl_label, key=explain_key + "_btn",
+                     use_container_width=True, help="解説を見る/隠す"):
+            if st.session_state.get(explain_key):
+                # 非表示にする
+                del st.session_state[explain_key]
             else:
+                # 生成して表示
                 with st.spinner("解説生成中..."):
-                    st.session_state[f"tp_explain_{tp_pos}"] = (
+                    st.session_state[explain_key] = (
                         generate_workbook_explanation(tp_current, subj_name)
                     )
             st.rerun()
@@ -1591,10 +1593,7 @@ else:
                 st.button("完了 ✓", key=f"tp_next_{tp_pos}",
                           use_container_width=True, disabled=True)
 
-    # 独立解説表示（AI生成失敗時）
-    tp_explain_key = f"tp_explain_{tp_pos}"
-    if st.session_state.get(tp_explain_key):
-        render_point_box(st.session_state[tp_explain_key], color="yellow")
+    # 解説は選択肢ブロック内で表示済み
 
     # 全問完了
     if tp_pos == tp_total - 1 and tp_result is not None:
