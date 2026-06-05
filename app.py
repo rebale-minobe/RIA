@@ -629,6 +629,64 @@ def _save_todo_done(task_id, done_val):
         except Exception:
             pass
 
+def load_study_log():
+    """学習ログ（今日の時間割の記録）を取得"""
+    try:
+        r = requests.get("https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/study_log.json", timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {"logs": []}
+
+def save_study_log(data):
+    """学習ログを tasks.json と同じ仕組みで永続保存"""
+    import json as _json
+    try:
+        from gh import gh_put
+        gh_put("data/study_log.json",
+               _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+               "Update study_log")
+        return True
+    except Exception:
+        return False
+
+def load_textbook_progress():
+    """各教科×ジャンルの「最後にやった項目」を取得"""
+    try:
+        r = requests.get("https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/textbook_progress.json", timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {}
+
+def save_textbook_progress(data):
+    import json as _json
+    try:
+        from gh import gh_put
+        gh_put("data/textbook_progress.json",
+               _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+               "Update textbook_progress")
+        return True
+    except Exception:
+        return False
+
+def _flatten_toc(tdata):
+    """教科書の目次を 章→項目 の通し順にフラット化"""
+    flat = []
+    for ch in tdata.get("textbook", {}).get("chapters", []):
+        ch_label = f"{ch.get('chapter_number','').strip()} {ch.get('title','').strip()}".strip()
+        for sec in ch.get("sections", []):
+            for sub in sec.get("subsections", []):
+                flat.append({
+                    "label": f"{sub['title']} (p.{sub['page']})",
+                    "title": sub.get("title", ""),
+                    "page": sub.get("page", ""),
+                    "chapter": ch_label,
+                })
+    return flat
+
 def get_today_tasks(date_obj):
     """今日の日付に割り当てられた未完了タスクを返す"""
     data = load_tasks_data()
@@ -1875,23 +1933,63 @@ for p in TODAY_TIMETABLE:
 
 if st.button("✅ 全部記録する", use_container_width=True, type="primary", key="record_today_all"):
     records = []
+    new_entries = []
+    _today_str = today.strftime("%Y-%m-%d")
+    _progress = load_textbook_progress()
     for p in TODAY_TIMETABLE:
         pn = p['period']
         skey = p.get("subject_key")
         gtocs = get_genres_with_toc(skey) if skey else []
         if gtocs:
+            sel_gname = st.session_state.get(f"today_grad_{pn}")
+            if len(gtocs) > 1 and sel_gname:
+                gkey, gname, tdata = next((g for g in gtocs if g[1] == sel_gname), gtocs[0])
+            else:
+                gkey, gname, tdata = gtocs[0]
             ch_val = st.session_state.get(f"today_ch_{pn}")
-            subs_val = st.session_state.get(f"today_subs_{pn}", [])
+            subs_val = st.session_state.get(f"today_subs_{pn}", []) or []
             if ch_val and subs_val:
                 records.append(f"**{p['subject']}**: {ch_val}（{len(subs_val)}項目）")
+                new_entries.append({
+                    "date": _today_str, "period": pn,
+                    "subject": p['subject'], "subject_key": skey or "",
+                    "genre": gname, "chapter": ch_val, "items": subs_val, "range": "",
+                })
+                # 進捗を「選んだ項目のうち目次順で最後」に更新
+                _flat = _flatten_toc(tdata)
+                _idxs = [i for i, f in enumerate(_flat) if f["label"] in subs_val]
+                if _idxs:
+                    _li = max(_idxs)
+                    _progress[f"{skey}_{gkey}"] = {
+                        "last_item": _flat[_li]["label"],
+                        "last_index": _li,
+                        "updated": _today_str,
+                    }
         else:
             range_val = st.session_state.get(f"today_range_{pn}", "")
             if range_val:
                 records.append(f"**{p['subject']}**: {range_val}")
+                new_entries.append({
+                    "date": _today_str, "period": pn,
+                    "subject": p['subject'], "subject_key": skey or "",
+                    "genre": "", "chapter": "", "items": [], "range": range_val,
+                })
     if records:
-        st.success("📝 " + str(len(records)) + " 件記録しました！\n\n" + "\n\n".join(f"・ {r}" for r in records))
+        # ① 履歴ログに追記（同日・同校時は上書き）
+        _log = load_study_log()
+        _pers = [ne["period"] for ne in new_entries]
+        _log["logs"] = [e for e in _log.get("logs", [])
+                        if not (e.get("date") == _today_str and e.get("period") in _pers)]
+        _log["logs"].extend(new_entries)
+        _ok1 = save_study_log(_log)
+        # ② 進捗を保存（明日の予習の「次のテーマ」に使う）
+        _ok2 = save_textbook_progress(_progress)
+        _msg = "📝 " + str(len(records)) + " 件記録しました！"
+        if not (_ok1 and _ok2):
+            _msg += "（※保存に失敗しました。通信を確認してください）"
+        st.success(_msg + "\n\n" + "\n\n".join(f"・ {r}" for r in records))
     else:
-        st.warning("記録する内容がありません。各教科を開いて範囲を入力してください。")
+        st.warning("記録する内容がありません。各教科を開いて範囲を選択してください。")
 
 # ===== 明日の予習 =====
 import datetime as _dt2
@@ -1903,18 +2001,37 @@ while _next_school.weekday() >= 5:
 _tmr_label = f"{_next_school.month}月{_next_school.day}日（{JP_WD[_next_school.weekday()]}）"
 NEXT_SCHOOL_TIMETABLE = _build_timetable(_next_school) or TOMORROW_TIMETABLE_RAW
 NEXT_SCHOOL_TT = [{**p, "next_chapter": "—", "page": ""} for p in NEXT_SCHOOL_TIMETABLE]
+_prog = load_textbook_progress()
 st.markdown(f'<div class="section-title">🔮 明日の予習 <span style="font-size:16px;font-weight:500;color:#8E8E93;">— {_tmr_label}</span></div>', unsafe_allow_html=True)
 for p in NEXT_SCHOOL_TT:
     pn = p['period']
     col = subject_color(p['subject'])
     with st.expander(f"**{pn}**　{col['emoji']} {p['subject']}", expanded=False):
-        st.markdown(f"📖 次回学習：**{p['next_chapter']}**（{p['page']}）")
-        point_key = f"tm_point_text_{pn}"
-        if st.button("💡 ポイントを見る", key=f"tm_point_{pn}", use_container_width=True):
-            with st.spinner("ポイント生成中..."):
-                st.session_state[point_key] = generate_point(p['next_chapter'], p['subject'])
-        if st.session_state.get(point_key):
-            render_point_box(st.session_state[point_key], color="blue")
+        skey = p.get("subject_key")
+        gtocs = get_genres_with_toc(skey) if skey else []
+        shown = False
+        for gkey, gname, tdata in gtocs:
+            pk = f"{skey}_{gkey}"
+            if pk not in _prog:
+                continue
+            flat = _flatten_toc(tdata)
+            ni = _prog[pk].get("last_index", -1) + 1
+            _gtag = f"（{gname}）" if len(gtocs) > 1 else ""
+            if 0 <= ni < len(flat):
+                nxt = flat[ni]
+                st.markdown(f"📖 次回学習{_gtag}：**{nxt['title']}**（p.{nxt['page']}）")
+                _pk2 = f"tm_point_text_{pn}_{gkey}"
+                if st.button("💡 ポイントを見る", key=f"tm_point_{pn}_{gkey}", use_container_width=True):
+                    with st.spinner("ポイント生成中..."):
+                        st.session_state[_pk2] = generate_point(nxt['title'], p['subject'])
+                if st.session_state.get(_pk2):
+                    render_point_box(st.session_state[_pk2], color="blue")
+                shown = True
+            elif ni >= len(flat):
+                st.success(f"{gname} は教科書を最後まで終えました！🎉")
+                shown = True
+        if not shown:
+            st.caption("まだ記録がありません。今日の時間割で範囲を記録すると、ここに次のテーマが自動で出ます。")
 
 # ===== Study (教科書/ワーク) =====
 st.markdown('<div class="section-title">📚 教科書/ワーク</div>', unsafe_allow_html=True)
