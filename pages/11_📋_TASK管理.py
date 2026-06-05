@@ -92,13 +92,71 @@ NEXT_TEST = {
     "name": "1学期 期末テスト",
     "start_date": "2026-06-18",
     "subjects": [
-        {"subject": "技術家庭", "date": "6/18(木)", "range": "教科書 P30-55",                        "study_hours": 2},
-        {"subject": "国語",     "date": "6/18(木)", "range": "漢字+文法+読解「故郷」/📝ワーク提出",  "study_hours": 5},
-        {"subject": "社会",     "date": "6/18(木)", "range": "歴史 P105-160",                        "study_hours": 8},
-        {"subject": "保健体育", "date": "6/18(木)", "range": "教科書 P20-40",                        "study_hours": 2},
-        {"subject": "数学",     "date": "6/19(金)", "range": "1年範囲+文章題+連立方程式",            "study_hours": 12},
-        {"subject": "英語",     "date": "6/19(金)", "range": "Unit 1-3+英作文",                      "study_hours": 3},
-        {"subject": "理科",     "date": "6/19(金)", "range": "化学変化+生物",                        "study_hours": 4},
+        {
+            "subject": "技術家庭", "date": "6/18(木)", "study_hours": 2,
+            "range_detail": {
+                "教科書": "P30-55",
+            },
+            "point": "教科書の基本事項を確認する",
+            "submission": "なし",
+        },
+        {
+            "subject": "国語", "date": "6/18(木)", "study_hours": 5,
+            "range_detail": {
+                "漢字": "教科書掲載漢字全範囲",
+                "文法": "文法まとめ",
+                "読解": "「故郷」（魯迅）",
+            },
+            "point": "漢字の書き取り・読み取りを完璧に。「故郷」の内容理解と登場人物の心情把握",
+            "submission": "📝 ワーク提出（テスト日）",
+        },
+        {
+            "subject": "社会", "date": "6/18(木)", "study_hours": 8,
+            "range_detail": {
+                "教科書": "[歴史] P105-160",
+                "資料集": "P80-115",
+                "プリント": "No.1-15",
+                "ワーク": "P2-23",
+            },
+            "point": "教科書を何回も読む。基本知識を確認してからワークを解く。ノート整理と思考力問題にも取り組む",
+            "submission": "ノート提出（日程は再度連絡）",
+        },
+        {
+            "subject": "保健体育", "date": "6/18(木)", "study_hours": 2,
+            "range_detail": {
+                "教科書": "P20-40",
+            },
+            "point": "用語の暗記と図の理解",
+            "submission": "なし",
+        },
+        {
+            "subject": "数学", "date": "6/19(金)", "study_hours": 12,
+            "range_detail": {
+                "1年の復習": "方程式・比例反比例",
+                "連立方程式": "全範囲",
+                "文章題": "速さ・割合・整数",
+            },
+            "point": "計算ミスゼロを目指す。文章題のパターンを習得。思考・判断・表現問題を重点練習",
+            "submission": "なし",
+        },
+        {
+            "subject": "英語", "date": "6/19(金)", "study_hours": 3,
+            "range_detail": {
+                "Unit": "1-3",
+                "英作文": "基本表現",
+            },
+            "point": "単語の暗記。英作文の定型表現を覚える",
+            "submission": "なし",
+        },
+        {
+            "subject": "理科", "date": "6/19(金)", "study_hours": 4,
+            "range_detail": {
+                "化学変化": "酸化・還元・化学式",
+                "生物": "細胞・植物のしくみ",
+            },
+            "point": "化学反応式を書けるようにする。生物は図と用語をセットで覚える",
+            "submission": "なし",
+        },
     ]
 }
 
@@ -118,35 +176,50 @@ def subj_color(name):
     return {"primary":"#8E8E93","light":"#F2F2F7","emoji":"📚"}
 
 # ===== AI タスク生成 =====
-def generate_tasks_ai(subject, test_range, study_hours, test_date_str):
+def generate_tasks_ai(subject_info: dict, test_date_str: str) -> list:
+    """教科の詳細情報からAIが具体的なタスクを生成"""
     try:
         from openai import OpenAI
         client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY",""))
+
+        subject    = subject_info["subject"]
+        study_hours = subject_info["study_hours"]
+        range_detail = subject_info.get("range_detail", {})
+        point        = subject_info.get("point", "")
+        submission   = subject_info.get("submission", "なし")
+
+        # 範囲を箇条書きに整形
+        range_text = "\n".join([f"  - {k}: {v}" for k, v in range_detail.items()])
+
         prompt = (
-            f"中学2年生の{subject}の期末テスト対策タスクを生成してください。\n\n"
+            f"中学2年生の【{subject}】期末テスト対策の勉強タスクを生成してください。\n\n"
             f"テスト日: {test_date_str}\n"
-            f"テスト範囲: {test_range}\n"
             f"合計勉強時間の目安: {study_hours}時間\n\n"
-            f"【ルール】\n"
-            f"- タスクを3〜5個に分割する\n"
-            f"- 各タスクは具体的な内容（例：「P105-120を読む」「ワークP.2-5を解く」）\n"
-            f"- duration_minは15〜60の整数（分）\n"
-            f"- 合計時間が study_hours×60分 に近くなるようにする\n"
-            f"- JSONのみ出力\n\n"
-            f"出力フォーマット:\n"
-            f'[{{"title":"タスク名","duration_min":30,"note":"補足"}},...]'
+            f"【テスト範囲（詳細）】\n{range_text}\n\n"
+            f"【先生からのポイント】\n{point}\n\n"
+            f"【提出物】{submission}\n\n"
+            f"【タスク生成ルール】\n"
+            f"- 範囲の全教材（教科書・資料集・プリント・ワーク）を網羅する\n"
+            f"- 1タスクは具体的で小さく（例:「教科書P105-120 通読」「ワークP2-7を解く」）\n"
+            f"- 提出物がある場合は提出物タスクも含める\n"
+            f"- duration_minは20〜60分の整数\n"
+            f"- 合計時間が {study_hours*60}分 に近くなるよう調整\n"
+            f"- 難易度順に並べる（基礎→応用の順）\n"
+            f"- JSONのみ出力（説明不要）\n\n"
+            f"出力: {{\"tasks\": [{{\"title\":\"タスク名\","
+            f"\"duration_min\":30,\"note\":\"補足\"}},...]}}"
         )
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            max_tokens=600,
+            max_tokens=1000,
             response_format={"type": "json_object"},
             messages=[
-                {"role":"system","content":"タスクリストをJSONで返してください。キー名は'tasks'で配列を返してください。"},
-                {"role":"user","content":prompt}
+                {"role": "system", "content": "中学生の勉強タスクをJSONで生成してください。"},
+                {"role": "user",   "content": prompt}
             ]
         )
         data = json.loads(resp.choices[0].message.content)
-        return data.get("tasks", data) if isinstance(data, dict) else data
+        return data.get("tasks", []) if isinstance(data, dict) else []
     except Exception as e:
         st.error(f"AI生成エラー: {e}")
         return []
@@ -202,10 +275,15 @@ with tab1:
     for subj_info in NEXT_TEST["subjects"]:
         subj  = subj_info["subject"]
         col   = subj_color(subj)
-        range_ = subj_info["range"]
-        hours  = subj_info["study_hours"]
+        hours = subj_info["study_hours"]
 
-        with st.expander(f"{col['emoji']} {subj}　範囲: {range_}　目安: {hours}h", expanded=False):
+        # 範囲サマリー表示
+        range_summary = " / ".join([f"{k}: {v}" for k, v in subj_info.get("range_detail",{}).items()])
+        with st.expander(f"{col['emoji']} {subj}　{range_summary}　目安: {hours}h", expanded=False):
+            if subj_info.get("point"):
+                st.caption(f"💡 {subj_info['point']}")
+            if subj_info.get("submission") and subj_info["submission"] != "なし":
+                st.caption(f"📝 提出物: {subj_info['submission']}")
             # 既存タスクを表示
             existing = [t for t in tasks_data["tasks"]
                        if t.get("type") == "test" and t.get("subject") == subj]
@@ -230,7 +308,7 @@ with tab1:
             else:
                 if st.button(f"✨ AIでタスクを生成", key=f"gen_{subj}", type="primary"):
                     with st.spinner(f"{subj}のタスクを生成中..."):
-                        new_tasks = generate_tasks_ai(subj, range_, hours, NEXT_TEST["start_date"])
+                        new_tasks = generate_tasks_ai(subj_info, NEXT_TEST["start_date"])
                         if new_tasks:
                             import uuid
                             for t in new_tasks:
