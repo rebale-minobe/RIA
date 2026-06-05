@@ -593,11 +593,11 @@ def _active_year() -> int:
     return st.session_state.get("active_year", 2026)
 
 def _active_term() -> str:
-    return st.session_state.get("active_term", "2q")
+    return st.session_state.get("active_term", "1q")
 
 # ===== TASKデータ読み込み =====
 @st.cache_data(ttl=30)
-def load_tasks_data(user: str = "ria", year: int = 2026, term: str = "2q"):
+def load_tasks_data(user: str = "ria", year: int = 2026, term: str = "1q"):
     """tasks_{user}_{year}_{term}.jsonからタスクを取得"""
     try:
         url = _task_url(user, year, term)
@@ -1368,7 +1368,7 @@ with st.sidebar:
     st.session_state["active_user"] = _user_labels[_sel_user_label]
     _term_labels = {v: k for k, v in TERMS.items()}
     _sel_term_label = st.selectbox("学期", list(_term_labels.keys()),
-        index=list(_term_labels.keys()).index(TERMS.get(_active_term(), "2学期・期末")),
+        index=list(_term_labels.keys()).index(TERMS.get(_active_term(), "1学期・期末")),
         key="sb_term")
     st.session_state["active_term"] = _term_labels[_sel_term_label]
     _sel_year = st.number_input("年度", min_value=2025, max_value=2030,
