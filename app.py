@@ -994,13 +994,7 @@ def _build_study_schedule(year: int, month: int) -> dict:
             result[date_str] = items
     return result
 
-STUDY_SCHEDULE = _build_study_schedule(today.year, today.month)
-if not STUDY_SCHEDULE:
-    # フォールバック
-    STUDY_SCHEDULE = {
-        "2026-06-18": [{"subj": "TEST", "type": "test"}],
-        "2026-06-19": [{"subj": "TEST", "type": "test"}],
-    }
+
 
 
 def render_calendar(schedule, today):
@@ -1066,11 +1060,20 @@ NEXT_TEST = {
     ]
 }
 
+today = datetime.now()
+
 TODO_TODAY = [
     {"subject_name": "社会",  "task": "歴史 P105-130 教科書通読", "duration": "60分", "done": False},
     {"subject_name": "数学",  "task": "1年範囲 P225-248 復習",     "duration": "30分", "done": False},
     {"subject_name": "国語",  "task": "漢字テスト範囲 10個",       "duration": "20分", "done": True},
 ]
+
+STUDY_SCHEDULE = _build_study_schedule(today.year, today.month)
+if not STUDY_SCHEDULE:
+    STUDY_SCHEDULE = {
+        "2026-06-18": [{"subj": "TEST", "type": "test"}],
+        "2026-06-19": [{"subj": "TEST", "type": "test"}],
+    }
 
 # 今日・明日の時間割をJSONから動的生成
 def _build_timetable(date_obj):
@@ -1105,7 +1108,6 @@ TOMORROW_TIMETABLE = [
 TODAY_EVENTS    = get_schedule_events(today)
 TOMORROW_EVENTS = get_schedule_events(_tomorrow)
 
-today = datetime.now()
 test_date = datetime.strptime(NEXT_TEST["start_date"], "%Y-%m-%d")
 days_until_test = (test_date - today).days
 test_wd = JP_WD[test_date.weekday()]
