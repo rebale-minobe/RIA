@@ -341,16 +341,6 @@
       "done": false
     },
     {
-      "id": "35fdcf4a",
-      "type": "test",
-      "subject": "理科",
-      "title": "教科書 p4-32 用語・反応式チェック①",
-      "duration_min": 30,
-      "note": "用語と反応式をまとめて確認。赤シートで隠して言えるかチェック。",
-      "due_date": "2026-06-12",
-      "done": false
-    },
-    {
       "id": "116596cf",
       "type": "test",
       "subject": "国語",
