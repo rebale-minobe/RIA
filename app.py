@@ -24,6 +24,51 @@ except Exception:
 
 st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_sidebar_state="collapsed")
 
+# ===== サイドバー: 月間予定表アップロード =====
+with st.sidebar:
+    st.markdown("## 📅 月間予定表")
+    st.caption("毎月の予定表をここから読み込めます")
+
+    col_y, col_m = st.columns(2)
+    with col_y:
+        upload_year = st.number_input("年", value=2026, min_value=2025, max_value=2030, step=1, label_visibility="collapsed")
+    with col_m:
+        upload_month = st.number_input("月", value=datetime.now().month, min_value=1, max_value=12, step=1, label_visibility="collapsed")
+
+    uploaded_schedule = st.file_uploader(
+        "予定表の画像をアップロード",
+        type=["jpg", "jpeg", "png"],
+        label_visibility="collapsed"
+    )
+
+    if uploaded_schedule:
+        st.image(uploaded_schedule, caption="アップロード済み", use_container_width=True)
+        if st.button("🔍 AIで読み取る", use_container_width=True, type="primary"):
+            with st.spinner(f"{int(upload_year)}年{int(upload_month)}月の予定を読み取り中..."):
+                img_bytes = uploaded_schedule.read()
+                parsed = parse_schedule_image_with_vision(img_bytes, int(upload_year), int(upload_month))
+                if parsed and parsed.get("days"):
+                    import json as _json
+                    filename = f"data/schedule_{int(upload_year)}_{int(upload_month):02d}.json"
+                    content_bytes = _json.dumps(parsed, ensure_ascii=False, indent=2).encode("utf-8")
+                    try:
+                        from gh import gh_put
+                        gh_put(filename, content_bytes, f"Update schedule {int(upload_year)}/{int(upload_month):02d}")
+                        load_monthly_schedule.clear()
+                        st.success(f"✅ {int(upload_year)}年{int(upload_month)}月の予定を保存しました！")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"保存エラー: {e}")
+                        # ローカルプレビュー
+                        st.json(parsed)
+                else:
+                    st.error("読み取れませんでした。画像を確認してください。")
+
+    st.divider()
+    st.caption("🌟 RIA v1.5")
+
+
+
 SUBJECT_COLOR_MAP = {
     "国語":     {"primary": "#FF2D55", "light": "#FFE5EC", "emoji": "📘"},
     "数学":     {"primary": "#007AFF", "light": "#E5F1FF", "emoji": "📐"},
@@ -472,6 +517,127 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ===== 教科 × ジャンル =====
+
+# ===== 時間割・スケジュール読み込み =====
+_WD_MAP = {"月": "monday", "火": "tuesday", "水": "wednesday", "木": "thursday", "金": "friday"}
+_WD_JP  = ["月", "火", "水", "木", "金", "土", "日"]
+
+@st.cache_data(ttl=300)
+def load_timetable():
+    """基本時間割を GitHub から取得"""
+    local = DATA_DIR / "timetable_data.json"
+    if local.exists():
+        import json as _json
+        return _json.loads(local.read_text("utf-8"))
+    try:
+        r = requests.get(
+            "https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/timetable_data.json",
+            timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+@st.cache_data(ttl=60)
+def load_monthly_schedule(year: int, month: int):
+    """月間予定を GitHub から取得"""
+    filename = f"schedule_{year}_{month:02d}.json"
+    local = DATA_DIR / filename
+    if local.exists():
+        import json as _json
+        return _json.loads(local.read_text("utf-8"))
+    try:
+        r = requests.get(
+            f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/{filename}",
+            timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+def get_timetable_for_date(date_obj):
+    """指定日の時間割を返す（特別日程対応）"""
+    tt = load_timetable()
+    if not tt:
+        return []
+    wd_en = _WD_MAP.get(_WD_JP[date_obj.weekday()])
+    if not wd_en:
+        return []
+    base = tt["weekly"].get(wd_en, [])
+    # 月間予定から特別時間割の上書きは今後対応
+    return base
+
+def get_schedule_events(date_obj):
+    """指定日の行事・テスト情報を返す"""
+    sc = load_monthly_schedule(date_obj.year, date_obj.month)
+    if not sc:
+        return {}
+    date_str = date_obj.strftime("%Y-%m-%d")
+    return sc.get("days", {}).get(date_str, {})
+
+def parse_schedule_image_with_vision(image_bytes: bytes, year: int, month: int) -> dict:
+    """Claude Vision で月間予定表画像を解析してJSONを生成"""
+    try:
+        from anthropic import Anthropic
+        api_key = st.secrets.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return {}
+        client = Anthropic(api_key=api_key)
+        import base64 as _b64
+        b64_img = _b64.b64encode(image_bytes).decode()
+        msg = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": "image/jpeg", "data": b64_img}
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            f"これは{year}年{month}月の中学校の月間予定表です。\n"
+                            "各日付の情報を以下のJSON形式で出力してください。\n"
+                            "テスト日は test: true を設定し、test_subjects に科目リストを入れてください。\n"
+                            "holiday（祝日・休み）も holiday: true で示してください。\n\n"
+                            "```json\n"
+                            "{\n"
+                            f'  \"year\": {year},\n'
+                            f'  \"month\": {month},\n'
+                            '  \"days\": {\n'
+                            f'    \"{year}-{month:02d}-01\": {{\"weekday\": \"月\", \"events\": [], \"test\": false}},\n'
+                            "    ...\n"
+                            "  }\n"
+                            "}\n"
+                            "```\n\n"
+                            "・日付キーは YYYY-MM-DD 形式\n"
+                            "・weekday は 月火水木金土日 の1文字\n"
+                            "・events は行事名のリスト\n"
+                            "・休日は holiday: true\n"
+                            "・テスト日は test: true と test_subjects リスト\n"
+                            "・特別下校は special フィールドに文字列\n"
+                            "JSONのみ出力し、説明文は不要です。"
+                        )
+                    }
+                ]
+            }]
+        )
+        raw = msg.content[0].text.strip()
+        # ```json ... ``` を除去
+        if "```" in raw:
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        import json as _json
+        return _json.loads(raw.strip())
+    except Exception as e:
+        st.error(f"Vision解析エラー: {e}")
+        return {}
+
 SUBJECTS = {
     "social": {"name": "社会", "emoji": "🗺️", "genres": {
         "history": {"name": "歴史", "emoji": "📜"},
@@ -793,27 +959,48 @@ def render_point_box(text, color="yellow"):
 
 
 # ===== スケジュール =====
-STUDY_SCHEDULE = {
-    "2026-06-04": [{"subj": "社会"}],
-    "2026-06-05": [{"subj": "数学"}],
-    "2026-06-06": [{"subj": "国語"}, {"subj": "理科"}],
-    "2026-06-07": [{"subj": "社会"}, {"subj": "英語"}],
-    "2026-06-08": [{"subj": "数学"}, {"subj": "理科"}],
-    "2026-06-09": [{"subj": "国語"}, {"subj": "社会"}],
-    "2026-06-10": [{"subj": "英語"}, {"subj": "数学"}],
-    "2026-06-11": [{"subj": "保健体育"}, {"subj": "社会"}],
-    "2026-06-12": [{"subj": "技術家庭"}, {"subj": "数学"}],
-    "2026-06-13": [{"subj": "国語"}, {"subj": "英語"}],
-    "2026-06-14": [{"subj": "理科"}, {"subj": "数学"}],
-    "2026-06-15": [{"subj": "社会"}, {"subj": "国語"}],
-    "2026-06-16": [{"subj": "技術家庭"}, {"subj": "保健体育"}],
-    "2026-06-17": [{"subj": "数学"}, {"subj": "英語"}, {"subj": "理科"}],
-    "2026-06-18": [
-        {"subj": "📝 国語ワーク提出", "type": "submit"},
-        {"subj": "TEST", "type": "test"},
-    ],
-    "2026-06-19": [{"subj": "TEST", "type": "test"}],
-}
+# STUDY_SCHEDULEを月間予定から動的生成
+def _build_study_schedule(year: int, month: int) -> dict:
+    sc = load_monthly_schedule(year, month)
+    result = {}
+    if not sc:
+        return result
+    for date_str, day_info in sc.get("days", {}).items():
+        items = []
+        if day_info.get("holiday"):
+            items.append({"subj": "🎌 " + (day_info.get("events", ["休日"])[0] if day_info.get("events") else "休日"), "type": "holiday"})
+        if day_info.get("test"):
+            items.append({"subj": "TEST", "type": "test"})
+            for subj in day_info.get("test_subjects", []):
+                items.append({"subj": subj, "type": "test_subject"})
+        elif day_info.get("events"):
+            for ev in day_info["events"]:
+                items.append({"subj": ev, "type": "event"})
+        else:
+            # 通常日 → 時間割から教科を取得
+            try:
+                import datetime as _dt2
+                d = _dt2.datetime.strptime(date_str, "%Y-%m-%d")
+                periods = get_timetable_for_date(d)
+                seen = set()
+                for p in periods:
+                    s = p["subject"]
+                    if s not in seen:
+                        items.append({"subj": s})
+                        seen.add(s)
+            except Exception:
+                pass
+        if items:
+            result[date_str] = items
+    return result
+
+STUDY_SCHEDULE = _build_study_schedule(today.year, today.month)
+if not STUDY_SCHEDULE:
+    # フォールバック
+    STUDY_SCHEDULE = {
+        "2026-06-18": [{"subj": "TEST", "type": "test"}],
+        "2026-06-19": [{"subj": "TEST", "type": "test"}],
+    }
 
 
 def render_calendar(schedule, today):
@@ -885,23 +1072,38 @@ TODO_TODAY = [
     {"subject_name": "国語",  "task": "漢字テスト範囲 10個",       "duration": "20分", "done": True},
 ]
 
-TODAY_TIMETABLE = [
+# 今日・明日の時間割をJSONから動的生成
+def _build_timetable(date_obj):
+    periods = get_timetable_for_date(date_obj)
+    result = []
+    for p in periods:
+        result.append({
+            "period": p["period"],
+            "subject": p["subject"],
+            "subject_key": p.get("subject_key"),
+            "teacher": p.get("teacher", ""),
+        })
+    return result
+
+TODAY_TIMETABLE     = _build_timetable(today) or [
     {"period": 1, "subject": "国語", "subject_key": "japanese"},
     {"period": 2, "subject": "数学", "subject_key": "math"},
     {"period": 3, "subject": "社会", "subject_key": "social"},
     {"period": 4, "subject": "理科", "subject_key": "science"},
     {"period": 5, "subject": "英語", "subject_key": "english"},
-    {"period": 6, "subject": "音楽", "subject_key": None},
 ]
 
+import datetime as _dt
+_tomorrow = today + _dt.timedelta(days=1)
+TOMORROW_TIMETABLE_RAW = _build_timetable(_tomorrow) or []
 TOMORROW_TIMETABLE = [
-    {"period": 1, "subject": "数学", "next_chapter": "連立方程式の応用", "page": "P232"},
-    {"period": 2, "subject": "社会", "next_chapter": "江戸幕府の成立", "page": "P124"},
-    {"period": 3, "subject": "保健体育", "next_chapter": "運動と健康", "page": "P25"},
-    {"period": 4, "subject": "国語", "next_chapter": "古文入門", "page": "P88"},
-    {"period": 5, "subject": "技術", "next_chapter": "木材加工", "page": "P40"},
-    {"period": 6, "subject": "英語", "next_chapter": "Unit 4 - 未来形", "page": "P45"},
+    {**p, "next_chapter": "—", "page": ""}
+    for p in TOMORROW_TIMETABLE_RAW
 ]
+
+# 今日・明日の行事
+TODAY_EVENTS    = get_schedule_events(today)
+TOMORROW_EVENTS = get_schedule_events(_tomorrow)
 
 today = datetime.now()
 test_date = datetime.strptime(NEXT_TEST["start_date"], "%Y-%m-%d")

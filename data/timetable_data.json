@@ -1,0 +1,48 @@
+{
+  "class": "2-5",
+  "school": "横浜市立栗田谷中学校",
+  "weekly": {
+    "monday":    [
+      {"period": 1, "subject": "技術", "subject_key": "tech_home", "teacher": "石井"},
+      {"period": 2, "subject": "家庭", "subject_key": "tech_home", "teacher": "柳町"},
+      {"period": 3, "subject": "理科", "subject_key": "science",   "teacher": "榊原"},
+      {"period": 4, "subject": "数学", "subject_key": "math",      "teacher": "辻田"},
+      {"period": 5, "subject": "国語", "subject_key": "japanese",  "teacher": "平井"}
+    ],
+    "tuesday":   [
+      {"period": 1, "subject": "英語", "subject_key": "english",   "teacher": "岡"},
+      {"period": 2, "subject": "保体", "subject_key": "pe",        "teacher": "太田・齋藤"},
+      {"period": 3, "subject": "理科", "subject_key": "science",   "teacher": "吉田"},
+      {"period": 4, "subject": "国語", "subject_key": "japanese",  "teacher": "新地"},
+      {"period": 5, "subject": "数学", "subject_key": "math",      "teacher": "辻田"}
+    ],
+    "wednesday": [
+      {"period": 1, "subject": "社会", "subject_key": "social",    "teacher": "条"},
+      {"period": 2, "subject": "保体", "subject_key": "pe",        "teacher": "太田・齋藤"},
+      {"period": 3, "subject": "音楽", "subject_key": null,        "teacher": "岩永"},
+      {"period": 4, "subject": "理科", "subject_key": "science",   "teacher": "吉田"},
+      {"period": 5, "subject": "英語", "subject_key": "english",   "teacher": "岡"}
+    ],
+    "thursday":  [
+      {"period": 1, "subject": "数学", "subject_key": "math",      "teacher": "辻田"},
+      {"period": 2, "subject": "国語", "subject_key": "japanese",  "teacher": "新地"},
+      {"period": 3, "subject": "社会", "subject_key": "social",    "teacher": "条"},
+      {"period": 4, "subject": "保体", "subject_key": "pe",        "teacher": "太田・齋藤"},
+      {"period": 5, "subject": "英語", "subject_key": "english",   "teacher": "岡"}
+    ],
+    "friday":    [
+      {"period": 1, "subject": "美術", "subject_key": null,        "teacher": "山口"},
+      {"period": 2, "subject": "国語", "subject_key": "japanese",  "teacher": "新地"},
+      {"period": 3, "subject": "社会", "subject_key": "social",    "teacher": "条"},
+      {"period": 4, "subject": "英語", "subject_key": "english",   "teacher": "バグニ・宇佐美"},
+      {"period": 5, "subject": "理科", "subject_key": "science",   "teacher": "吉田"}
+    ]
+  },
+  "period_times": {
+    "1": "8:45-9:35",
+    "2": "9:45-10:35",
+    "3": "10:45-11:35",
+    "4": "11:45-12:35",
+    "5": "13:20-14:10"
+  }
+}
