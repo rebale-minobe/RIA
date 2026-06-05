@@ -120,6 +120,7 @@ _GENRE_SHEET_MAP = {
     "reading": "読解", "classic": "古文漢文",
     "kanji": "漢字語彙", "grammar": "文法",
     "field1": "第1分野", "field2": "第2分野",
+    "jp2": "国語2",
     "general": "一般",
 }
 
