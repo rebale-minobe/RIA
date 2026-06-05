@@ -87,6 +87,17 @@ def save_task_schedule(data):
     load_task_schedule.clear()
     return gh_put_json("data/task_schedule.json", data, "Update task_schedule.json")
 
+def _move_task_cb(tid, opts):
+    """プルダウンで選んだ日へ即移動（同じ行で完結）"""
+    sel = st.session_state.get(f"mv_{tid}")
+    if not sel or sel not in opts:
+        return
+    data = load_tasks()
+    for task in data.get("tasks", []):
+        if task["id"] == tid:
+            task["due_date"] = opts[sel]
+    save_tasks(data)
+
 # ===== NEXT_TEST（app.pyと同期） =====
 # 勉強時間の正確な計算
 # 平日: 2h / 土日: 5h  / 6/3(水)〜6/17(月)
@@ -293,6 +304,8 @@ st.markdown("""
         border-left: 4px solid #ccc;
     }
     .task-title { font-size: 16px; font-weight: 700; color: #1c1c1e; }
+    .task-subj  { font-size: 13px; font-weight: 700; margin-bottom: 3px; letter-spacing: .02em; }
+    .sched-day  { font-size: 17px; font-weight: 700; margin: 22px 0 6px; color: #1c1c1e; }
     .task-meta  { font-size: 13px; color: #8E8E93; margin-top: 4px; }
     .task-date  { font-size: 13px; font-weight: 600; color: #007AFF; }
     .section-title {
@@ -497,8 +510,9 @@ with tab4:
             with c1:
                 st.markdown(
                     f'<div class="task-card" style="border-left-color:{col["primary"]};margin:4px 0;">'
-                    f'<div class="task-title">{col["emoji"]} {t["title"]}</div>'
-                    f'<div class="task-meta">⏱ {t["duration_min"]}分　{t.get("subject","")}</div>'
+                    f'<div class="task-subj" style="color:{col["primary"]};">{col["emoji"]} {t.get("subject","")}</div>'
+                    f'<div class="task-title">{t["title"]}</div>'
+                    f'<div class="task-meta">⏱ {t["duration_min"]}分</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
@@ -537,51 +551,47 @@ with tab4:
                 try:
                     _d = datetime.strptime(d, "%Y-%m-%d")
                     wd = JP_WD[_d.weekday()]
-                    st.markdown(f"**{_d.month}/{_d.day}（{wd}）**")
+                    st.markdown(f'<div class="sched-day">{_d.month}/{_d.day}（{wd}）</div>',
+                                unsafe_allow_html=True)
                 except Exception:
-                    st.markdown(f"**{d}**")
+                    st.markdown(f'<div class="sched-day">{d}</div>', unsafe_allow_html=True)
             col = subj_color(t.get("subject",""))
-            done_mark = "✅" if t.get("done") else "⬜"
-            c1, c2, c3 = st.columns([4, 1, 1])
+            is_done = t.get("done", False)
+            opacity = "0.5" if is_done else "1"
+            status = "　✅ 完了" if is_done else ""
+            # 移動先（同じ行のプルダウンで即移動）
+            _opts = {}
+            for _i in range(14):
+                _dd = today + timedelta(days=_i)
+                _opts[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
+            _choices = ["📅 別の日へ"] + list(_opts.keys())
+            c1, c2, c3, c4 = st.columns([3.4, 2, 0.8, 0.8])
             with c1:
                 st.markdown(
-                    f'<div class="task-card" style="border-left-color:{col["primary"]};margin:4px 0;">'
-                    f'<div class="task-title">{done_mark} {col["emoji"]} {t["title"]}</div>'
-                    f'<div class="task-meta">⏱ {t["duration_min"]}分</div>'
+                    f'<div class="task-card" style="border-left-color:{col["primary"]};margin:4px 0;opacity:{opacity};">'
+                    f'<div class="task-subj" style="color:{col["primary"]};">{col["emoji"]} {t.get("subject","")}</div>'
+                    f'<div class="task-title">{t["title"]}</div>'
+                    f'<div class="task-meta">⏱ {t["duration_min"]}分{status}</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
             with c2:
-                done_btn = "✅" if not t.get("done") else "↩️"
+                st.selectbox("移動", _choices, index=0, key=f"mv_{t['id']}",
+                             on_change=_move_task_cb, args=(t["id"], _opts),
+                             label_visibility="collapsed")
+            with c3:
+                done_btn = "✅" if not is_done else "↩️"
                 if st.button(done_btn, key=f"done_{t['id']}", use_container_width=True):
                     for task in tasks_data["tasks"]:
                         if task["id"] == t["id"]:
                             task["done"] = not task.get("done", False)
                     save_tasks(tasks_data)
                     st.rerun()
-            with c3:
+            with c4:
                 if st.button("🗑️", key=f"del_{t['id']}", use_container_width=True):
                     tasks_data["tasks"] = [task for task in tasks_data["tasks"]
                                           if task["id"] != t["id"]]
                     save_tasks(tasks_data)
                     st.rerun()
-            # 別の日へ移動（②移動が必要なら移動させるしくみ）
-            with st.expander("📅 別の日へ移動"):
-                _opts = {}
-                for _i in range(14):
-                    _d = today + timedelta(days=_i)
-                    _opts[f"{_d.month}/{_d.day}（{JP_WD[_d.weekday()]}）"] = _d.strftime("%Y-%m-%d")
-                _mc1, _mc2 = st.columns([3, 1])
-                with _mc1:
-                    _newlab = st.selectbox("移動先", list(_opts.keys()),
-                                           key=f"mv_{t['id']}", label_visibility="collapsed")
-                with _mc2:
-                    if st.button("移動", key=f"mvbtn_{t['id']}", use_container_width=True):
-                        for task in tasks_data["tasks"]:
-                            if task["id"] == t["id"]:
-                                task["due_date"] = _opts[_newlab]
-                        save_tasks(tasks_data)
-                        st.success("移動しました！")
-                        st.rerun()
     else:
         st.caption("まだタスクが配置されていません")
