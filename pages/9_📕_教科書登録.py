@@ -116,6 +116,31 @@ def update_textbook_metadata(subject_key, genre_key, publisher, cover_filename, 
     return True
 
 
+
+
+_GENRE_SHEET_MAP = {
+    "history": "歴史", "geography": "地理", "civics": "公民",
+    "reading": "読解", "classic": "古文漢文",
+    "kanji": "漢字語彙", "grammar": "文法",
+    "field1": "第1分野", "field2": "第2分野",
+    "general": "一般",
+}
+
+def has_toc_in_excel(subject_key: str, genre_key: str) -> bool:
+    """Excelファイルに目次シートが存在するか確認"""
+    try:
+        import openpyxl
+        excel_path = DATA_DIR / f"{subject_key}_data.xlsx"
+        sheet_name = f"目次_{_GENRE_SHEET_MAP.get(genre_key, genre_key)}"
+        if excel_path.exists():
+            wb = openpyxl.load_workbook(excel_path, read_only=True)
+            result = sheet_name in wb.sheetnames
+            wb.close()
+            return result
+    except Exception:
+        pass
+    return False
+
 def save_cover_image(subject_key, genre_key, uploaded_file):
     COVERS_DIR.mkdir(parents=True, exist_ok=True)
     ext = uploaded_file.name.split('.')[-1].lower()
@@ -152,13 +177,14 @@ with tab_register:
         selected_genre = genre_options[selected_genre_label]
 
     existing_data = load_textbook(selected_subject, selected_genre)
-    has_toc = existing_data and existing_data.get("textbook", {}).get("chapters")
+    has_toc = (existing_data and existing_data.get("textbook", {}).get("chapters")) or has_toc_in_excel(selected_subject, selected_genre)
 
     subject_name = SUBJECTS[selected_subject]["name"]
     genre_name = genres[selected_genre]["name"]
 
     if has_toc:
-        st.success(f"✅ {subject_name}({genre_name})の目次は登録済み({len(existing_data['textbook']['chapters'])}章)")
+        chapters_count = len(existing_data["textbook"]["chapters"]) if existing_data and existing_data.get("textbook", {}).get("chapters") else "Excel"
+    st.success(f"✅ {subject_name}({genre_name})の目次は登録済み（{chapters_count}）")
     else:
         st.warning(f"⚠️ {subject_name}({genre_name})の目次はまだ登録されていません")
 
