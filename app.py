@@ -606,6 +606,29 @@ def _save_todo_duration(task_id, dur_key):
         except Exception:
             pass
 
+def _save_todo_done(task_id, done_val):
+    """ToDoの「できた！」をtasks.jsonに保存（STUDY TIMEに反映）"""
+    import json as _json
+    try:
+        r = requests.get("https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/tasks.json", timeout=5)
+        data = r.json() if r.status_code == 200 else {"tasks": []}
+    except Exception:
+        return
+    changed = False
+    for _t in data.get("tasks", []):
+        if _t.get("id") == task_id:
+            _t["done"] = bool(done_val)
+            changed = True
+    if changed:
+        try:
+            from gh import gh_put
+            gh_put("data/tasks.json",
+                   _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                   "Update task done via ToDo")
+            load_tasks_data.clear()
+        except Exception:
+            pass
+
 def get_today_tasks(date_obj):
     """今日の日付に割り当てられた未完了タスクを返す"""
     data = load_tasks_data()
@@ -1310,13 +1333,17 @@ if st.session_state.get("show_test_detail"):
         </div>
         """, unsafe_allow_html=True)
 
-# ===== 教科別 合計勉強時間 =====
+# ===== STUDY TIME（6/5以降に「できた！」した時間の累計） =====
 _subj_order = [("国語","国語"),("社会","社会"),("数学","数学"),("理科","理科"),
                ("英語","英語"),("技術","技術家庭"),("保健","保健体育")]
 _all_for_sum = load_tasks_data().get("tasks", [])
 _subj_min = {}
 for _t in _all_for_sum:
-    _sj = _t.get("subject","")
+    if not _t.get("done"):
+        continue
+    if _t.get("due_date", "") < "2026-06-05":
+        continue
+    _sj = _t.get("subject", "")
     _subj_min[_sj] = _subj_min.get(_sj, 0) + int(_t.get("duration_min", 0) or 0)
 _stc_html = ""
 for _label, _skey in _subj_order:
@@ -1335,6 +1362,7 @@ for _label, _skey in _subj_order:
         f'<div class="stc-time">{_tnum}<span class="stc-unit">{_tunit}</span></div>'
         f'</div>'
     )
+st.markdown('<div class="section-title">⏱ STUDY TIME</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="subj-time-row">{_stc_html}</div>', unsafe_allow_html=True)
 
 # ===== Today's To Do =====
@@ -1387,7 +1415,9 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
                         st.markdown(todo["note"])
                 btn_label2 = "↩️ 戻す" if is_done else "✅ できた！"
                 if st.button(btn_label2, key=f"todo_btn_{idx}", use_container_width=True):
-                    st.session_state.todo_done[idx] = not is_done
+                    new_done = not is_done
+                    st.session_state.todo_done[idx] = new_done
+                    _save_todo_done(todo.get("task_id",""), new_done)
                     st.rerun()
 
 st.caption("💡 タスクや時間をタップして編集できます")
