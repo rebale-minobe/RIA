@@ -1327,7 +1327,10 @@ def _get_batsu_questions():
 
 
 # ===== 今日の問題：AI 4択出題 =====
-tp_questions = _get_batsu_questions()
+# 問題リストはセッション内で固定（シャッフル結果を保持）
+if "tp_questions_list" not in st.session_state:
+    st.session_state["tp_questions_list"] = _get_batsu_questions()
+tp_questions = st.session_state["tp_questions_list"]
 tp_total = len(tp_questions)
 
 if tp_total == 0:
@@ -1576,6 +1579,8 @@ else:
                      use_container_width=True, type="primary"):
             for k in [k for k in list(st.session_state.keys()) if k.startswith("tp_")]:
                 del st.session_state[k]
+            # 問題リストも再取得
+            st.session_state["tp_questions_list"] = _get_batsu_questions()
             st.rerun()
 
 # ===== 今日の時間割 =====
