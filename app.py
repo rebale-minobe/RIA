@@ -1720,34 +1720,63 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 st.markdown("---")
 
 # フォントサイズ変更
-font_col1, font_col2, font_col3 = st.columns([2, 3, 2])
-with font_col2:
+fc1, fc2, fc3 = st.columns([1, 2, 1])
+with fc2:
     font_size = st.select_slider(
         "🔤 文字サイズ",
         options=[12, 13, 14, 15, 16, 17, 18, 20, 22],
-        value=st.session_state.get("font_size", 15),
+        value=st.session_state.get("font_size", 17),
         key="font_size_slider",
         format_func=lambda x: f"{x}px"
     )
-    if font_size != st.session_state.get("font_size", 15):
+    if font_size != st.session_state.get("font_size", 17):
         st.session_state["font_size"] = font_size
         st.rerun()
 
-# フォントサイズをCSSで適用
-fs = st.session_state.get("font_size", 15)
+    ans_size = st.select_slider(
+        "📝 解答文字サイズ",
+        options=[24, 28, 32, 36, 40, 48, 56, 64],
+        value=st.session_state.get("ans_size", 40),
+        key="ans_size_slider",
+        format_func=lambda x: f"{x}px"
+    )
+    if ans_size != st.session_state.get("ans_size", 40):
+        st.session_state["ans_size"] = ans_size
+        st.rerun()
+
+# CSSで適用
+fs  = st.session_state.get("font_size", 17)
+ans = st.session_state.get("ans_size", 40)
 st.markdown(f"""
 <style>
     .stApp, .stApp p, .stApp li, .stApp span, .stApp div {{
         font-size: {fs}px !important;
     }}
-    .wb-fc-q {{ font-size: {fs * 2}px !important; }}
-    .wb-fc-a-shown {{ font-size: {int(fs * 2.4)}px !important; }}
+    .wb-fc-q {{
+        font-size: {fs + 12}px !important;
+        font-weight: 800 !important;
+    }}
+    .wb-fc-a-shown {{
+        font-size: {ans}px !important;
+        font-weight: 800 !important;
+        line-height: 1.3 !important;
+    }}
+    .wb-fc-meta {{
+        font-size: {max(fs-5,10)}px !important;
+        font-weight: 700 !important;
+    }}
+    .wb-fc-lesson {{
+        font-size: {fs}px !important;
+        font-weight: 700 !important;
+    }}
+    .wb-progress-row {{
+        font-size: {fs}px !important;
+        font-weight: 700 !important;
+    }}
     .section-title {{ font-size: {fs + 9}px !important; }}
     .toc-sect-title {{ font-size: {fs - 1}px !important; }}
     .toc-sub {{ font-size: {fs - 2}px !important; }}
-    .wb-fc-meta {{ font-size: {fs - 4}px !important; }}
-    .wb-fc-lesson {{ font-size: {fs - 1}px !important; }}
 </style>
 """, unsafe_allow_html=True)
 
-st.caption(f"🌟 RIA v1.5 | 文字サイズ {fs}px")
+st.caption(f"🌟 RIA v1.5 | 文字 {fs}px｜解答 {ans}px")
