@@ -831,7 +831,7 @@ SUBJECTS = {
         "general": {"name": "数学", "emoji": "📐"},
     }},
     "science": {"name": "理科", "emoji": "🔬", "genres": {
-        "field2": {"name": "理科", "emoji": "🔬"},
+        "field2": {"name": "サイエンス2", "emoji": "🌱"},
     }},
     "english": {"name": "英語", "emoji": "🌐", "genres": {
         "general": {"name": "英語", "emoji": "🌐"},
