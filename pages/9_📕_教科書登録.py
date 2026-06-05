@@ -59,8 +59,8 @@ SUBJECTS = {
     "science": {
         "name": "理科", "emoji": "🔬",
         "genres": {
-            "field1": {"name": "第1分野(物理・化学)", "emoji": "⚗️"},
-            "field2": {"name": "第2分野(生物・地学)", "emoji": "🌱"},
+            
+            "field2": {"name": "理科", "emoji": "🔬"},
         }
     },
     "english": {
@@ -74,10 +74,8 @@ SUBJECTS = {
 DATA_DIR = Path(__file__).parent.parent / "data"
 COVERS_DIR = DATA_DIR / "textbook_covers"
 
-
 def get_textbook_filename(subject_key: str, genre_key: str) -> str:
     return f"{subject_key}_{genre_key}_textbook.json"
-
 
 def load_textbook(subject_key: str, genre_key: str):
     filename = get_textbook_filename(subject_key, genre_key)
@@ -86,7 +84,6 @@ def load_textbook(subject_key: str, genre_key: str):
         with open(local_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     return None
-
 
 def update_textbook_metadata(subject_key, genre_key, publisher, cover_filename, textbook_name):
     filename = get_textbook_filename(subject_key, genre_key)
@@ -116,7 +113,6 @@ def update_textbook_metadata(subject_key, genre_key, publisher, cover_filename, 
         json.dump(data, f, ensure_ascii=False, indent=2)
     return True
 
-
 def save_cover_image(subject_key, genre_key, uploaded_file):
     COVERS_DIR.mkdir(parents=True, exist_ok=True)
     ext = uploaded_file.name.split('.')[-1].lower()
@@ -125,7 +121,6 @@ def save_cover_image(subject_key, genre_key, uploaded_file):
     with open(cover_path, 'wb') as f:
         f.write(uploaded_file.getbuffer())
     return cover_filename
-
 
 # ===== メイン UI =====
 
