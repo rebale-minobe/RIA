@@ -184,7 +184,7 @@ with tab_register:
 
     if has_toc:
         chapters_count = len(existing_data["textbook"]["chapters"]) if existing_data and existing_data.get("textbook", {}).get("chapters") else "Excel"
-    st.success(f"✅ {subject_name}({genre_name})の目次は登録済み（{chapters_count}）")
+        st.success(f"✅ {subject_name}({genre_name})の目次は登録済み（{chapters_count}）")
     else:
         st.warning(f"⚠️ {subject_name}({genre_name})の目次はまだ登録されていません")
 
