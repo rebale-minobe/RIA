@@ -1,6 +1,26 @@
 {
   "tasks": [
     {
+      "id": "16e2c0ae",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワーク P2-9（解く＋答え合わせ）",
+      "duration_min": 120,
+      "note": "テスト勉強スタート！社会ワークの前半。間違えた所は教科書で理由を確認しよう。",
+      "due_date": "2026-06-03",
+      "done": true
+    },
+    {
+      "id": "d9fef695",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワーク P10-17（解く＋答え合わせ）",
+      "duration_min": 120,
+      "note": "ワーク後半。これでP2-17が完了。✕問題は後で見直せるよう印をつけておこう。",
+      "due_date": "2026-06-04",
+      "done": true
+    },
+    {
       "id": "68038608",
       "type": "test",
       "subject": "数学",

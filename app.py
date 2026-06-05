@@ -1129,7 +1129,7 @@ try:
     _sub_by_date = {}
     for _t in _td.get("tasks", []):
         _dd = _t.get("due_date"); _sj = _t.get("subject", "")
-        if not _dd or not _sj or _t.get("done"):
+        if not _dd or not _sj:
             continue
         _sub_by_date.setdefault(_dd, [])
         if _sj not in _sub_by_date[_dd]:
