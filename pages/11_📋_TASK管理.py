@@ -368,98 +368,195 @@ schedule_data = load_task_schedule()
 
 # ===== TAB1: テスト対策TASK =====
 with tab1:
-    st.markdown("### テスト範囲からAIがタスクを自動生成します")
+    st.markdown("### 教科ごとに カテゴリー → タスク を登録")
+    st.caption("①カテゴリーを作る（自由入力）→ ②カテゴリーの中にタスクを追加。日付はスケジュールタブで配置できます。")
+
+    # カテゴリー保存領域
+    if "categories" not in tasks_data:
+        tasks_data["categories"] = {}
+
+    _DUR_OPTS = [15, 20, 30, 45, 60, 90, 120]
+
+    def _date_opts():
+        d = {"未割当（あとで配置）": None}
+        for _i in range(_STUDY_DAYS):
+            _dd = _STUDY_START + timedelta(days=_i)
+            d[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
+        return d
 
     for subj_info in NEXT_TEST["subjects"]:
         subj  = subj_info["subject"]
         col   = subj_color(subj)
         hours = subj_info["study_hours"]
 
-        # 範囲サマリー表示
-        range_summary = " / ".join([f"{k}: {v}" for k, v in subj_info.get("range_detail",{}).items()])
+        existing = [t for t in tasks_data["tasks"]
+                    if t.get("type") == "test" and t.get("subject") == subj]
+        n_done = sum(1 for t in existing if t.get("done"))
+
         with st.expander(
             f"{col['emoji']} {subj}　{subj_info['date']}　"
-            f"目安: {hours}h（{_STUDY_DAYS}日間で）",
+            f"目安: {hours}h　|　タスク {len(existing)}件（完了{n_done}）",
             expanded=False
         ):
             if subj_info.get("point"):
                 st.info(f"💡 {subj_info['point']}")
             if subj_info.get("submission") and subj_info["submission"] != "なし":
                 st.warning(f"📝 提出物: {subj_info['submission']}")
-            # 既存タスクを表示
-            existing = [t for t in tasks_data["tasks"]
-                       if t.get("type") == "test" and t.get("subject") == subj]
-            if existing:
-                st.markdown("**登録済みタスク（教材ごと）:**")
-                # 日付登録の候補（6/3〜6/17）
-                _eopts = {}
-                for _i in range(_STUDY_DAYS):
-                    _dd = _STUDY_START + timedelta(days=_i)
-                    _eopts[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
-                # 教材カテゴリーでグループ化
-                _groups = {}
-                for t in existing:
-                    _groups.setdefault(task_category(t["title"]), []).append(t)
-                for _cat in CAT_ORDER:
-                    if _cat not in _groups:
-                        continue
-                    st.markdown(f'<div class="cat-head">{_cat}</div>', unsafe_allow_html=True)
-                    for t in _groups[_cat]:
-                        date_str = t.get("due_date","未割当")
-                        done_mark = "✅" if t.get("done") else "⬜"
-                        _e1, _e2 = st.columns([5, 0.7])
-                        with _e1:
-                            st.markdown(
-                                f'<div class="task-card" style="border-left-color:{col["primary"]};">'
-                                f'<div class="task-title">{done_mark} {t["title"]}</div>'
-                                f'<div class="task-meta">⏱ {t["duration_min"]}分　'
-                                f'<span class="task-date">📅 {date_str}</span></div>'
-                                f'</div>',
-                                unsafe_allow_html=True
-                            )
-                        with _e2:
-                            if st.button("🗑️", key=f"del1_{t['id']}", use_container_width=True):
-                                tasks_data["tasks"] = [x for x in tasks_data["tasks"]
-                                                       if x["id"] != t["id"]]
-                                save_tasks(tasks_data)
-                                st.rerun()
-                        with st.expander("✏️ 編集"):
-                            _edur_opts = [15, 20, 30, 45, 60, 90, 120]
-                            _edur_idx = _edur_opts.index(t["duration_min"]) if t.get("duration_min") in _edur_opts else 2
-                            _et = st.text_input("タスク名", value=t["title"], key=f"et_{t['id']}")
-                            _ed = st.selectbox("時間", _edur_opts, index=_edur_idx,
-                                               format_func=lambda x: f"{x}分", key=f"ed_{t['id']}")
-                            _en = st.text_area("💡 やり方（任意）", value=t.get("note","") or "",
-                                               key=f"en_{t['id']}", height=80)
-                            _edate_opts = {"未割当（あとで）": None}
-                            for _i in range(_STUDY_DAYS):
-                                _dd = _STUDY_START + timedelta(days=_i)
-                                _edate_opts[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
-                            _edate_keys = list(_edate_opts.keys())
-                            _edate_idx = 0
-                            for _i, (_lab, _ds) in enumerate(_edate_opts.items()):
-                                if _ds == t.get("due_date"):
-                                    _edate_idx = _i
-                                    break
-                            _eda = st.selectbox("日付", _edate_keys, index=_edate_idx, key=f"eda_{t['id']}")
-                            if st.button("💾 保存", key=f"esave_{t['id']}", type="primary"):
+
+            subj_cats = tasks_data["categories"].get(subj, [])
+
+            # ➕ カテゴリー追加（自由入力）
+            with st.form(f"addcat_{subj}", clear_on_submit=True):
+                _cc1, _cc2 = st.columns([4, 1])
+                with _cc1:
+                    _newcat = st.text_input(
+                        "カテゴリー名", placeholder="例：教科書 / ワーク / 積み上げ / プリント / 漢字",
+                        key=f"newcat_{subj}", label_visibility="collapsed")
+                with _cc2:
+                    _addcat = st.form_submit_button("➕ カテゴリー追加", use_container_width=True)
+                if _addcat:
+                    nc = (_newcat or "").strip()
+                    if nc and nc not in subj_cats:
+                        tasks_data["categories"].setdefault(subj, []).append(nc)
+                        save_tasks(tasks_data)
+                        st.rerun()
+                    elif nc in subj_cats:
+                        st.warning("そのカテゴリーは既にあります")
+
+            # 表示するカテゴリー（登録分 ＋ タスクが持つ未登録カテゴリー）
+            cats_to_show = list(subj_cats)
+            for t in existing:
+                _c = t.get("category", "")
+                if _c and _c not in cats_to_show:
+                    cats_to_show.append(_c)
+
+            if not cats_to_show:
+                st.caption("まずカテゴリーを追加してください")
+
+            # カテゴリーごと
+            for ci, cat in enumerate(cats_to_show):
+                cat_tasks = [t for t in existing if t.get("category", "") == cat]
+                ckey = f"{subj}_{ci}"
+                st.markdown(
+                    f'<div class="cat-head">📂 {cat}　<span style="color:#999;font-weight:400;">'
+                    f'（{len(cat_tasks)}件）</span></div>', unsafe_allow_html=True)
+
+                for t in cat_tasks:
+                    date_str = t.get("due_date") or "未割当"
+                    done_mark = "✅" if t.get("done") else "⬜"
+                    _e1, _e2 = st.columns([5, 0.7])
+                    with _e1:
+                        st.markdown(
+                            f'<div class="task-card" style="border-left-color:{col["primary"]};">'
+                            f'<div class="task-title">{done_mark} {t["title"]}</div>'
+                            f'<div class="task-meta">⏱ {t["duration_min"]}分　'
+                            f'<span class="task-date">📅 {date_str}</span></div>'
+                            f'</div>', unsafe_allow_html=True)
+                    with _e2:
+                        if st.button("🗑️", key=f"del1_{t['id']}", use_container_width=True):
+                            tasks_data["tasks"] = [x for x in tasks_data["tasks"] if x["id"] != t["id"]]
+                            save_tasks(tasks_data)
+                            st.rerun()
+                    with st.expander("✏️ 編集"):
+                        _et = st.text_input("タスク名", value=t["title"], key=f"et_{t['id']}")
+                        _edur_idx = _DUR_OPTS.index(t["duration_min"]) if t.get("duration_min") in _DUR_OPTS else 2
+                        _ed = st.selectbox("時間", _DUR_OPTS, index=_edur_idx,
+                                           format_func=lambda x: f"{x}分", key=f"ed_{t['id']}")
+                        # カテゴリー変更（移動）
+                        _cat_choices = cats_to_show if cats_to_show else [cat]
+                        _cat_idx = _cat_choices.index(t.get("category", cat)) if t.get("category", cat) in _cat_choices else 0
+                        _ecat = st.selectbox("カテゴリー", _cat_choices, index=_cat_idx, key=f"ecat_{t['id']}")
+                        _en = st.text_area("💡 やり方（任意）", value=t.get("note", "") or "",
+                                           key=f"en_{t['id']}", height=80)
+                        _edate_opts = _date_opts()
+                        _edate_keys = list(_edate_opts.keys())
+                        _edate_idx = 0
+                        for _i, (_lab, _ds) in enumerate(_edate_opts.items()):
+                            if _ds == t.get("due_date"):
+                                _edate_idx = _i
+                                break
+                        _eda = st.selectbox("日付", _edate_keys, index=_edate_idx, key=f"eda_{t['id']}")
+                        if st.button("💾 保存", key=f"esave_{t['id']}", type="primary"):
+                            for task in tasks_data["tasks"]:
+                                if task["id"] == t["id"]:
+                                    if _et.strip():
+                                        task["title"] = _et.strip()
+                                    task["duration_min"] = _ed
+                                    task["category"] = _ecat
+                                    task["note"] = _en.strip()
+                                    task["due_date"] = _edate_opts[_eda]
+                            save_tasks(tasks_data)
+                            st.success("保存しました！")
+                            st.rerun()
+
+                # ➕ このカテゴリーにタスク追加
+                with st.form(f"addtask_{ckey}", clear_on_submit=True):
+                    st.markdown(f"**➕ 「{cat}」にタスクを追加**")
+                    _at_title = st.text_input("タスク名",
+                        placeholder="例：P◯◯〜P◯◯ / No.◯ ①周目", key=f"att_{ckey}")
+                    _afc1, _afc2 = st.columns(2)
+                    with _afc1:
+                        _at_dur = st.selectbox("時間", _DUR_OPTS, index=2,
+                            format_func=lambda x: f"{x}分", key=f"atd_{ckey}")
+                    with _afc2:
+                        _at_dates = _date_opts()
+                        _at_date_lab = st.selectbox("日付", list(_at_dates.keys()), key=f"atdate_{ckey}")
+                    if st.form_submit_button("➕ 追加", type="primary"):
+                        if _at_title.strip():
+                            import uuid
+                            tasks_data["tasks"].append({
+                                "id":           str(uuid.uuid4())[:8],
+                                "type":         "test",
+                                "subject":      subj,
+                                "category":     cat,
+                                "title":        _at_title.strip(),
+                                "duration_min": _at_dur,
+                                "note":         "",
+                                "due_date":     _at_dates[_at_date_lab],
+                                "done":         False,
+                            })
+                            save_tasks(tasks_data)
+                            st.success("追加しました！")
+                            st.rerun()
+
+            # 未分類タスク（既存タスクでcategory未設定のもの）
+            uncat = [t for t in existing if not t.get("category")]
+            if uncat:
+                st.markdown(
+                    '<div class="cat-head" style="color:#FF9500;">⚠️ 未分類'
+                    '<span style="font-weight:400;color:#999;">（カテゴリーを割り当ててください）</span></div>',
+                    unsafe_allow_html=True)
+                for t in uncat:
+                    date_str = t.get("due_date") or "未割当"
+                    done_mark = "✅" if t.get("done") else "⬜"
+                    _u1, _u2 = st.columns([5, 0.7])
+                    with _u1:
+                        st.markdown(
+                            f'<div class="task-card" style="border-left-color:#FF9500;">'
+                            f'<div class="task-title">{done_mark} {t["title"]}</div>'
+                            f'<div class="task-meta">⏱ {t["duration_min"]}分　'
+                            f'<span class="task-date">📅 {date_str}</span></div>'
+                            f'</div>', unsafe_allow_html=True)
+                    with _u2:
+                        if st.button("🗑️", key=f"udel_{t['id']}", use_container_width=True):
+                            tasks_data["tasks"] = [x for x in tasks_data["tasks"] if x["id"] != t["id"]]
+                            save_tasks(tasks_data)
+                            st.rerun()
+                    with st.expander("📂 カテゴリーを割り当て"):
+                        if cats_to_show:
+                            _uc = st.selectbox("カテゴリー", cats_to_show, key=f"uc_{t['id']}")
+                            if st.button("✅ 割り当て", key=f"uca_{t['id']}", type="primary"):
                                 for task in tasks_data["tasks"]:
                                     if task["id"] == t["id"]:
-                                        if _et.strip():
-                                            task["title"] = _et.strip()
-                                        task["duration_min"] = _ed
-                                        task["note"] = _en.strip()
-                                        task["due_date"] = _edate_opts[_eda]
+                                        task["category"] = _uc
                                 save_tasks(tasks_data)
-                                st.success("保存しました！")
                                 st.rerun()
-                if st.button("🗑️ リセットして再生成", key=f"reset_{subj}"):
-                    tasks_data["tasks"] = [t for t in tasks_data["tasks"]
-                                          if not (t.get("type")=="test" and t.get("subject")==subj)]
-                    save_tasks(tasks_data)
-                    st.rerun()
-            else:
-                if st.button(f"✨ AIでタスクを生成", key=f"gen_{subj}", type="primary"):
+                        else:
+                            st.caption("先にカテゴリーを追加してください")
+
+            # AIタスク生成（補助・生成分は未分類に入る）
+            if not existing:
+                if st.button("✨ AIでタスクを生成（未分類に追加）", key=f"gen_{subj}"):
                     with st.spinner(f"{subj}のタスクを生成中..."):
                         new_tasks = generate_tasks_ai(subj_info, NEXT_TEST["start_date"])
                         if new_tasks:
@@ -469,47 +566,17 @@ with tab1:
                                     "id":           str(uuid.uuid4())[:8],
                                     "type":         "test",
                                     "subject":      subj,
-                                    "title":        t.get("title",""),
+                                    "category":     "",
+                                    "title":        t.get("title", ""),
                                     "duration_min": t.get("duration_min", 30),
-                                    "note":         t.get("note",""),
+                                    "note":         t.get("note", ""),
                                     "due_date":     None,
                                     "done":         False,
                                 })
                             save_tasks(tasks_data)
-                            st.success(f"✅ {len(new_tasks)}件のタスクを生成しました！")
+                            st.success(f"✅ {len(new_tasks)}件を未分類に生成しました！")
                             st.rerun()
 
-            # ➕ このタスクを手動で追加（教材を見ながら自由に登録）
-            with st.form(f"add_test_{subj}", clear_on_submit=True):
-                st.markdown("**➕ タスクを追加**")
-                _at_title = st.text_input("タスク名",
-                    placeholder="例：教科書 P◯◯ 通読 / ワーク P◯◯", key=f"at_title_{subj}")
-                _afc1, _afc2 = st.columns(2)
-                with _afc1:
-                    _at_dur = st.selectbox("時間", [15,20,30,45,60,90], index=2,
-                        format_func=lambda x: f"{x}分", key=f"at_dur_{subj}")
-                with _afc2:
-                    _at_dates = {"未割当（あとで）": None}
-                    for _i in range(_STUDY_DAYS):
-                        _dd = _STUDY_START + timedelta(days=_i)
-                        _at_dates[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
-                    _at_date_lab = st.selectbox("日付", list(_at_dates.keys()), key=f"at_date_{subj}")
-                if st.form_submit_button("➕ 追加", type="primary"):
-                    if _at_title.strip():
-                        import uuid
-                        tasks_data["tasks"].append({
-                            "id":           str(uuid.uuid4())[:8],
-                            "type":         "test",
-                            "subject":      subj,
-                            "title":        _at_title.strip(),
-                            "duration_min": _at_dur,
-                            "note":         "",
-                            "due_date":     _at_dates[_at_date_lab],
-                            "done":         False,
-                        })
-                        save_tasks(tasks_data)
-                        st.success("追加しました！")
-                        st.rerun()
 
 # ===== TAB2: 定期TASK =====
 with tab2:
