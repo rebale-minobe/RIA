@@ -553,6 +553,27 @@ st.markdown("""
 
 # ===== 教科 × ジャンル =====
 
+# ===== TASKデータ読み込み =====
+@st.cache_data(ttl=30)
+def load_tasks_data():
+    """tasks.jsonからTODO TODAY用のタスクを取得"""
+    try:
+        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/tasks.json"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {"tasks": []}
+
+def get_today_tasks(date_obj):
+    """今日の日付に割り当てられた未完了タスクを返す"""
+    data = load_tasks_data()
+    date_str = date_obj.strftime("%Y-%m-%d")
+    return [t for t in data.get("tasks", [])
+            if t.get("due_date") == date_str and not t.get("done", False)]
+
+
 # ===== 時間割・スケジュール読み込み =====
 _WD_MAP = {"月": "monday", "火": "tuesday", "水": "wednesday", "木": "thursday", "金": "friday"}
 _WD_JP  = ["月", "火", "水", "木", "金", "土", "日"]
@@ -1137,7 +1158,18 @@ NEXT_TEST = {
     ]
 }
 
+# TODO_TODAYをtasks.jsonから動的生成
+_raw_tasks = get_today_tasks(today)
 TODO_TODAY = [
+    {
+        "subject_name": t.get("subject",""),
+        "task":         t.get("title",""),
+        "duration":     f'{t.get("duration_min",30)}分',
+        "done":         t.get("done", False),
+        "task_id":      t.get("id",""),
+    }
+    for t in _raw_tasks
+] or [
     {"subject_name": "社会", "task": "歴史 P105-130 教科書通読", "duration": "60分", "done": False},
     {"subject_name": "数学", "task": "1年範囲 P225-248 復習",    "duration": "30分", "done": False},
     {"subject_name": "国語", "task": "漢字テスト範囲 10個",      "duration": "20分", "done": True},
