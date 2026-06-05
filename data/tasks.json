@@ -1,3 +1,174 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "3fe20a5b",
+      "type": "test",
+      "subject": "社会",
+      "title": "教科書 P105-120 通読",
+      "duration_min": 30,
+      "note": "基本知識の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "573e3ddc",
+      "type": "test",
+      "subject": "社会",
+      "title": "教科書 P121-135 通読",
+      "duration_min": 30,
+      "note": "基本知識の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "35807c93",
+      "type": "test",
+      "subject": "社会",
+      "title": "教科書 P136-150 通読",
+      "duration_min": 30,
+      "note": "基本知識の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "81156dab",
+      "type": "test",
+      "subject": "社会",
+      "title": "教科書 P151-160 通読",
+      "duration_min": 30,
+      "note": "基本知識の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "8b2045a4",
+      "type": "test",
+      "subject": "社会",
+      "title": "資料集 P80-90 通読",
+      "duration_min": 30,
+      "note": "資料の理解を深める",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "b1b3aa8e",
+      "type": "test",
+      "subject": "社会",
+      "title": "資料集 P91-105 通読",
+      "duration_min": 30,
+      "note": "資料の理解を深める",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "000ecf22",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワーク P2-10を解く",
+      "duration_min": 40,
+      "note": "基礎問題を解く",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "ed36a78e",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワーク P11-17を解く",
+      "duration_min": 40,
+      "note": "基礎問題を解く",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "34ccdd50",
+      "type": "test",
+      "subject": "社会",
+      "title": "ワーク P18-23を解く",
+      "duration_min": 40,
+      "note": "基礎問題を解く",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "d8432afc",
+      "type": "test",
+      "subject": "社会",
+      "title": "プリント No.1-5を解く",
+      "duration_min": 30,
+      "note": "基本問題の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "a0e7488c",
+      "type": "test",
+      "subject": "社会",
+      "title": "プリント No.6-10を解く",
+      "duration_min": 30,
+      "note": "基本問題の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "a5cd11a2",
+      "type": "test",
+      "subject": "社会",
+      "title": "プリント No.11-15を解く",
+      "duration_min": 30,
+      "note": "基本問題の確認",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "f6d4b5c0",
+      "type": "test",
+      "subject": "社会",
+      "title": "ノート整理（歴史部分）",
+      "duration_min": 40,
+      "note": "ノートの整理整頓",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "445683ac",
+      "type": "test",
+      "subject": "社会",
+      "title": "思考力問題に取り組む",
+      "duration_min": 40,
+      "note": "応用問題に挑戦しよう",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "cfe37019",
+      "type": "test",
+      "subject": "社会",
+      "title": "再確認用の教科書 P105-160 再読",
+      "duration_min": 30,
+      "note": "知識の定着を図る",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "055e3c6c",
+      "type": "test",
+      "subject": "社会",
+      "title": "ノート提出の準備",
+      "duration_min": 20,
+      "note": "ノート提出の最終チェック",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "4151f1a9",
+      "type": "test",
+      "subject": "社会",
+      "title": "総復習（教科書、ワーク、プリントの見直し）",
+      "duration_min": 30,
+      "note": "全体の見直し",
+      "due_date": null,
+      "done": false
+    }
+  ]
 }
