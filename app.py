@@ -1107,6 +1107,27 @@ TOMORROW_TIMETABLE = [
 TODAY_EVENTS    = get_schedule_events(today)
 TOMORROW_EVENTS = get_schedule_events(_tomorrow)
 
+
+# ===== データ =====
+NEXT_TEST = {
+    "name": "1学期 期末テスト", "start_date": "2026-06-18",
+    "subjects": [
+        {"subject": "技術家庭", "date": "6/18(木)", "time": "9:00", "range": "教科書 P30-55", "study_hours": 2},
+        {"subject": "国語",     "date": "6/18(木)", "time": "9:45", "range": "漢字 + 文法 + 読解「故郷」 / 📝ワーク提出", "study_hours": 5},
+        {"subject": "社会",     "date": "6/18(木)", "time": "10:45","range": "歴史 P105-160", "study_hours": 8},
+        {"subject": "保健体育", "date": "6/18(木)", "time": "11:45","range": "教科書 P20-40", "study_hours": 2},
+        {"subject": "数学",     "date": "6/19(金)", "time": "9:00", "range": "1年範囲 + 文章題 + 連立方程式", "study_hours": 12},
+        {"subject": "英語",     "date": "6/19(金)", "time": "10:00","range": "Unit 1-3 + 英作文", "study_hours": 3},
+        {"subject": "理科",     "date": "6/19(金)", "time": "10:55","range": "化学変化 + 生物", "study_hours": 4},
+    ]
+}
+
+TODO_TODAY = [
+    {"subject_name": "社会", "task": "歴史 P105-130 教科書通読", "duration": "60分", "done": False},
+    {"subject_name": "数学", "task": "1年範囲 P225-248 復習",    "duration": "30分", "done": False},
+    {"subject_name": "国語", "task": "漢字テスト範囲 10個",      "duration": "20分", "done": True},
+]
+
 test_date = datetime.strptime(NEXT_TEST["start_date"], "%Y-%m-%d")
 days_until_test = (test_date - today).days
 test_wd = JP_WD[test_date.weekday()]
