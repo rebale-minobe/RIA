@@ -87,9 +87,9 @@ def save_task_schedule(data):
     load_task_schedule.clear()
     return gh_put_json("data/task_schedule.json", data, "Update task_schedule.json")
 
-def _move_task_cb(tid, opts):
-    """プルダウンで選んだ日へ即移動（同じ行で完結）"""
-    sel = st.session_state.get(f"mv_{tid}")
+def _move_task_cb(tid, opts, skey):
+    """プルダウンで選んだ日へ即移動（タブ共用）"""
+    sel = st.session_state.get(skey)
     if not sel or sel not in opts:
         return
     data = load_tasks()
@@ -242,6 +242,22 @@ def subj_color(name):
         if k in name: return v
     return {"primary":"#8E8E93","light":"#F2F2F7","emoji":"📚"}
 
+# 教材カテゴリー（タイトルから判定して同じ教材をまとめて表示）
+_CAT_RULES = [
+    ("教科書","教科書"), ("ワーク","ワーク"), ("✕問題","ワーク"), ("×問題","ワーク"),
+    ("プリント","プリント"), ("資料集","資料集"), ("積み上げ","積み上げ"),
+    ("漢字","漢字"), ("文法","文法"), ("熟語","熟語"), ("読解","読解"),
+    ("英作文","英作文"), ("Daily","Daily Life"), ("基礎の教科","基礎の教科"),
+    ("聞き取り","聞き取り"), ("振り返り","振り返りカード"),
+]
+CAT_ORDER = ["教科書","ワーク","プリント","資料集","積み上げ","漢字","文法","熟語",
+             "読解","英作文","Daily Life","基礎の教科","聞き取り","振り返りカード","その他・直前"]
+def task_category(title):
+    for key, label in _CAT_RULES:
+        if key in title:
+            return label
+    return "その他・直前"
+
 # ===== AI タスク生成 =====
 def generate_tasks_ai(subject_info: dict, test_date_str: str) -> list:
     """教科の詳細情報からAIが具体的なタスクを生成"""
@@ -306,6 +322,7 @@ st.markdown("""
     .task-title { font-size: 16px; font-weight: 700; color: #1c1c1e; }
     .task-subj  { font-size: 13px; font-weight: 700; margin-bottom: 3px; letter-spacing: .02em; }
     .sched-day  { font-size: 17px; font-weight: 700; margin: 22px 0 6px; color: #1c1c1e; }
+    .cat-head   { font-size: 13px; font-weight: 700; color: #8E8E93; margin: 16px 0 4px; padding-left: 2px; }
     .task-meta  { font-size: 13px; color: #8E8E93; margin-top: 4px; }
     .task-date  { font-size: 13px; font-weight: 600; color: #007AFF; }
     .section-title {
@@ -373,18 +390,39 @@ with tab1:
             existing = [t for t in tasks_data["tasks"]
                        if t.get("type") == "test" and t.get("subject") == subj]
             if existing:
-                st.markdown("**登録済みタスク:**")
+                st.markdown("**登録済みタスク（教材ごと）:**")
+                # 日付登録の候補（6/3〜6/17）
+                _eopts = {}
+                for _i in range(_STUDY_DAYS):
+                    _dd = _STUDY_START + timedelta(days=_i)
+                    _eopts[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
+                # 教材カテゴリーでグループ化
+                _groups = {}
                 for t in existing:
-                    date_str = t.get("due_date","未割当")
-                    done_mark = "✅" if t.get("done") else "⬜"
-                    st.markdown(
-                        f'<div class="task-card" style="border-left-color:{col["primary"]};">'
-                        f'<div class="task-title">{done_mark} {t["title"]}</div>'
-                        f'<div class="task-meta">⏱ {t["duration_min"]}分　'
-                        f'<span class="task-date">📅 {date_str}</span></div>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
+                    _groups.setdefault(task_category(t["title"]), []).append(t)
+                for _cat in CAT_ORDER:
+                    if _cat not in _groups:
+                        continue
+                    st.markdown(f'<div class="cat-head">{_cat}</div>', unsafe_allow_html=True)
+                    for t in _groups[_cat]:
+                        date_str = t.get("due_date","未割当")
+                        done_mark = "✅" if t.get("done") else "⬜"
+                        _e1, _e2 = st.columns([3.4, 2])
+                        with _e1:
+                            st.markdown(
+                                f'<div class="task-card" style="border-left-color:{col["primary"]};">'
+                                f'<div class="task-title">{done_mark} {t["title"]}</div>'
+                                f'<div class="task-meta">⏱ {t["duration_min"]}分　'
+                                f'<span class="task-date">📅 {date_str}</span></div>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                        with _e2:
+                            st.selectbox("日付", ["📅 日付を登録/変更"] + list(_eopts.keys()),
+                                         index=0, key=f"mv1_{t['id']}",
+                                         on_change=_move_task_cb,
+                                         args=(t["id"], _eopts, f"mv1_{t['id']}"),
+                                         label_visibility="collapsed")
                 if st.button("🗑️ リセットして再生成", key=f"reset_{subj}"):
                     tasks_data["tasks"] = [t for t in tasks_data["tasks"]
                                           if not (t.get("type")=="test" and t.get("subject")==subj)]
@@ -577,7 +615,7 @@ with tab4:
                 )
             with c2:
                 st.selectbox("移動", _choices, index=0, key=f"mv_{t['id']}",
-                             on_change=_move_task_cb, args=(t["id"], _opts),
+                             on_change=_move_task_cb, args=(t["id"], _opts, f"mv_{t['id']}"),
                              label_visibility="collapsed")
             with c3:
                 done_btn = "✅" if not is_done else "↩️"
