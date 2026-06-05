@@ -578,6 +578,34 @@ def load_tasks_data():
         pass
     return {"tasks": []}
 
+def _save_todo_duration(task_id, dur_key):
+    """ToDoで変更した時間を tasks.json に保存（教科別合計に反映）"""
+    import json as _json
+    sel = st.session_state.get(dur_key, "")
+    try:
+        mins = int(str(sel).replace("分", "").strip())
+    except Exception:
+        return
+    try:
+        r = requests.get("https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/tasks.json", timeout=5)
+        data = r.json() if r.status_code == 200 else {"tasks": []}
+    except Exception:
+        return
+    changed = False
+    for _t in data.get("tasks", []):
+        if _t.get("id") == task_id:
+            _t["duration_min"] = mins
+            changed = True
+    if changed:
+        try:
+            from gh import gh_put
+            gh_put("data/tasks.json",
+                   _json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                   "Update task duration via ToDo")
+            load_tasks_data.clear()
+        except Exception:
+            pass
+
 def get_today_tasks(date_obj):
     """今日の日付に割り当てられた未完了タスクを返す"""
     data = load_tasks_data()
@@ -1351,7 +1379,9 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
                 st.text_input("タスク内容", key=f"todo_task_{idx}",
                               label_visibility="collapsed", placeholder="タスク内容")
                 st.selectbox("時間", DURATION_OPTIONS,
-                             key=f"todo_dur_{idx}", label_visibility="collapsed")
+                             key=f"todo_dur_{idx}", label_visibility="collapsed",
+                             on_change=_save_todo_duration,
+                             args=(todo.get("task_id",""), f"todo_dur_{idx}"))
                 if todo.get("note"):
                     with st.expander("💡 やり方"):
                         st.markdown(todo["note"])

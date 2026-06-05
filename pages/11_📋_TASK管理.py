@@ -407,7 +407,7 @@ with tab1:
                     for t in _groups[_cat]:
                         date_str = t.get("due_date","未割当")
                         done_mark = "✅" if t.get("done") else "⬜"
-                        _e1, _e2, _e3 = st.columns([3.2, 1.8, 0.6])
+                        _e1, _e2 = st.columns([5, 0.7])
                         with _e1:
                             st.markdown(
                                 f'<div class="task-card" style="border-left-color:{col["primary"]};">'
@@ -418,12 +418,6 @@ with tab1:
                                 unsafe_allow_html=True
                             )
                         with _e2:
-                            st.selectbox("日付", ["📅 日付を登録/変更"] + list(_eopts.keys()),
-                                         index=0, key=f"mv1_{t['id']}",
-                                         on_change=_move_task_cb,
-                                         args=(t["id"], _eopts, f"mv1_{t['id']}"),
-                                         label_visibility="collapsed")
-                        with _e3:
                             if st.button("🗑️", key=f"del1_{t['id']}", use_container_width=True):
                                 tasks_data["tasks"] = [x for x in tasks_data["tasks"]
                                                        if x["id"] != t["id"]]
@@ -437,6 +431,17 @@ with tab1:
                                                format_func=lambda x: f"{x}分", key=f"ed_{t['id']}")
                             _en = st.text_area("💡 やり方（任意）", value=t.get("note","") or "",
                                                key=f"en_{t['id']}", height=80)
+                            _edate_opts = {"未割当（あとで）": None}
+                            for _i in range(_STUDY_DAYS):
+                                _dd = _STUDY_START + timedelta(days=_i)
+                                _edate_opts[f"{_dd.month}/{_dd.day}（{JP_WD[_dd.weekday()]}）"] = _dd.strftime("%Y-%m-%d")
+                            _edate_keys = list(_edate_opts.keys())
+                            _edate_idx = 0
+                            for _i, (_lab, _ds) in enumerate(_edate_opts.items()):
+                                if _ds == t.get("due_date"):
+                                    _edate_idx = _i
+                                    break
+                            _eda = st.selectbox("日付", _edate_keys, index=_edate_idx, key=f"eda_{t['id']}")
                             if st.button("💾 保存", key=f"esave_{t['id']}", type="primary"):
                                 for task in tasks_data["tasks"]:
                                     if task["id"] == t["id"]:
@@ -444,6 +449,7 @@ with tab1:
                                             task["title"] = _et.strip()
                                         task["duration_min"] = _ed
                                         task["note"] = _en.strip()
+                                        task["due_date"] = _edate_opts[_eda]
                                 save_tasks(tasks_data)
                                 st.success("保存しました！")
                                 st.rerun()
