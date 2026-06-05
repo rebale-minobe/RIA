@@ -202,7 +202,7 @@ st.markdown("""
 
     /* ===== ワーク フラッシュカード ===== */
     .wb-detail-title {
-        font-size: 20px; font-weight: 700; color: #1c1c1e;
+        font-size: 27px !important; font-weight: 700; color: #1c1c1e;
         margin: 8px 0 4px 0;
     }
     .wb-mode-badge {
@@ -1559,12 +1559,11 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 # ×カウント（batsuのみ）
                 wrong = sum(1 for i in range(total)
                             if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
+                wrong_label = f"❌ {wrong} 問" if wrong else ""
                 st.markdown(f"""
                 <div class='wb-progress-row'>
                     <span>問題 <b>{cur_pos + 1}</b> / {n_active}</span>
-                    <span style='color:#FF3B30; font-weight:700;'>
-                        {"❌ " + str(wrong) + " 問" if wrong else ""}
-                    </span>
+                    <span style='color:#FF3B30; font-weight:700;'>{wrong_label}</span>
                 </div>
                 """, unsafe_allow_html=True)
                 st.progress((cur_pos + 1) / n_active)
@@ -1584,16 +1583,18 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 
                 # ×バッジをカードボーダーに反映
                 border_color = "#FF3B30" if result == "batsu" else "#FF9500"
+                _ans = st.session_state.get("ans_size", 40)
+                _fs  = st.session_state.get("font_size", 17)
                 card_html = f"""
                 <div class='wb-flashcard' style='border-color:{border_color};'>
                     <div class='wb-fc-header'>
                         <div class='wb-fc-meta'>{' ／ '.join(meta_parts)}</div>
                         <div class='wb-fc-lesson'>{current.get('lesson_title','')}</div>
                     </div>
-                    <div class='wb-fc-q'>{current['q']}</div>
+                    <div class='wb-fc-q' style='font-size:{_fs+12}px;font-weight:800;'>{current['q']}</div>
                     <div class='wb-fc-divider'></div>
                     <div class='wb-fc-a-area'>
-                        <div class='wb-fc-a-shown'>{current['a']}</div>
+                        <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}</div>
                     </div>
                     {('<div style="text-align:center;margin-top:8px;font-size:13px;'
                       'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
@@ -1756,10 +1757,14 @@ st.markdown(f"""
         font-size: {fs + 12}px !important;
         font-weight: 800 !important;
     }}
-    .wb-fc-a-shown {{
+    .wb-fc-a-shown, .wb-fc-a-shown * {{
         font-size: {ans}px !important;
         font-weight: 800 !important;
         line-height: 1.3 !important;
+    }}
+    div.wb-fc-a-area div.wb-fc-a-shown {{
+        font-size: {ans}px !important;
+        font-weight: 800 !important;
     }}
     .wb-fc-meta {{
         font-size: {max(fs-5,10)}px !important;
