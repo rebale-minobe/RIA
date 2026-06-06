@@ -588,6 +588,15 @@ st.markdown("""
             font-size: 26px !important; min-height: 64px !important;
         }
     }
+
+    /* ===== ワーク ページ選択 pills（押しやすく・分かりやすく） ===== */
+    [data-testid="stPills"] button {
+        min-height: 46px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 12px !important;
+        padding: 6px 18px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -2331,18 +2340,24 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 unsafe_allow_html=True
             )
 
-            # ページ選択
-            page_options = [
-                f"P.{p['page_number']}　{p.get('lesson_title','')}"
-                for p in wbd["pages"]
-            ]
-            sel_page_label = st.selectbox(
-                "📄 ページを選択", page_options,
+            # ページ選択（pills でキーボードを出さない・ボタンで分かりやすく）
+            page_nums = [f"P.{p['page_number']}" for p in wbd["pages"]]
+            sel_page = st.pills(
+                "📄 ページを選択", page_nums,
                 key=f"wb_page_sel_{skey}_{gkey}",
+                default=page_nums[0],
             )
-            page_idx = page_options.index(sel_page_label)
+            if not sel_page:
+                sel_page = page_nums[0]
+            page_idx = page_nums.index(sel_page)
             page = wbd["pages"][page_idx]
             page_num = page['page_number']
+            # 選択中ページのタイトルを大きく表示
+            st.markdown(
+                f"<div style='font-size:16px;font-weight:600;margin:6px 0 14px;color:#1d1d1f;'>"
+                f"📖 {page.get('lesson_title','')}</div>",
+                unsafe_allow_html=True
+            )
 
             # 問題フラット化
             questions = flatten_workbook_questions(page)
