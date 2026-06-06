@@ -56,6 +56,7 @@ SUBJECTS = {
     "science": {
         "name": "理科", "emoji": "🔬",
         "genres": {
+            "field1": {"name": "サイエンス1", "emoji": "🌱"},
             "field2": {"name": "サイエンス2", "emoji": "🌱"},
         }
     },
@@ -119,7 +120,7 @@ _GENRE_SHEET_MAP = {
     "history": "歴史", "geography": "地理", "civics": "公民",
     "reading": "読解", "classic": "古文漢文",
     "kanji": "漢字語彙", "grammar": "文法",
-    "field1": "第1分野", "field2": "第2分野",
+    "field1": "サイエンス1", "field2": "サイエンス2",
     "jp2": "国語2",
     "math2": "数学2",
     "eng2": "英語2",
