@@ -136,6 +136,11 @@ def render_subject_page(subject_key: str, subject_name: str, icon: str):
     # ─── ワーク解答（JSONファイルがあれば表示） ───
     _render_workbook_answers(subject_key)
 
+    # ─── Study Agent（数学のみ・AI類題生成） ───
+    if subject_key == "math":
+        from shared.math_study_agent_ui import render_study_agent_section
+        render_study_agent_section()
+
     # ─── システムプロンプト構築 ───
     module = _get_prompt_module(subject_key)
     if module is None:
