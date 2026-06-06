@@ -362,7 +362,8 @@
       "duration_min": 45,
       "note": "RIAで誤答を抽出→反復演習。",
       "due_date": "2026-06-10",
-      "done": false
+      "done": false,
+      "category": "ワーク APP"
     },
     {
       "id": "93f0918f",
