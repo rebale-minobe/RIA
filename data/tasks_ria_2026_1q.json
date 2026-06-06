@@ -9,7 +9,8 @@
       "duration_min": 45,
       "note": "大航海時代の背景と東アジア貿易を流れで理解。太字より流れを優先。",
       "due_date": "2026-06-09",
-      "done": false
+      "done": false,
+      "category": "教科書・ノート"
     },
     {
       "id": "e9977dae",
@@ -19,8 +20,9 @@
       "title": "第1節 P2・3",
       "duration_min": 45,
       "note": "RIAで誤答を抽出→反復演習。",
-      "due_date": "2026-06-09",
-      "done": false
+      "due_date": "2026-06-03",
+      "done": false,
+      "category": "ワーク APP"
     },
     {
       "id": "951d4515",
@@ -31,7 +33,8 @@
       "duration_min": 30,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-09",
-      "done": false
+      "done": false,
+      "category": "ワーク TEST"
     },
     {
       "id": "373546cf",
@@ -42,7 +45,8 @@
       "duration_min": 45,
       "note": "信長→秀吉の全国統一プロセスと各政策の目的を理解。",
       "due_date": "2026-06-10",
-      "done": false
+      "done": false,
+      "category": "教科書・ノート"
     },
     {
       "id": "67d2aa60",
@@ -53,7 +57,8 @@
       "duration_min": 45,
       "note": "RIAで誤答を抽出→反復演習。",
       "due_date": "2026-06-10",
-      "done": false
+      "done": false,
+      "category": "ワーク APP"
     },
     {
       "id": "21384a92",
@@ -64,7 +69,8 @@
       "duration_min": 30,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-10",
-      "done": false
+      "done": false,
+      "category": "ワーク TEST"
     },
     {
       "id": "881dd479",
@@ -75,7 +81,8 @@
       "duration_min": 45,
       "note": "幕藩体制・貿易統制（鎖国）・琉球/アイヌへの支配体系。",
       "due_date": "2026-06-11",
-      "done": false
+      "done": false,
+      "category": "教科書・ノート"
     },
     {
       "id": "6f851004",
@@ -86,7 +93,8 @@
       "duration_min": 45,
       "note": "RIAで誤答を抽出→反復演習。",
       "due_date": "2026-06-11",
-      "done": false
+      "done": false,
+      "category": "ワーク APP"
     },
     {
       "id": "b3a11169",
@@ -97,7 +105,8 @@
       "duration_min": 30,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-11",
-      "done": false
+      "done": false,
+      "category": "ワーク TEST"
     },
     {
       "id": "8c10d40d",
@@ -108,7 +117,8 @@
       "duration_min": 45,
       "note": "身分制・産業発達・陸海の道・元禄文化。産業と身分制の関係に注目。",
       "due_date": "2026-06-12",
-      "done": false
+      "done": false,
+      "category": "教科書・ノート"
     },
     {
       "id": "cfb3ed2b",
@@ -119,7 +129,8 @@
       "duration_min": 45,
       "note": "RIAで誤答を抽出→反復演習。",
       "due_date": "2026-06-12",
-      "done": false
+      "done": false,
+      "category": "ワーク APP"
     },
     {
       "id": "ee9f2edc",
@@ -130,7 +141,8 @@
       "duration_min": 30,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-12",
-      "done": false
+      "done": false,
+      "category": "ワーク TEST"
     },
     {
       "id": "fe89b093",
@@ -141,7 +153,8 @@
       "duration_min": 45,
       "note": "貨幣経済・幕府改革・化政文化。改革が有効だったかの思考対策。",
       "due_date": "2026-06-13",
-      "done": false
+      "done": false,
+      "category": "教科書・ノート"
     },
     {
       "id": "0a86130c",
@@ -152,7 +165,8 @@
       "duration_min": 45,
       "note": "RIAで誤答を抽出→反復演習。",
       "due_date": "2026-06-13",
-      "done": false
+      "done": false,
+      "category": "ワーク APP"
     },
     {
       "id": "80397c1a",
@@ -163,7 +177,8 @@
       "duration_min": 30,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-13",
-      "done": false
+      "done": false,
+      "category": "ワーク TEST"
     },
     {
       "id": "41dcb37c",
@@ -209,5 +224,12 @@
       "due_date": "2026-06-15",
       "done": false
     }
-  ]
+  ],
+  "categories": {
+    "社会": [
+      "教科書・ノート",
+      "ワーク APP",
+      "ワーク TEST"
+    ]
+  }
 }
