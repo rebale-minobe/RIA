@@ -28,7 +28,8 @@
       "duration_min": 45,
       "note": "P2-15は終わってるね、えらい！残りを解いて P2-23 を完成。間違いには✕印をつけて後で見直せるように。",
       "due_date": "2026-06-07",
-      "done": false
+      "done": false,
+      "category": "ワーク"
     },
     {
       "id": "6c01babe",
