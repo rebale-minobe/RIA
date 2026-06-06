@@ -611,6 +611,17 @@
       "note": "",
       "due_date": null,
       "done": false
+    },
+    {
+      "id": "df4296f8",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第３章 P-124-130",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
     }
   ],
   "categories": {
