@@ -1,16 +1,6 @@
 {
   "tasks": [
     {
-      "id": "aec6efae",
-      "type": "test",
-      "subject": "社会",
-      "title": "ワーク P2-13（解く＋答え合わせ）",
-      "duration_min": 90,
-      "note": "テスト勉強スタート分。社会ワーク前半は完了済み！この調子。",
-      "due_date": "2026-06-03",
-      "done": true
-    },
-    {
       "id": "a10efd53",
       "type": "test",
       "subject": "数学",
