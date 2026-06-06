@@ -633,6 +633,17 @@
       "note": "",
       "due_date": null,
       "done": false
+    },
+    {
+      "id": "f3e8b949",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第５章 P146-160",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
     }
   ],
   "categories": {
