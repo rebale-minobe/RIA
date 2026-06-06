@@ -15,6 +15,20 @@ from pathlib import Path
 
 import streamlit as st
 
+# 解答ログ管理（app.py と同じ可用性フラグ）
+try:
+    from modules import answer_log
+    ANSWER_LOG_AVAILABLE = True
+except Exception:
+    ANSWER_LOG_AVAILABLE = False
+
+# 学習ログマネージャ（app.py と同じ可用性フラグ）
+try:
+    from modules import answer_log_manager as alm
+    ALM_AVAILABLE = True
+except Exception:
+    ALM_AVAILABLE = False
+
 # shared/ から1つ上がプロジェクトルート → data/
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -372,6 +386,31 @@ def render_subject_study(subject_key):
         return
     sinfo = SUBJECTS[skey]
     genre_keys = list(sinfo["genres"].keys())
+
+    # 教科書/ワーク表紙のサイズをTOPと統一（各教科ページにはapp.pyのCSSが無いため注入）
+    st.markdown("""
+    <style>
+    .tb-cover-wrap { text-align: center; padding: 16px 0 8px 0; }
+    .tb-cover {
+        width: 220px; max-width: 70%; border-radius: 12px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    }
+    .cover-ph {
+        background: linear-gradient(135deg, #e0e0e0, #c0c0c0); height: 180px;
+        max-width: 320px; margin: 0 auto;
+        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        color: #888; font-size: 13px; padding: 8px; text-align: center;
+    }
+    .point-box { background:#fffbe6; border-left:4px solid #ffd60a;
+        border-radius:12px; padding:14px 16px; margin:8px 0; }
+    .point-box-blue { background:#e6f2ff; border-left:4px solid #0a84ff;
+        border-radius:12px; padding:14px 16px; margin:8px 0; }
+    [data-testid="stPills"] button {
+        min-height: 46px !important; font-size: 16px !important;
+        font-weight: 600 !important; border-radius: 12px !important; padding: 6px 18px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
 
