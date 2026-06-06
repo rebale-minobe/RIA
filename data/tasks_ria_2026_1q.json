@@ -1,16 +1,6 @@
 {
   "tasks": [
     {
-      "id": "aec6efae",
-      "type": "test",
-      "subject": "社会",
-      "title": "ワーク P2-13（解く＋答え合わせ）",
-      "duration_min": 90,
-      "note": "テスト勉強スタート分。社会ワーク前半は完了済み！この調子。",
-      "due_date": "2026-06-03",
-      "done": true
-    },
-    {
       "id": "a10efd53",
       "type": "test",
       "subject": "数学",
@@ -31,16 +21,6 @@
       "done": false
     },
     {
-      "id": "05d5c69d",
-      "type": "test",
-      "subject": "社会",
-      "title": "教科書[歴史] P105-160 通読①（流れをつかむ）",
-      "duration_min": 30,
-      "note": "歴史は『物語』。細かい用語は気にせず、まず通して読んで出来事の順番をつかもう。1回目は理解より“通すこと”が目的。",
-      "due_date": "2026-06-03",
-      "done": true
-    },
-    {
       "id": "d9629259",
       "type": "test",
       "subject": "社会",
@@ -48,7 +28,8 @@
       "duration_min": 45,
       "note": "P2-15は終わってるね、えらい！残りを解いて P2-23 を完成。間違いには✕印をつけて後で見直せるように。",
       "due_date": "2026-06-07",
-      "done": false
+      "done": false,
+      "category": "ワーク"
     },
     {
       "id": "6c01babe",
@@ -589,6 +570,68 @@
       "note": "",
       "due_date": "2026-06-05",
       "done": true
+    },
+    {
+      "id": "79c5fcc7",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第１章 P106-112",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "a113c7d1",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第２章 P114-120",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "df4296f8",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第３章 P-124-130",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "7c7f40e8",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第４章 P134-144",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
+    },
+    {
+      "id": "f3e8b949",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第５章 P146-160",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
     }
-  ]
+  ],
+  "categories": {
+    "社会": [
+      "教科書＆ノート復習",
+      "［教科書・ノート・資料］復習",
+      "ワーク"
+    ]
+  }
 }
