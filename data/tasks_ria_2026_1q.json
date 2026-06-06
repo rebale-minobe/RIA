@@ -182,10 +182,10 @@
       "subject": "数学",
       "category": "ワーク TEST",
       "title": "1年第7章 P134-141",
-      "duration_min": 120,
+      "duration_min": 60,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-06",
-      "done": false
+      "done": true
     },
     {
       "id": "f649d465",
