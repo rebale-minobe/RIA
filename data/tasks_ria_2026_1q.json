@@ -340,7 +340,8 @@
       "duration_min": 30,
       "note": "ワークに答えを書き込んで確認テスト。",
       "due_date": "2026-06-09",
-      "done": false
+      "done": false,
+      "category": "ワーク TEST"
     },
     {
       "id": "1a1ee39c",
