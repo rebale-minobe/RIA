@@ -622,6 +622,17 @@
       "note": "",
       "due_date": null,
       "done": false
+    },
+    {
+      "id": "7c7f40e8",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第４章 P134-144",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
     }
   ],
   "categories": {
