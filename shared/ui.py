@@ -133,8 +133,14 @@ def render_subject_page(subject_key: str, subject_name: str, icon: str):
             if range_info.get('submission'):
                 st.markdown(f"**提出物:** {range_info['submission']}")
 
-    # ─── ワーク解答（JSONファイルがあれば表示） ───
-    _render_workbook_answers(subject_key)
+    # ─── 教科書/ワーク（TOP同等・共通コア） ───
+    st.markdown("---")
+    st.markdown(
+        '<div style="font-size:22px;font-weight:700;margin:8px 0 4px;">📚 教科書/ワーク</div>',
+        unsafe_allow_html=True
+    )
+    from shared.study_core import render_subject_study
+    render_subject_study(subject_key)
 
     # ─── Study Agent（数学のみ・AI類題生成） ───
     if subject_key == "math":
