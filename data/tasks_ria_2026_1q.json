@@ -589,6 +589,17 @@
       "note": "",
       "due_date": "2026-06-05",
       "done": true
+    },
+    {
+      "id": "79c5fcc7",
+      "type": "test",
+      "subject": "社会",
+      "category": "［教科書・ノート・資料］復習",
+      "title": "第１章 P106-112",
+      "duration_min": 30,
+      "note": "",
+      "due_date": null,
+      "done": false
     }
   ],
   "categories": {
