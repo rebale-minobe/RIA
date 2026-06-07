@@ -214,10 +214,10 @@ def load_workbook_answers(subject_key, genre_key):
     for row in rows:
         if not any(row):
             continue
-        r = (row + (None,) * 13)[:13]
+        r = (row + (None,) * 14)[:14]
         (page_num, ch_num, ch_title, lesson_title,
          sec_code, sec_name, tb_ref, wb_ref,
-         group_label, q, a, note, context) = r
+         group_label, q, a, note, context, yomi) = r
         if page_num is None or q is None or a is None:
             continue
         page_num = int(page_num)
@@ -252,6 +252,7 @@ def load_workbook_answers(subject_key, genre_key):
             "a": str(a),
             "note": str(note) if note else None,
             "context": str(context) if context else None,
+            "yomi": str(yomi) if yomi else None,
         })
 
     if not pages_dict:
@@ -285,6 +286,7 @@ def flatten_workbook_questions(page):
                     'a': ans['a'],
                     'note': ans.get('note'),
                     'context': ans.get('context'),
+                    'yomi': ans.get('yomi'),
                 })
     return flat
 
@@ -848,6 +850,7 @@ def render_subject_study(subject_key):
                     <div class='wb-fc-divider'></div>
                     <div class='wb-fc-a-area'>
                         <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}</div>
+                        {f"<div style='text-align:center;font-size:16px;color:#8E8E93;margin-top:6px;font-weight:500;letter-spacing:0.02em;'>{current['yomi']}</div>" if current.get('yomi') else ''}
                     </div>
                     {('<div style="text-align:center;margin-top:8px;font-size:13px;'
                       'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
