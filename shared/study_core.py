@@ -458,7 +458,7 @@ def render_subject_study(subject_key):
                     b64 = base64.b64encode(f.read()).decode()
                 st.markdown(f"""
                 <div class="tb-cover-wrap">
-                    <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="教科書">
+                    <img src="data:image/jpeg;base64,{b64}" style="width:220px;max-width:70%;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.12);" alt="教科書">
                 </div>
                 """, unsafe_allow_html=True)
         with st.container(key="tb_open_btn_wrap"):
@@ -478,7 +478,7 @@ def render_subject_study(subject_key):
                     b64 = base64.b64encode(f.read()).decode()
                 st.markdown(f"""
                 <div class="tb-cover-wrap">
-                    <img src="data:image/jpeg;base64,{b64}" class="tb-cover" alt="ワーク">
+                    <img src="data:image/jpeg;base64,{b64}" style="width:220px;max-width:70%;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.12);" alt="ワーク">
                 </div>
                 """, unsafe_allow_html=True)
             else:
@@ -583,6 +583,8 @@ def render_subject_study(subject_key):
             if total == 0:
                 st.warning("このページに登録された問題がありません")
             else:
+                # 防御的初期化（万一の未定義参照を防ぐ）
+                original_idx = 0
                 # モード判定
                 mode_key = f"wb_mode_{page_num}"
                 mode = st.session_state.get(mode_key, "normal")
