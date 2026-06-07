@@ -409,6 +409,191 @@ def render_subject_study(subject_key):
         min-height: 46px !important; font-size: 16px !important;
         font-weight: 600 !important; border-radius: 12px !important; padding: 6px 18px !important;
     }
+
+    /* ===== ワーク フラッシュカード ===== */
+    .wb-detail-title {
+        font-size: 27px !important; font-weight: 700; color: #1c1c1e;
+        margin: 8px 0 4px 0;
+    }
+    .wb-mode-badge {
+        display: inline-block; padding: 4px 14px;
+        border-radius: 20px; font-size: 12px; font-weight: 700;
+        margin: 8px 0 4px 0;
+    }
+    .wb-mode-retest { background: #FF6B00; color: white; }
+    .wb-progress-row {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 14px; font-weight: 600;
+        margin: 12px 0 4px 0;
+    }
+    .wb-progress-row .ans-stat {
+        font-size: 13px; padding: 2px 10px;
+        border-radius: 12px; margin-left: 6px;
+    }
+
+    .wb-flashcard {
+        background: white;
+        border-radius: 18px;
+        padding: 20px 24px 24px 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        border: 2px solid #FF9500;
+        margin: 12px 0 16px 0;
+    }
+    .wb-fc-header {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .wb-fc-meta {
+        font-size: 11px;
+        color: #8E8E93;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+    }
+    .wb-fc-lesson {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1c1c1e;
+        margin-top: 2px;
+    }
+    .wb-fc-q {
+        font-size: 32px;
+        font-weight: 800;
+        color: #FF9500;
+        text-align: center;
+        line-height: 1.0;
+        margin: 10px 0 6px 0;
+    }
+    .wb-fc-divider {
+        border-top: 1px dashed #e5e5ea;
+        margin: 14px -10px;
+    }
+    .wb-fc-a-area {
+        text-align: center;
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 0;
+    }
+    .wb-fc-a-shown {
+        font-size: 38px;
+        font-weight: 700;
+        color: #1c1c1e;
+        line-height: 1.4;
+        max-width: 100%;
+        word-break: break-word;
+        animation: ansReveal 0.25s ease-out;
+    }
+    .wb-fc-a-hidden {
+        font-size: 56px;
+        color: #d1d1d6;
+        font-weight: 800;
+    }
+    @keyframes ansReveal {
+        from { opacity: 0; transform: scale(0.95); }
+        to   { opacity: 1; transform: scale(1); }
+    }
+    .wb-result-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+    .wb-result-badge.maru { background: #E5F1FF; color: #007AFF; }
+    .wb-result-badge.batsu { background: #FFE5E2; color: #FF3B30; }
+
+    /* ナビボタン (4列) — Apple HIG風 ワーク詳細＆今日の問題 共通 */
+
+    /* 共通ベース */
+    .st-key-wb_nav_row button,
+    .st-key-tp_nav_row button {
+        font-size: 20px !important;
+        min-height: 60px !important;
+        font-weight: 700 !important;
+        border: none !important;
+        border-radius: 16px !important;
+        letter-spacing: 0.01em !important;
+        transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+    }
+    .st-key-wb_nav_row button:active,
+    .st-key-tp_nav_row button:active {
+        transform: scale(0.96) !important;
+    }
+    .st-key-wb_nav_row button:disabled,
+    .st-key-tp_nav_row button:disabled {
+        opacity: 0.22 !important;
+        box-shadow: none !important;
+    }
+
+    /* ◀ 前へ — グレー */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(1) button {
+        background: #E5E5EA !important;
+        color: #3a3a3c !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+    }
+
+    /* ❌ バツ — 白ベース・赤枠（トグル） */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        background: white !important;
+        color: #FF3B30 !important;
+        border: 2px solid #FF3B30 !important;
+        box-shadow: 0 2px 8px rgba(255,59,48,0.12) !important;
+    }
+
+    /* 💡 解説 — ミントグリーン・枠線付き */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(3) button {
+        background: #E8F8EE !important;
+        color: #1a8a3c !important;
+        border: 2px solid #34C759 !important;
+        box-shadow: 0 2px 8px rgba(52,199,89,0.15) !important;
+    }
+
+    /* NEXT ▶ — プライマリブルー・主アクション */
+    .st-key-wb_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button,
+    .st-key-tp_nav_row [data-testid="stHorizontalBlock"] > div:nth-child(4) button {
+        background: linear-gradient(160deg, #007AFF 0%, #0055d4 100%) !important;
+        color: white !important;
+        box-shadow: 0 4px 14px rgba(0,122,255,0.35) !important;
+        font-size: 16px !important;
+        letter-spacing: 0.04em !important;
+    }
+
+    /* 答えを見るボタン */
+    .st-key-wb_reveal_wrap button,
+    .st-key-tp_reveal_wrap button {
+        background: linear-gradient(135deg, #FF9500, #FF7A00) !important;
+        color: white !important;
+        font-size: 16px !important;
+        min-height: 52px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 14px rgba(255, 149, 0, 0.35) !important;
+    }
+
+    /* 教科書ボタン — グレー背景・白文字 */
+    .st-key-tb_open_btn_wrap button {
+        background: #636366 !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    }
+    .st-key-tb_open_btn_wrap button:hover { background: #48484a !important; }
+
+    /* ワークボタン — 赤系背景・白文字 */
+    .st-key-wb_open_btn_wrap button {
+        background: linear-gradient(135deg, #FF3B30 0%, #c0392b 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(255,59,48,0.3) !important;
+    }
+    .st-key-wb_open_btn_wrap button:hover {
+        background: linear-gradient(135deg, #e0342a 0%, #a93226 100%) !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
