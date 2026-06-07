@@ -1828,17 +1828,24 @@ else:
                 f"- 問題文は1文で、明確に問う\n"
                 f"- 選択肢は4つ（正解1つ＋ダミー3つ）\n"
                 f"- ダミーはこの単元に登場する似た語句・人物・地名から選ぶ\n"
+                f"- 各選択肢には読み仮名（ふりがな・ひらがな）を必ず付ける\n"
+                f"  （カタカナ語はカタカナのままでよい。記号や数字だけの場合は空文字）\n"
                 f"- JSONのみ出力（説明不要）\n\n"
                 f"出力フォーマット:\n"
                 f'{{\n'
                 f'  "question": "問題文",\n'
-                f'  "choices": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],\n'
-                f'  "answer": "正解の選択肢テキスト"\n'
+                f'  "choices": [\n'
+                f'    {{"text": "選択肢A", "yomi": "せんたくしえー"}},\n'
+                f'    {{"text": "選択肢B", "yomi": "せんたくしびー"}},\n'
+                f'    {{"text": "選択肢C", "yomi": "せんたくししー"}},\n'
+                f'    {{"text": "選択肢D", "yomi": "せんたくしでぃー"}}\n'
+                f'  ],\n'
+                f'  "answer": "正解の選択肢テキスト（いずれかのtextと完全一致）"\n'
                 f'}}'
             )
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
-                max_tokens=600,
+                max_tokens=800,
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": "中学生向けに問題を作る先生です。必ずJSONで返答してください。"},
@@ -1847,6 +1854,15 @@ else:
             )
             import json as _json
             data = _json.loads(resp.choices[0].message.content)
+            # choices正規化（旧形式の文字列リストにも後方互換）
+            _norm = []
+            for c in data.get("choices", []):
+                if isinstance(c, dict):
+                    _norm.append({"text": str(c.get("text", "")),
+                                  "yomi": str(c.get("yomi", "") or "")})
+                else:
+                    _norm.append({"text": str(c), "yomi": ""})
+            data["choices"] = _norm
             # choicesをシャッフル
             import random as _rnd
             _rnd.shuffle(data["choices"])
@@ -1854,13 +1870,24 @@ else:
         except Exception as e:
             return None
 
+    # 記述問題（長文回答）は4択にしない → 説明文で答えさせる
+    def _is_descriptive(ans):
+        a = str(ans or "")
+        return ("（例）" in a or "(例)" in a
+                or a.rstrip().endswith("。") or len(a) >= 20)
+
+    _is_desc = _is_descriptive(tp_current.get("a", ""))
+
     # クイズをsession_stateにキャッシュ（問題が変わったら再生成）
     quiz_key = f"tp_quiz_{tp_pos}_{tp_current.get('q','')}"
-    if quiz_key not in st.session_state:
-        with st.spinner("AI が問題を生成中..."):
-            quiz = _generate_quiz(tp_current)
-            st.session_state[quiz_key] = quiz
-    quiz = st.session_state.get(quiz_key)
+    if _is_desc:
+        quiz = None  # 記述問題：4択を作らず説明文で答えさせる
+    else:
+        if quiz_key not in st.session_state:
+            with st.spinner("AI が問題を生成中..."):
+                quiz = _generate_quiz(tp_current)
+                st.session_state[quiz_key] = quiz
+        quiz = st.session_state.get(quiz_key)
 
     tp_result = st.session_state.get(f"tp_result_{tp_pos}")
 
@@ -1902,17 +1929,21 @@ else:
             # 回答済み：HTML div で正誤をカラー表示
             html = ""
             for ch in quiz["choices"]:
-                is_correct  = ch == correct_ans
-                is_selected = ch == selected
+                ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
+                ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
+                is_correct  = ch_text == correct_ans
+                is_selected = ch_text == selected
+                yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>"
+                             if ch_yomi else "")
                 if is_correct:
                     s = _div_base + "background:#E5F8EE; border:2px solid #34C759; color:#1a8a3c;"
-                    lbl = "⭕ " + ch
+                    lbl = "⭕ " + ch_text + yomi_html
                 elif is_selected:
                     s = _div_base + "background:#FFE5E2; border:2px solid #FF3B30; color:#c0392b;"
-                    lbl = "❌ " + ch
+                    lbl = "❌ " + ch_text + yomi_html
                 else:
                     s = _div_base + "background:#F9F9F9; border:1px solid #E5E5EA; color:#8E8E93;"
-                    lbl = ch
+                    lbl = ch_text + yomi_html
                 html += "<div style=\"" + s + "\">" + lbl + "</div>"
             st.markdown(html, unsafe_allow_html=True)
             # 解説は💡ボタン押下時のみ表示
@@ -1931,10 +1962,13 @@ else:
         else:
             # 未回答：st.button（CSSで見た目を統一）
             for i, ch in enumerate(quiz["choices"]):
-                if st.button(ch, key=f"tp_choice_{tp_pos}_{i}",
+                ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
+                ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
+                btn_label = f"{ch_text}（{ch_yomi}）" if ch_yomi else ch_text
+                if st.button(btn_label, key=f"tp_choice_{tp_pos}_{i}",
                              use_container_width=True):
-                    st.session_state[f"tp_selected_{tp_pos}"] = ch
-                    result_val = "maru" if ch == correct_ans else "batsu"
+                    st.session_state[f"tp_selected_{tp_pos}"] = ch_text
+                    result_val = "maru" if ch_text == correct_ans else "batsu"
                     st.session_state[f"tp_result_{tp_pos}"] = result_val
                     if ALM_AVAILABLE:
                         try:
@@ -1947,7 +1981,15 @@ else:
                     st.rerun()
 
     else:
-        # AI生成失敗時はフラッシュカード表示にフォールバック
+        # 記述問題（_is_desc）は説明文で答えさせる。それ以外（quiz=None）はAI失敗フォールバック
+        _a_yomi = tp_current.get("yomi", "")
+        _yomi_html = (f"<br><span style='font-size:16px;color:#8E8E93;font-weight:500;'>{_a_yomi}</span>"
+                      if _a_yomi else "")
+        _desc_banner = (
+            "<div style='text-align:center;margin:8px 0 2px;font-size:14px;"
+            "font-weight:700;color:#FF6B00;letter-spacing:0.03em;'>"
+            "✍️ 説明文で答えてください！</div>"
+        ) if _is_desc else ""
         st.markdown(f"""
         <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
             <div class='wb-fc-header'>
@@ -1956,9 +1998,10 @@ else:
                 <div class='wb-fc-lesson'>{tp_current.get("lesson_title","")}</div>
             </div>
             <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current["q"]}</div>
+            {_desc_banner}
             <div class='wb-fc-divider'></div>
             <div class='wb-fc-a-area'>
-                <div class='wb-fc-a-shown'>{tp_current["a"]}</div>
+                <div class='wb-fc-a-shown' style="font-family:'Klee One',serif;">{tp_current["a"]}{_yomi_html}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)

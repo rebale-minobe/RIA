@@ -147,6 +147,16 @@ def render_subject_page(subject_key: str, subject_name: str, icon: str):
         from shared.math_study_agent_ui import render_study_agent_section
         render_study_agent_section()
 
+    # ─── 漢字テスト（国語のみ） ───
+    if subject_key == "japanese":
+        st.markdown("---")
+        st.markdown(
+            '<div style="font-size:22px;font-weight:700;margin:8px 0 4px;">📖 漢字テスト</div>',
+            unsafe_allow_html=True
+        )
+        from shared.kanji_test import render_kanji_test
+        render_kanji_test()
+
     # ─── システムプロンプト構築 ───
     module = _get_prompt_module(subject_key)
     if module is None:
