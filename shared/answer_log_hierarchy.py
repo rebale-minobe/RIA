@@ -72,12 +72,23 @@ class AnswerLogPivot:
     
     def get_chapters(self) -> List[Tuple[str, str]]:
         """
-        章一覧を返す
+        章一覧を返す（ページ順でソート）
         戻り値: [(chapter_number, chapter_title), ...]
         """
         if not self.chapters:
             return []
-        return [(num, title) for num, title in self.chapters.items()]
+        
+        # Chapter_N の N を抽出してソート
+        def extract_chapter_num(chapter_key):
+            try:
+                num = int(chapter_key.replace('Chapter_', ''))
+                return num
+            except:
+                return 999
+        
+        sorted_chapters = sorted(self.chapters.items(), 
+                                key=lambda x: extract_chapter_num(x[0]))
+        return sorted_chapters
     
     def get_lessons_in_chapter(self, chapter_number: str) -> List[Dict]:
         """
