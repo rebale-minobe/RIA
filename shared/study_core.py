@@ -840,6 +840,12 @@ def render_subject_study(subject_key):
                 border_color = "#FF3B30" if result == "batsu" else "#FF9500"
                 _ans = st.session_state.get("ans_size", 40)
                 _fs  = st.session_state.get("font_size", 17)
+                # 読み仮名（答えと同じdiv内に改行+小フォントで配置）
+                yomi_part = (
+                    f"<br><span style='font-size:18px;color:#8E8E93;font-weight:500;"
+                    f"letter-spacing:0.04em;'>{current['yomi']}</span>"
+                    if current.get('yomi') else ""
+                )
                 card_html = f"""
                 <div class='wb-flashcard' style='border-color:{border_color};'>
                     <div class='wb-fc-header'>
@@ -849,8 +855,7 @@ def render_subject_study(subject_key):
                     <div class='wb-fc-q' style='font-size:{_fs+12}px;font-weight:800;'>{current['q']}</div>
                     <div class='wb-fc-divider'></div>
                     <div class='wb-fc-a-area'>
-                        <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}</div>
-                        {f"<div style='text-align:center;font-size:16px;color:#8E8E93;margin-top:6px;font-weight:500;letter-spacing:0.02em;'>{current['yomi']}</div>" if current.get('yomi') else ''}
+                        <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}{yomi_part}</div>
                     </div>
                     {('<div style="text-align:center;margin-top:8px;font-size:13px;'
                       'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
