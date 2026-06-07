@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """
-RIA 再TEST機能用：階層選択ロジック
+RIA 再TEST用：階層選択ロジック（修正版）
 
-使用方法:
-  1. `AnswerLogPivot.load_csv()` でCSVを読み込み
-  2. `get_chapters()` で章一覧を取得
-  3. `get_lessons_in_chapter()` で該当章のlesson_titleを取得（進捗情報付き）
-  4. `get_questions_in_lesson()` で該当lesson内の問題を取得
-  5. UI で「×」問題のみフィルタリングして再TEST開始
+CSV に chapter_number/chapter_title がない場合、
+lesson_title から自動抽出する
 """
 
 import csv
@@ -39,23 +35,28 @@ class AnswerLogPivot:
     def _build_hierarchy(self):
         """章 → lesson_title → 問題の階層を構築"""
         
-        # 章を取得
+        # 章を取得（lesson_titleから自動抽出）
         chapters = {}
         lessons_by_chapter = defaultdict(dict)
         questions_by_lesson = defaultdict(list)
         
         for row in self.data:
-            chapter_num = row['chapter_number']
-            chapter_title = row['chapter_title']
-            lesson_title = row['lesson_title']
-            page = row['page']
+            page = row.get('page', '')
+            lesson_title = row.get('lesson_title', '')
+            
+            # 章情報を推測（lesson_titleから）
+            # ※ 本来は JSON から取得するが、CSV のみの場合は lesson_title で代用
+            chapter_num = f"Chapter_{page}"  # 簡易版：ページから生成
+            chapter_title = lesson_title  # 簡易版：lesson_titleを使用
+            
+            # 実装注：本格化したら、JSON から正式な章情報を取得すること
             
             # 章を登録
-            if chapter_num:
+            if lesson_title:
                 chapters[chapter_num] = chapter_title
                 
                 # lesson_title を登録（重複排除）
-                lesson_key = f"{page}|{lesson_title}"  # ページ+タイトルで一意化
+                lesson_key = f"{page}|{lesson_title}"
                 lessons_by_chapter[chapter_num][lesson_key] = {
                     'page': page,
                     'lesson_title': lesson_title
@@ -197,25 +198,28 @@ class AnswerLogPivot:
 
 def main():
     """テスト実行"""
-    csv_path = Path('/mnt/user-data/outputs/answer_log_social_pivot.csv')
+    csv_path = Path('/mnt/user-data/outputs/answer_log_social_pivot_v2.csv')
     
     print("📖 ピボットCSVを読み込み...\n")
     log = AnswerLogPivot.load_csv(str(csv_path))
     
     # 1. 章一覧
     print("【章一覧】")
-    for chapter_num, chapter_title in log.get_chapters():
-        print(f"  {chapter_num} {chapter_title}")
+    for chapter_num, chapter_title in log.get_chapters()[:5]:  # 最初の5つだけ表示
+        print(f"  {chapter_num}: {chapter_title}")
     
-    # 2. 章を選択 → lesson一覧
-    print("\n【第4章内のlesson一覧】")
-    lessons = log.get_lessons_in_chapter('第4章')
-    for lesson in lessons:
-        total = lesson['total_count']
-        maru = lesson['maru_count']
-        batsu = lesson['batsu_count']
-        progress = f"⭕{maru}/{total}" if maru > 0 else f"❌{total}"
-        print(f"  📖 {lesson['lesson_title']} (p{lesson['page']}) 【{progress}】")
+    # 2. 最初の章 → lesson一覧
+    chapters = log.get_chapters()
+    if chapters:
+        first_chapter = chapters[0]
+        print(f"\n【{first_chapter[1]} のlesson一覧】")
+        lessons = log.get_lessons_in_chapter(first_chapter[0])
+        for lesson in lessons[:3]:
+            total = lesson['total_count']
+            maru = lesson['maru_count']
+            batsu = lesson['batsu_count']
+            progress = f"⭕{maru}/{total}" if maru > 0 else f"❌{total}"
+            print(f"  📖 {lesson['lesson_title']} (p{lesson['page']}) 【{progress}】")
     
     # 3. lesson を選択 → 問題取得（×のみ）
     if lessons:
@@ -224,9 +228,9 @@ def main():
         questions = log.get_questions_in_lesson(first_lesson['lesson_key'], 
                                                filter_batsu_only=True)
         print(f"  未解決: {len(questions)} 問")
-        for q in questions[:5]:
+        for q in questions[:3]:
             print(f"    p{q['page']} [{q['section_code']}] {q['q_label']}: {q['answer']}")
-            print(f"      誤答回数: {q['error_count']}, 履歴: {q['history']}")
+            print(f"      誤答回数: {q['error_count']}, 履歴: {q['history'][-3:]}")
 
 if __name__ == '__main__':
     main()
