@@ -392,6 +392,7 @@ def render_subject_study(subject_key):
     # 教科書/ワーク表紙のサイズをTOPと統一（各教科ページにはapp.pyのCSSが無いため注入）
     st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap');
     .tb-cover-wrap { text-align: center; padding: 16px 0 8px 0; }
     .tb-cover {
         width: 220px; max-width: 70%; border-radius: 12px;
@@ -855,7 +856,7 @@ def render_subject_study(subject_key):
                     <div class='wb-fc-q' style='font-size:{_fs+12}px;font-weight:800;'>{current['q']}</div>
                     <div class='wb-fc-divider'></div>
                     <div class='wb-fc-a-area'>
-                        <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}{yomi_part}</div>
+                        <div class='wb-fc-a-shown' style="font-size:{_ans}px;font-weight:600;line-height:1.3;font-family:'Klee One',serif;">{current['a']}{yomi_part}</div>
                     </div>
                     {('<div style="text-align:center;margin-top:8px;font-size:13px;'
                       'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
