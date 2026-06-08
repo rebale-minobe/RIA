@@ -98,6 +98,28 @@ def _get_title_total_counts():
     
     return dict(title_counts)
 
+# 各タイトルの最新TEST日を取得
+@st.cache_data(ttl=60)
+def _get_title_latest_dates():
+    """各タイトルの最新TEST日（YYYY-MM-DD）をCSVから取得"""
+    rows = _load_social_pivot_csv()
+    if not rows:
+        return {}
+    
+    title_dates = {}
+    for row in rows:
+        lesson_title = row.get('lesson_title', '')
+        if not lesson_title:
+            continue
+        for col_name in row.keys():
+            if col_name.endswith('_maru') or col_name.endswith('_batsu'):
+                if row[col_name]:
+                    date = col_name.replace('_maru', '').replace('_batsu', '')
+                    current = title_dates.get(lesson_title, '')
+                    if date > current:
+                        title_dates[lesson_title] = date
+    return title_dates
+
 # ========== 教科定義（TOP と同じ）
 SUBJECTS = {
     "social": {"name": "社会", "emoji": "🗺️", "genres": {
@@ -244,8 +266,9 @@ for q in social_questions:
 # ========== タイトル選択 UI
 st.markdown("### 📖 タイトルを選択")
 
-# CSV から全問題数を取得
+# CSV から全問題数と最新TEST日を取得
 title_total_counts = _get_title_total_counts()
+title_latest_dates = _get_title_latest_dates()
 
 # タイトル一覧をボタンで表示
 selected_title = None
@@ -268,14 +291,20 @@ for title in title_order:
     batsu_count_csv = len(problems)  # titles_dict は batsu のみなので全部がバツ
     progress = f"{batsu_count_csv}/{total_count_csv}"
     
-    col1, col2 = st.columns([10, 1])
+    col1, col2 = st.columns([10, 2])
     with col1:
         if st.button(label, use_container_width=True, key=f"select_title_{title}"):
             selected_title = title
             st.session_state["selected_social_title"] = title
             st.rerun()
     with col2:
-        st.markdown(f"<div style='text-align:right; font-weight:700; color:#007AFF; margin-top:8px;'>{progress}</div>", unsafe_allow_html=True)
+        latest_date = title_latest_dates.get(title, '')
+        date_str = f"<span style='font-size:11px; color:#8E8E93;'>{latest_date}</span>" if latest_date else ""
+        st.markdown(
+            f"<div style='text-align:right; font-weight:700; color:#007AFF; margin-top:8px;'>"
+            f"{progress}&nbsp;&nbsp;{date_str}</div>",
+            unsafe_allow_html=True
+        )
 
 # 以前選択したタイトルを復元
 if "selected_social_title" not in st.session_state and title_order:
