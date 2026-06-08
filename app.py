@@ -6,7 +6,7 @@ v1.4 追加:
 - ○✕記録は即座に GitHub に保存
 v1.3 追加: フラッシュカード形式、◀▶ナビ、○✕記録、💡解説、再テスト
 """
-APP_VERSION = "v2026-06-08.3"
+APP_VERSION = "v2026-06-08.4"
 
 import streamlit as st
 import json
