@@ -521,3 +521,74 @@ if tp_pos == tp_total - 1 and tp_result is not None:
         st.session_state.pop("selected_social_title", None)
         st.rerun()
 
+
+# ========== 📊 CSVデータビューワー
+st.markdown("---")
+st.subheader("📊 学習データ（answer_log_social_pivot）")
+
+@st.cache_data(ttl=60)
+def _load_csv_for_view():
+    rows = _load_social_pivot_csv()
+    if not rows:
+        return [], []
+    # 日付列を抽出
+    date_cols = [c for c in rows[0].keys()
+                 if c.endswith('_maru') or c.endswith('_batsu')]
+    return rows, date_cols
+
+csv_rows, date_cols = _load_csv_for_view()
+
+if not csv_rows:
+    st.info("CSVデータがありません")
+else:
+    # page_num の一覧（セグメント用）
+    page_nums = sorted(set(r['page_num'] for r in csv_rows), key=lambda x: int(x))
+    page_labels = [f"P.{p}" for p in page_nums]
+
+    selected_page = st.segmented_control(
+        "ページを選択", page_labels,
+        default=page_labels[0],
+        key="csv_view_page"
+    )
+    if not selected_page:
+        selected_page = page_labels[0]
+
+    sel_p_num = selected_page.replace("P.", "")
+    page_rows = [r for r in csv_rows if r['page_num'] == sel_p_num]
+
+    if not page_rows:
+        st.info("このページのデータはありません")
+    else:
+        # ヘッダー行を構築
+        header_cols = ["section", "q", "answer"] + date_cols
+        col_widths = [1, 1, 3] + [1] * len(date_cols)
+
+        # ヘッダー
+        h_cols = st.columns(col_widths)
+        h_cols[0].markdown("**区分**")
+        h_cols[1].markdown("**問**")
+        h_cols[2].markdown("**答え**")
+        for i, dc in enumerate(date_cols):
+            parts = dc.rsplit('_', 1)
+            date_part = parts[0][-5:] if len(parts[0]) >= 5 else parts[0]  # MM-DD
+            kind = "⭕" if dc.endswith('_maru') else "❌"
+            h_cols[3 + i].markdown(f"**{date_part}**<br>**{kind}**", unsafe_allow_html=True)
+
+        st.divider()
+
+        # 各行を表示
+        for row in page_rows:
+            r_cols = st.columns(col_widths)
+            r_cols[0].markdown(f"<span style='font-size:12px;color:#8E8E93;'>{row.get('section_code','')}</span>", unsafe_allow_html=True)
+            r_cols[1].markdown(f"<span style='font-size:12px;'>{row.get('q_label','')}</span>", unsafe_allow_html=True)
+            r_cols[2].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
+            for i, dc in enumerate(date_cols):
+                val = row.get(dc, '')
+                if val:
+                    color = "#34C759" if dc.endswith('_maru') else "#FF3B30"
+                    r_cols[3 + i].markdown(
+                        f"<span style='font-weight:700;color:{color};font-size:14px;'>{val}</span>",
+                        unsafe_allow_html=True
+                    )
+                else:
+                    r_cols[3 + i].markdown("—")
