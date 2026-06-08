@@ -25,84 +25,62 @@ log = load_answer_log()
 if not log:
     st.stop()
 
-chapters = log.get_chapters()
-if not chapters:
-    st.warning("まだ再TEST対象がありません")
-    st.stop()
-
 # ========== 再TEST が開始されていない場合のUI
 if "retest_started_social" not in st.session_state:
     st.session_state.retest_started_social = False
 
 if not st.session_state.retest_started_social:
-    # ===== ① 章を選択（ボタン表示）
-    st.markdown("### 📚 章を選択")
+    # ===== タイトルを直接選択（workbook_ref 付き）
+    st.markdown("### 📖 タイトルを選択")
     
-    cols = st.columns(3)
-    for idx, (chapter_num, chapter_title) in enumerate(chapters):
-        with cols[idx % 3]:
-            if st.button(
-                f"📖 {chapter_title}",
-                key=f"chapter_{chapter_num}",
-                use_container_width=True
-            ):
-                st.session_state.selected_chapter_social = chapter_num
-                st.session_state.selected_chapter_title_social = chapter_title
-                st.rerun()
+    # すべての章から lesson を抽出
+    all_lessons = []
+    for chapter_title, _ in log.get_chapters():
+        lessons = log.get_lessons_in_chapter(chapter_title)
+        all_lessons.extend(lessons)
     
-    # 章が選択されたか確認
-    if "selected_chapter_social" in st.session_state:
-        chapter_num = st.session_state.selected_chapter_social
-        chapter_title = st.session_state.selected_chapter_title_social
+    if not all_lessons:
+        st.info("学習記録がまだありません")
+        st.stop()
+    
+    # lesson をボタンとして表示
+    for lesson in all_lessons:
+        total = lesson['total_count']
+        maru = lesson['maru_count']
+        batsu = lesson['batsu_count']
         
-        st.divider()
-        
-        # ===== ② lesson_title + workbook_ref を一体表示
-        st.markdown(f"### 📖 {chapter_title}")
-        
-        lessons = log.get_lessons_in_chapter(chapter_num)
-        if not lessons:
-            st.info("この章に学習記録がまだありません")
+        if batsu > 0:
+            progress = f"❌ {batsu}/{total}"
+            badge = "🔴"
         else:
-            # lesson をボタンとして表示
-            for lesson in lessons:
-                total = lesson['total_count']
-                maru = lesson['maru_count']
-                batsu = lesson['batsu_count']
-                
-                if batsu > 0:
-                    progress = f"❌ {batsu}/{total}"
-                    badge = "🔴"
-                else:
-                    progress = f"⭕ {maru}/{total}"
-                    badge = "🟢"
-                
-                # workbook_ref を CSV から取得
-                questions = log.get_questions_in_lesson(lesson['lesson_key'], 
-                                                        filter_batsu_only=False)
-                workbook_ref = ""
-                if questions and 'workbook_ref' in questions[0]:
-                    workbook_ref = questions[0]['workbook_ref']
-                
-                # ボタンラベル：lesson_title + workbook_ref
-                if workbook_ref:
-                    label = f"{badge} {lesson['lesson_title']} {workbook_ref} 【{progress}】"
-                else:
-                    label = f"{badge} {lesson['lesson_title']} 【{progress}】"
-                
-                if st.button(
-                    label,
-                    key=f"lesson_{lesson['lesson_key']}",
-                    use_container_width=True
-                ):
-                    st.session_state.selected_lesson_social = lesson['lesson_key']
-                    st.session_state.retest_questions_social = log.get_questions_in_lesson(
-                        lesson['lesson_key'],
-                        filter_batsu_only=True
-                    )
-                    st.session_state.retest_current_index_social = 0
-                    st.session_state.retest_started_social = True
-                    st.rerun()
+            progress = f"⭕ {maru}/{total}"
+            badge = "🟢"
+        
+        # workbook_ref を取得
+        questions = log.get_questions_in_lesson(lesson['lesson_key'], filter_batsu_only=False)
+        workbook_ref = ""
+        if questions and 'workbook_ref' in questions[0]:
+            workbook_ref = questions[0]['workbook_ref']
+        
+        # ボタンラベル：badge + lesson_title + workbook_ref + progress
+        if workbook_ref:
+            label = f"{badge} {lesson['lesson_title']} {workbook_ref} 【{progress}】"
+        else:
+            label = f"{badge} {lesson['lesson_title']} 【{progress}】"
+        
+        if st.button(
+            label,
+            key=f"lesson_{lesson['lesson_key']}",
+            use_container_width=True
+        ):
+            st.session_state.selected_lesson_social = lesson['lesson_key']
+            st.session_state.retest_questions_social = log.get_questions_in_lesson(
+                lesson['lesson_key'],
+                filter_batsu_only=True
+            )
+            st.session_state.retest_current_index_social = 0
+            st.session_state.retest_started_social = True
+            st.rerun()
 
 # ========== 再TEST が開始されている場合のUI（フラッシュカード）
 else:
@@ -110,8 +88,6 @@ else:
         st.error("エラーが発生しました。最初から選択し直してください。")
         if st.button("🔄 リセット"):
             st.session_state.retest_started_social = False
-            st.session_state.pop("selected_chapter_social", None)
-            st.session_state.pop("selected_chapter_title_social", None)
             st.session_state.pop("selected_lesson_social", None)
             st.session_state.pop("retest_questions_social", None)
             st.rerun()
@@ -119,7 +95,6 @@ else:
     
     questions = st.session_state.retest_questions_social
     current_idx = st.session_state.retest_current_index_social
-    chapter_title = st.session_state.selected_chapter_title_social
     
     if current_idx >= len(questions):
         # ===== 完了画面
@@ -128,8 +103,6 @@ else:
         
         if st.button("🏠 最初に戻る", use_container_width=True):
             st.session_state.retest_started_social = False
-            st.session_state.pop("selected_chapter_social", None)
-            st.session_state.pop("selected_chapter_title_social", None)
             st.session_state.pop("selected_lesson_social", None)
             st.session_state.pop("retest_questions_social", None)
             st.rerun()
@@ -137,32 +110,26 @@ else:
     else:
         q = questions[current_idx]
         
-        # ===== TOP の再TEST UI と同じ形式
-        st.markdown("### 🎯 再TEST")
-        
-        # 上部：チェックボックス（解答記録）
+        # ===== ヘッダー
         col1, col2, col3 = st.columns([1, 2, 1])
         with col1:
-            st.checkbox("❌不正解問題", value=True, disabled=True)
+            st.markdown(f"### 🎯 {current_idx + 1} / {len(questions)}")
         with col2:
-            st.markdown("")
+            progress_pct = int(100 * (current_idx + 1) / len(questions))
+            st.progress(progress_pct / 100, f"{progress_pct}%")
         with col3:
-            st.markdown(f"**⭕ {sum(1 for qq in questions[:current_idx] if qq.get('latest_result') == 'maru')} | ❌ {current_idx - sum(1 for qq in questions[:current_idx] if qq.get('latest_result') == 'maru')}**")
-        
-        # 進捗情報
-        st.caption(f"問題 {current_idx + 1} / {len(questions)}")
+            score = sum(1 for qq in questions[:current_idx] 
+                       if qq.get('latest_result') == 'maru')
+            st.markdown(f"**⭕ {score}**")
         
         st.divider()
         
-        # ===== 問題表示（フラッシュカード）
-        st.markdown(f"**{q['page']} 社会 / 歴史**")
-        st.markdown("---")
-        st.markdown(f"**{chapter_title}**")
-        st.markdown("---")
+        # ===== 問題表示
+        st.markdown(f"**p{q['page']} [{q['section_code']}] {q['q_label']}**")
         
-        # 問題本体
+        # 問題の答えを大きく表示（フラッシュカード風）
         with st.container(border=True):
-            st.markdown(f"## {q['answer']}")
+            st.markdown(f"# {q['answer']}")
         
         # 履歴情報
         if q['history']:
@@ -173,7 +140,7 @@ else:
         
         st.divider()
         
-        # ===== ナビボタン（TOP と同じ配置）
+        # ===== ナビボタン
         col1, col2, col3, col4, col5 = st.columns(5, gap="small")
         
         with col1:
