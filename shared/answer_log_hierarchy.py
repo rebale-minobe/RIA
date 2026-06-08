@@ -170,6 +170,7 @@ class AnswerLogPivot:
               'answer': '十字軍',
               'latest_result': 'batsu',
               'history': ['batsu', 'maru', ...]  # 古い順
+              'workbook_ref': '本誌 P.2・3'
             },
             ...
           ]
@@ -182,7 +183,8 @@ class AnswerLogPivot:
             history = []
             date_cols = [col for col in q.keys() 
                         if col not in ['page', 'chapter_number', 'chapter_title', 
-                                       'lesson_title', 'section_code', 'q_label', 'answer']]
+                                       'lesson_title', 'section_code', 'q_label', 'answer',
+                                       'workbook_ref']]
             
             for col in date_cols:
                 if q[col]:
@@ -201,7 +203,8 @@ class AnswerLogPivot:
                 'answer': q['answer'],
                 'latest_result': latest_result,
                 'history': history,
-                'error_count': history.count('batsu')
+                'error_count': history.count('batsu'),
+                'workbook_ref': q.get('workbook_ref', '')  # workbook_ref を追加
             })
         
         return result

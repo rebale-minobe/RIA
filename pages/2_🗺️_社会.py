@@ -35,10 +35,9 @@ if "retest_started_social" not in st.session_state:
     st.session_state.retest_started_social = False
 
 if not st.session_state.retest_started_social:
-    # ===== ① 章をずらりと表示（ボタンとして）
+    # ===== ① 章を選択（ボタン表示）
     st.markdown("### 📚 章を選択")
     
-    # 章をグリッド状に表示（3列）
     cols = st.columns(3)
     for idx, (chapter_num, chapter_title) in enumerate(chapters):
         with cols[idx % 3]:
@@ -51,15 +50,15 @@ if not st.session_state.retest_started_social:
                 st.session_state.selected_chapter_title_social = chapter_title
                 st.rerun()
     
-    # 章を選択されたか確認
+    # 章が選択されたか確認
     if "selected_chapter_social" in st.session_state:
         chapter_num = st.session_state.selected_chapter_social
         chapter_title = st.session_state.selected_chapter_title_social
         
         st.divider()
         
-        # ===== ② lesson_title をずらりと表示（ボタンとして）
-        st.markdown(f"### 📖 {chapter_title} の単元を選択")
+        # ===== ② lesson_title + workbook_ref を一体表示
+        st.markdown(f"### 📖 {chapter_title}")
         
         lessons = log.get_lessons_in_chapter(chapter_num)
         if not lessons:
@@ -73,12 +72,23 @@ if not st.session_state.retest_started_social:
                 
                 if batsu > 0:
                     progress = f"❌ {batsu}/{total}"
-                    badge_color = "🔴"
+                    badge = "🔴"
                 else:
                     progress = f"⭕ {maru}/{total}"
-                    badge_color = "🟢"
+                    badge = "🟢"
                 
-                label = f"{badge_color} {lesson['lesson_title']} (p{lesson['page']}) 【{progress}】"
+                # workbook_ref を CSV から取得
+                questions = log.get_questions_in_lesson(lesson['lesson_key'], 
+                                                        filter_batsu_only=False)
+                workbook_ref = ""
+                if questions and 'workbook_ref' in questions[0]:
+                    workbook_ref = questions[0]['workbook_ref']
+                
+                # ボタンラベル：lesson_title + workbook_ref
+                if workbook_ref:
+                    label = f"{badge} {lesson['lesson_title']} {workbook_ref} 【{progress}】"
+                else:
+                    label = f"{badge} {lesson['lesson_title']} 【{progress}】"
                 
                 if st.button(
                     label,
@@ -127,26 +137,32 @@ else:
     else:
         q = questions[current_idx]
         
-        # ===== ヘッダー
+        # ===== TOP の再TEST UI と同じ形式
+        st.markdown("### 🎯 再TEST")
+        
+        # 上部：チェックボックス（解答記録）
         col1, col2, col3 = st.columns([1, 2, 1])
         with col1:
-            st.markdown(f"### 🎯 {current_idx + 1} / {len(questions)}")
+            st.checkbox("❌不正解問題", value=True, disabled=True)
         with col2:
-            progress_pct = int(100 * (current_idx + 1) / len(questions))
-            st.progress(progress_pct / 100, f"{progress_pct}%")
+            st.markdown("")
         with col3:
-            score = sum(1 for qq in questions[:current_idx] 
-                       if qq.get('latest_result') == 'maru')
-            st.markdown(f"**⭕ {score}**")
+            st.markdown(f"**⭕ {sum(1 for qq in questions[:current_idx] if qq.get('latest_result') == 'maru')} | ❌ {current_idx - sum(1 for qq in questions[:current_idx] if qq.get('latest_result') == 'maru')}**")
+        
+        # 進捗情報
+        st.caption(f"問題 {current_idx + 1} / {len(questions)}")
         
         st.divider()
         
-        # ===== 問題表示
-        st.markdown(f"**p{q['page']} [{q['section_code']}] {q['q_label']}**")
+        # ===== 問題表示（フラッシュカード）
+        st.markdown(f"**{q['page']} 社会 / 歴史**")
+        st.markdown("---")
+        st.markdown(f"**{chapter_title}**")
+        st.markdown("---")
         
-        # 問題の答えを大きく表示（フラッシュカード風）
+        # 問題本体
         with st.container(border=True):
-            st.markdown(f"# {q['answer']}")
+            st.markdown(f"## {q['answer']}")
         
         # 履歴情報
         if q['history']:
@@ -157,7 +173,7 @@ else:
         
         st.divider()
         
-        # ===== ナビボタン
+        # ===== ナビボタン（TOP と同じ配置）
         col1, col2, col3, col4, col5 = st.columns(5, gap="small")
         
         with col1:
