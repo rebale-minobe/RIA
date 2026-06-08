@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-08.12"""
-SOCIAL_VERSION = "v2026-06-08.12"
+"""社会ページ v2026-06-08.13"""
+SOCIAL_VERSION = "v2026-06-08.13"
 import streamlit as st
 import json
 import csv
@@ -560,66 +560,38 @@ else:
     if not page_rows:
         st.info("このページのデータはありません")
     else:
-        # ヘッダー行を構築
-        col_widths = [1, 3] + [1] * len(date_cols) + [1, 1]  # 問・答え・日付列・⭕/❌
+        # ヘッダー行を構築（batsu列のみ表示）
+        batsu_cols = [c for c in date_cols if c.endswith('_batsu')]
+        col_widths = [1, 3] + [1] * len(batsu_cols)
 
-        # ヘッダー
-        h_cols = st.columns(col_widths)
-        h_cols[0].markdown("**問**")
-        h_cols[1].markdown("**答え**")
-        for i, dc in enumerate(date_cols):
-            parts = dc.rsplit('_', 1)
-            date_part = parts[0][-5:] if len(parts[0]) >= 5 else parts[0]
-            kind = "⭕" if dc.endswith('_maru') else "❌"
-            h_cols[2 + i].markdown(f"**{date_part}**<br>**{kind}**", unsafe_allow_html=True)
-        h_cols[-2].markdown("**⭕登録**")
-        h_cols[-1].markdown("**❌登録**")
+        # ❌データがある行のみフィルタ
+        batsu_rows = [r for r in page_rows if any(r.get(c,'') for c in batsu_cols)]
+        if not batsu_rows:
+            st.success("🎉 このページに❌はありません！")
+        else:
+            # ヘッダー
+            h_cols = st.columns(col_widths)
+            h_cols[0].markdown("**問**")
+            h_cols[1].markdown("**答え**")
+            for i, dc in enumerate(batsu_cols):
+                date_part = dc.replace('_batsu','')[-5:]
+                h_cols[2 + i].markdown(f"**{date_part}**<br>**❌**", unsafe_allow_html=True)
 
-        st.divider()
+            st.divider()
 
-        # 各行を表示
-        for row in page_rows:
-            r_cols = st.columns(col_widths)
-            r_cols[0].markdown(f"<span style='font-size:12px;'>{row.get('q_label','')}</span>", unsafe_allow_html=True)
-            r_cols[1].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
-            for i, dc in enumerate(date_cols):
-                val = row.get(dc, '')
-                if val:
-                    color = "#34C759" if dc.endswith('_maru') else "#FF3B30"
-                    r_cols[2 + i].markdown(
-                        f"<span style='font-weight:700;color:{color};font-size:14px;'>{val}</span>",
-                        unsafe_allow_html=True
-                    )
-                else:
-                    r_cols[2 + i].markdown("—")
-            # ⭕ 登録ボタン
-            btn_key_m = f"csv_maru_{row.get('page_num','')}_{row.get('section_code','')}_{row.get('q_label','')}"
-            if r_cols[-2].button("⭕", key=btn_key_m, use_container_width=True):
-                try:
-                    from modules import answer_log_pivot as alp
-                    ok = alp.append_pivot_log("social", row, "maru")
-                    if ok:
-                        st.success(f"⭕ 登録成功：{row.get('answer','')}")
-                        _load_csv_for_view.clear()
-                        st.rerun()
+            for row in batsu_rows:
+                r_cols = st.columns(col_widths)
+                r_cols[0].markdown(f"<span style='font-size:12px;'>{row.get('q_label','')}</span>", unsafe_allow_html=True)
+                r_cols[1].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
+                for i, dc in enumerate(batsu_cols):
+                    val = row.get(dc, '')
+                    if val:
+                        r_cols[2 + i].markdown(
+                            f"<span style='font-weight:700;color:#FF3B30;font-size:14px;'>{val}</span>",
+                            unsafe_allow_html=True
+                        )
                     else:
-                        st.error("登録失敗")
-                except Exception as e:
-                    st.error(f"エラー: {e}")
-            # ❌ 登録ボタン
-            btn_key_b = f"csv_batsu_{row.get('page_num','')}_{row.get('section_code','')}_{row.get('q_label','')}"
-            if r_cols[-1].button("❌", key=btn_key_b, use_container_width=True):
-                try:
-                    from modules import answer_log_pivot as alp
-                    ok = alp.append_pivot_log("social", row, "batsu")
-                    if ok:
-                        st.success(f"❌ 登録成功：{row.get('answer','')}")
-                        _load_csv_for_view.clear()
-                        st.rerun()
-                    else:
-                        st.error("登録失敗")
-                except Exception as e:
-                    st.error(f"エラー: {e}")
+                        r_cols[2 + i].markdown("—")
 
 # ========== 🔧 デバッグ（開発用）==========
 with st.expander("🔧 デバッグ"):
