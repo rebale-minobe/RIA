@@ -130,22 +130,27 @@ def _kt_select(data):
         sel = st.pills("📚 課を選択", lessons, default=st.session_state.kt_lesson, key="kt_lesson_pills")
         if sel and sel != st.session_state.kt_lesson:
             st.session_state.kt_lesson = sel
-            st.session_state.kt_checked = set()
+            # ★ kt_checked は dict なのでリセットしない（跨ぎ選択を保持）
             st.rerun()
     lesson = st.session_state.kt_lesson
     kanji_list = data[lesson]
 
     st.markdown(f"<div class='kt-banner'>📕 {lesson}</div>", unsafe_allow_html=True)
-    st.caption("今週のテスト範囲の漢字にチェック（教科書の出題順）")
+    st.caption("今週のテスト範囲の漢字にチェック（複数の課を跨いで選択できます）")
 
-    if "kt_checked" not in st.session_state:
-        st.session_state.kt_checked = set()
+    # ★ kt_checked を {lesson: set()} 形式に変更
+    if "kt_checked" not in st.session_state or not isinstance(st.session_state.kt_checked, dict):
+        st.session_state.kt_checked = {}
+    if lesson not in st.session_state.kt_checked:
+        st.session_state.kt_checked[lesson] = set()
 
-    c1, c2 = st.columns(2)
-    if c1.button("全部選ぶ", use_container_width=True):
-        st.session_state.kt_checked = set(range(len(kanji_list))); st.rerun()
-    if c2.button("クリア", use_container_width=True):
-        st.session_state.kt_checked = set(); st.rerun()
+    c1, c2, c3 = st.columns(3)
+    if c1.button("この課を全選択", use_container_width=True):
+        st.session_state.kt_checked[lesson] = set(range(len(kanji_list))); st.rerun()
+    if c2.button("この課をクリア", use_container_width=True):
+        st.session_state.kt_checked[lesson] = set(); st.rerun()
+    if c3.button("全課クリア", use_container_width=True):
+        st.session_state.kt_checked = {}; st.rerun()
 
     # 漢字グリッド（5列）
     n_col = 5
@@ -156,23 +161,44 @@ def _kt_select(data):
             if i >= len(kanji_list):
                 break
             k = kanji_list[i]
-            on = i in st.session_state.kt_checked
+            on = i in st.session_state.kt_checked[lesson]
             mark = "✅" if on else "⬜"
             label = f"{mark} {k['kanji']}"
             with cols[j]:
                 if st.button(label, key=f"kt_chip_{i}", use_container_width=True):
                     if on:
-                        st.session_state.kt_checked.discard(i)
+                        st.session_state.kt_checked[lesson].discard(i)
                     else:
-                        st.session_state.kt_checked.add(i)
+                        st.session_state.kt_checked[lesson].add(i)
                     st.rerun()
 
-    n = len(st.session_state.kt_checked)
+    # ★ 全課の合計選択数を表示
+    total_selected = sum(len(v) for v in st.session_state.kt_checked.values())
+    cur_selected = len(st.session_state.kt_checked[lesson])
+
+    # 選択課の一覧表示
+    selected_lessons = [(l, len(v)) for l, v in st.session_state.kt_checked.items() if v]
+    if len(selected_lessons) > 1:
+        summary = " / ".join(f"{l}({n}字)" for l, n in selected_lessons)
+        st.markdown(f"<div style='font-size:13px;color:#8E8E93;margin:8px 0 4px;'>選択中の課：{summary}</div>",
+                    unsafe_allow_html=True)
+
     st.markdown(f"<div style='text-align:center;font-size:15px;margin:14px 0 8px;'>"
-                f"選択中：<b style='color:#007AFF;font-size:18px;'>{n}</b> 字</div>",
+                f"この課：<b style='color:#007AFF;font-size:18px;'>{cur_selected}</b> 字　"
+                f"合計：<b style='color:#FF9500;font-size:18px;'>{total_selected}</b> 字</div>",
                 unsafe_allow_html=True)
-    if st.button("選んだ漢字で学習する ▶", disabled=(n == 0), type="primary", use_container_width=True):
-        st.session_state.kt_active = sorted(st.session_state.kt_checked)
+
+    if st.button(f"選んだ漢字で学習する（{total_selected}字） ▶", disabled=(total_selected == 0),
+                 type="primary", use_container_width=True):
+        # ★ 全課の選択済みを結合して学習リストを作成
+        active = []
+        for l, indices in st.session_state.kt_checked.items():
+            if not indices:
+                continue
+            l_kanji_list = data[l]
+            for i in sorted(indices):
+                active.append(l_kanji_list[i])
+        st.session_state.kt_active = active
         st.session_state.kt_phase = "study"
         st.rerun()
 
@@ -180,13 +206,25 @@ def _kt_select(data):
 # ===== フェーズ2: 学習 =====
 def _kt_study(data):
     lesson = st.session_state.kt_lesson
-    kanji_list = data[lesson]
-    active = [kanji_list[i] for i in st.session_state.kt_active]
+    # ★ kt_active は辞書リスト（複数課対応）
+    active = st.session_state.kt_active
 
     if st.button("◀ 範囲選択にもどる"):
         st.session_state.kt_phase = "select"; st.rerun()
 
-    st.markdown(f"<div class='kt-banner'>📕 {lesson} — {len(active)}字</div>", unsafe_allow_html=True)
+    # 課ごとにまとめて表示
+    lessons_in_active = []
+    seen = set()
+    for k in active:
+        if k['kanji'] not in seen:
+            lesson_name = next((l for l, klist in data.items()
+                                if any(x['kanji'] == k['kanji'] for x in klist)), lesson)
+            if lesson_name not in seen:
+                lessons_in_active.append(lesson_name)
+                seen.add(lesson_name)
+
+    lesson_label = " + ".join(lessons_in_active) if len(lessons_in_active) > 1 else (lessons_in_active[0] if lessons_in_active else lesson)
+    st.markdown(f"<div class='kt-banner'>📕 {lesson_label} — {len(active)}字</div>", unsafe_allow_html=True)
 
     for k in active:
         page_html = f"<span class='kt-kpage'>{k['page']}</span>" if k['page'] else ""
