@@ -41,16 +41,15 @@ class AnswerLogPivot:
         for row in self.data:
             page = row.get('page_num', '')
             lesson_title = row.get('lesson_title', '')
-            chapter_num = row.get('chapter_number', '')
             chapter_title = row.get('chapter_title', '')
             
-            # 章を登録
-            if chapter_num and chapter_title:
-                chapters[chapter_num] = chapter_title
+            # 章を登録（chapter_title をキーとして使用）
+            if chapter_title:
+                chapters[chapter_title] = chapter_title
                 
                 # lesson_title を登録（重複排除）
                 lesson_key = f"{page}|{lesson_title}"
-                lessons_by_chapter[chapter_num][lesson_key] = {
+                lessons_by_chapter[chapter_title][lesson_key] = {
                     'page': page,
                     'lesson_title': lesson_title
                 }
@@ -65,19 +64,27 @@ class AnswerLogPivot:
     
     def get_chapters(self) -> List[Tuple[str, str]]:
         """
-        章一覧を返す（chapter_number の昇順でソート）
-        戻り値: [(chapter_number, chapter_title), ...]
+        章一覧を返す（出現順）
+        戻り値: [(chapter_title, chapter_title), ...]
         """
         if not self.chapters:
             return []
         
-        # chapter_number で直接ソート（001, 002, ..., 006）
-        sorted_chapters = sorted(self.chapters.items(), key=lambda x: x[0])
-        return sorted_chapters
+        # 重複を排除（OrderedDict の順序を保持）
+        seen = set()
+        result = []
+        for chapter_title in self.chapters.keys():
+            if chapter_title not in seen:
+                result.append((chapter_title, chapter_title))
+                seen.add(chapter_title)
+        return result
     
-    def get_lessons_in_chapter(self, chapter_number: str) -> List[Dict]:
+    def get_lessons_in_chapter(self, chapter_title: str) -> List[Dict]:
         """
         指定章内のlesson_titleを返す（進捗情報付き）
+        
+        Args:
+            chapter_title: 章のタイトル（第1章：大航海によって結びつく世界 など）
         
         戻り値:
           [
@@ -94,10 +101,8 @@ class AnswerLogPivot:
         """
         lessons = []
         
-        if chapter_number not in self.lessons_by_chapter:
-            return lessons
-        
-        for lesson_key, lesson_info in self.lessons_by_chapter[chapter_number].items():
+        # chapter_title に対応するレッスンを抽出
+        for lesson_key, lesson_info in self.lessons_by_chapter.get(chapter_title, {}).items():
             page = lesson_info['page']
             lesson_title = lesson_info['lesson_title']
             
@@ -105,18 +110,18 @@ class AnswerLogPivot:
             questions = self.questions_by_lesson.get(lesson_key, [])
             total_count = len(questions)
             
-            # 最新結果で集計（各問題の最後の回答を見る）
+            # 最新結果で集計
             maru_count = 0
             batsu_count = 0
             
             for q in questions:
-                # 日付_maru, 日付_batsu 列からカウント
+                # 日付_maru, 日付_batsu 列から最新結果を抽出
                 latest_result = None
                 latest_date = None
                 
                 for col_name in q.keys():
                     if col_name.endswith('_maru') or col_name.endswith('_batsu'):
-                        if q[col_name]:  # 値がある場合
+                        if q[col_name]:
                             date = col_name.replace('_maru', '').replace('_batsu', '')
                             if latest_date is None or date > latest_date:
                                 latest_date = date
