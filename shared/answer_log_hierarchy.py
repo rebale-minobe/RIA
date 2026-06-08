@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-RIA 再TEST用：階層選択ロジック（修正版）
+RIA 再TEST用：階層選択ロジック（新CSV形式対応版）
 
-CSV に chapter_number/chapter_title がない場合、
-lesson_title から自動抽出する
+新CSV形式：各日付に対して date_maru, date_batsu 列を持つ
 """
 
 import csv
@@ -35,24 +34,18 @@ class AnswerLogPivot:
     def _build_hierarchy(self):
         """章 → lesson_title → 問題の階層を構築"""
         
-        # 章を取得（lesson_titleから自動抽出）
         chapters = {}
         lessons_by_chapter = defaultdict(dict)
         questions_by_lesson = defaultdict(list)
         
         for row in self.data:
-            page = row.get('page', '')
+            page = row.get('page_num', '')
             lesson_title = row.get('lesson_title', '')
-            
-            # 章情報を推測（lesson_titleから）
-            # ※ 本来は JSON から取得するが、CSV のみの場合は lesson_title で代用
-            chapter_num = f"Chapter_{page}"  # 簡易版：ページから生成
-            chapter_title = lesson_title  # 簡易版：lesson_titleを使用
-            
-            # 実装注：本格化したら、JSON から正式な章情報を取得すること
+            chapter_num = row.get('chapter_number', '')
+            chapter_title = row.get('chapter_title', '')
             
             # 章を登録
-            if lesson_title:
+            if chapter_num and chapter_title:
                 chapters[chapter_num] = chapter_title
                 
                 # lesson_title を登録（重複排除）
@@ -72,22 +65,14 @@ class AnswerLogPivot:
     
     def get_chapters(self) -> List[Tuple[str, str]]:
         """
-        章一覧を返す（ページ順でソート）
+        章一覧を返す（chapter_number の昇順でソート）
         戻り値: [(chapter_number, chapter_title), ...]
         """
         if not self.chapters:
             return []
         
-        # Chapter_N の N を抽出してソート
-        def extract_chapter_num(chapter_key):
-            try:
-                num = int(chapter_key.replace('Chapter_', ''))
-                return num
-            except:
-                return 999
-        
-        sorted_chapters = sorted(self.chapters.items(), 
-                                key=lambda x: extract_chapter_num(x[0]))
+        # chapter_number で直接ソート（001, 002, ..., 006）
+        sorted_chapters = sorted(self.chapters.items(), key=lambda x: x[0])
         return sorted_chapters
     
     def get_lessons_in_chapter(self, chapter_number: str) -> List[Dict]:
@@ -125,14 +110,17 @@ class AnswerLogPivot:
             batsu_count = 0
             
             for q in questions:
-                # 日付カラムを右から見て、最初に見つかった結果を採用
+                # 日付_maru, 日付_batsu 列からカウント
                 latest_result = None
-                for col in reversed(list(q.keys())):
-                    if col not in ['page', 'chapter_number', 'chapter_title', 
-                                    'lesson_title', 'section_code', 'q_label', 'answer']:
-                        if q[col]:  # 空でない
-                            latest_result = q[col]
-                            break
+                latest_date = None
+                
+                for col_name in q.keys():
+                    if col_name.endswith('_maru') or col_name.endswith('_batsu'):
+                        if q[col_name]:  # 値がある場合
+                            date = col_name.replace('_maru', '').replace('_batsu', '')
+                            if latest_date is None or date > latest_date:
+                                latest_date = date
+                                latest_result = 'maru' if col_name.endswith('_maru') else 'batsu'
                 
                 if latest_result == 'maru':
                     maru_count += 1
@@ -155,7 +143,9 @@ class AnswerLogPivot:
     def get_questions_in_lesson(self, lesson_key: str, 
                                filter_batsu_only: bool = True) -> List[Dict]:
         """
-        指定lesson内の問題を返す
+        指定lesson内の問題を返す（新CSV形式対応）
+        
+        新CSV形式：date_maru, date_batsu 列から結果を抽出
         
         Args:
             lesson_key: lesson_key (page|lesson_title 形式)
@@ -170,6 +160,7 @@ class AnswerLogPivot:
               'answer': '十字軍',
               'latest_result': 'batsu',
               'history': ['batsu', 'maru', ...]  # 古い順
+              'error_count': 2
               'workbook_ref': '本誌 P.2・3'
             },
             ...
@@ -179,17 +170,39 @@ class AnswerLogPivot:
         
         result = []
         for q in questions:
-            # 日付カラムを時系列で見て、結果履歴を作る
+            # 日付_maru, 日付_batsu 列から履歴を構築
             history = []
-            date_cols = [col for col in q.keys() 
-                        if col not in ['page', 'chapter_number', 'chapter_title', 
-                                       'lesson_title', 'section_code', 'q_label', 'answer',
-                                       'workbook_ref']]
             
-            for col in date_cols:
-                if q[col]:
-                    history.append(q[col])
+            # 日付を抽出して、chronological order で処理
+            date_results = {}  # {date: [maru_count, batsu_count]}
             
+            for col_name in q.keys():
+                if col_name.endswith('_maru') or col_name.endswith('_batsu'):
+                    value = q[col_name]
+                    if not value:
+                        continue
+                    
+                    try:
+                        count = int(value)
+                        date = col_name.replace('_maru', '').replace('_batsu', '')
+                        
+                        if date not in date_results:
+                            date_results[date] = [0, 0]
+                        
+                        if col_name.endswith('_maru'):
+                            date_results[date][0] = count
+                        else:  # _batsu
+                            date_results[date][1] = count
+                    except ValueError:
+                        pass
+            
+            # 日付順にソートして履歴を構築
+            for date in sorted(date_results.keys()):
+                maru_count, batsu_count = date_results[date]
+                history.extend(['maru'] * maru_count)
+                history.extend(['batsu'] * batsu_count)
+            
+            # 最新の結果を取得
             latest_result = history[-1] if history else None
             
             # filter_batsu_only の処理
@@ -197,54 +210,14 @@ class AnswerLogPivot:
                 continue
             
             result.append({
-                'page': q['page'],
+                'page': q['page_num'],
                 'section_code': q['section_code'],
                 'q_label': q['q_label'],
                 'answer': q['answer'],
                 'latest_result': latest_result,
                 'history': history,
                 'error_count': history.count('batsu'),
-                'workbook_ref': q.get('workbook_ref', '')  # workbook_ref を追加
+                'workbook_ref': q.get('workbook_ref', '')
             })
         
         return result
-
-
-def main():
-    """テスト実行"""
-    csv_path = Path('/mnt/user-data/outputs/answer_log_social_pivot_v2.csv')
-    
-    print("📖 ピボットCSVを読み込み...\n")
-    log = AnswerLogPivot.load_csv(str(csv_path))
-    
-    # 1. 章一覧
-    print("【章一覧】")
-    for chapter_num, chapter_title in log.get_chapters()[:5]:  # 最初の5つだけ表示
-        print(f"  {chapter_num}: {chapter_title}")
-    
-    # 2. 最初の章 → lesson一覧
-    chapters = log.get_chapters()
-    if chapters:
-        first_chapter = chapters[0]
-        print(f"\n【{first_chapter[1]} のlesson一覧】")
-        lessons = log.get_lessons_in_chapter(first_chapter[0])
-        for lesson in lessons[:3]:
-            total = lesson['total_count']
-            maru = lesson['maru_count']
-            batsu = lesson['batsu_count']
-            progress = f"⭕{maru}/{total}" if maru > 0 else f"❌{total}"
-            print(f"  📖 {lesson['lesson_title']} (p{lesson['page']}) 【{progress}】")
-    
-    # 3. lesson を選択 → 問題取得（×のみ）
-    if lessons:
-        first_lesson = lessons[0]
-        print(f"\n【{first_lesson['lesson_title']} の未解決問題】")
-        questions = log.get_questions_in_lesson(first_lesson['lesson_key'], 
-                                               filter_batsu_only=True)
-        print(f"  未解決: {len(questions)} 問")
-        for q in questions[:3]:
-            print(f"    p{q['page']} [{q['section_code']}] {q['q_label']}: {q['answer']}")
-            print(f"      誤答回数: {q['error_count']}, 履歴: {q['history'][-3:]}")
-
-if __name__ == '__main__':
-    main()
