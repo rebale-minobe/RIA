@@ -210,22 +210,72 @@ if not social_questions:
     st.success("🎉 全問3回連続正解達成！完璧です！")
     st.stop()
 
+# ========== タイトルでグループ化
+from collections import defaultdict
+titles_dict = defaultdict(list)
+title_order = []  # 出現順を保持
+
+for q in social_questions:
+    lesson_title = q.get("lesson_title", "")
+    workbook_ref = q.get("workbook_ref", "")
+    if lesson_title not in titles_dict:
+        title_order.append(lesson_title)
+    titles_dict[lesson_title].append(q)
+
+# ========== タイトル選択 UI
+st.markdown("### 📖 タイトルを選択")
+
+# タイトル一覧をボタンで表示
+selected_title = None
+for title in title_order:
+    problems = titles_dict[title]
+    maru_count = sum(1 for p in problems if st.session_state.get(f"social_result_{id(p)}", None) == "maru")
+    batsu_count = len(problems) - maru_count
+    
+    # バッジ表示
+    if batsu_count == 0:
+        badge = "🟢"  # 全問正解
+    elif maru_count > 0:
+        badge = "🟡"  # 部分正解
+    else:
+        badge = "🔴"  # 未解答
+
+    label = f"{badge} {title} 本誌 {problems[0].get('workbook_ref', '')}"
+    if st.button(label, use_container_width=True, key=f"select_title_{title}"):
+        selected_title = title
+        st.session_state["selected_social_title"] = title
+        st.rerun()
+
+# 以前選択したタイトルを復元
+if "selected_social_title" not in st.session_state and title_order:
+    st.session_state["selected_social_title"] = title_order[0]
+
+selected_title = st.session_state.get("selected_social_title", title_order[0] if title_order else None)
+
+if not selected_title:
+    st.stop()
+
+st.divider()
+
+# ========== 選択されたタイトルの問題のみをフィルタ
+selected_questions = titles_dict[selected_title]
+
 # ========== UI 状態管理
-tp_idx_key = "social_tp_idx"
+tp_idx_key = f"social_tp_idx_{selected_title}"
 if tp_idx_key not in st.session_state:
     st.session_state[tp_idx_key] = 0
 
-tp_total = len(social_questions)
+tp_total = len(selected_questions)
 tp_pos = max(0, min(st.session_state[tp_idx_key], tp_total - 1))
 st.session_state[tp_idx_key] = tp_pos
 
-tp_current = social_questions[tp_pos]
+tp_current = selected_questions[tp_pos]
 
 # ========== 進捗表示（TOP と同じ）
 tp_correct = sum(1 for i in range(tp_total)
-                if st.session_state.get(f"social_result_{i}") == "maru")
+                if st.session_state.get(f"social_result_{id(selected_questions[i])}", None) == "maru")
 tp_wrong   = sum(1 for i in range(tp_total)
-                if st.session_state.get(f"social_result_{i}") == "batsu")
+                if st.session_state.get(f"social_result_{id(selected_questions[i])}", None) == "batsu")
 
 st.markdown(f"""
 <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;'>
@@ -256,14 +306,14 @@ subject_badge_html = (
 )
 
 # ========== AI クイズ生成
-quiz_key = f"social_quiz_{tp_pos}_{tp_current.get('q','')}"
+quiz_key = f"social_quiz_{selected_title}_{tp_pos}_{tp_current.get('q','')}"
 if quiz_key not in st.session_state:
     with st.spinner("AI が問題を生成中..."):
         quiz = _generate_quiz(tp_current)
         st.session_state[quiz_key] = quiz
 quiz = st.session_state.get(quiz_key)
 
-tp_result = st.session_state.get(f"social_result_{tp_pos}")
+tp_result = st.session_state.get(f"social_result_{selected_title}_{tp_pos}")
 
 # ========== 問題表示（TOP と同じ フラッシュカード UI）
 meta_parts = []
@@ -292,7 +342,7 @@ if quiz:
     </div>
     """, unsafe_allow_html=True)
 
-    selected    = st.session_state.get(f"social_selected_{tp_pos}", "")
+    selected    = st.session_state.get(f"social_selected_{selected_title}_{tp_pos}", "")
     correct_ans = quiz.get("answer", "")
 
     # 選択肢CSS（TOP と同じ）
@@ -344,11 +394,11 @@ if quiz:
             ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
             ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
             btn_label = f"{ch_text}（{ch_yomi}）" if ch_yomi else ch_text
-            if st.button(btn_label, key=f"social_choice_{tp_pos}_{i}",
+            if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
                          use_container_width=True):
-                st.session_state[f"social_selected_{tp_pos}"] = ch_text
+                st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
                 result_val = "maru" if ch_text == correct_ans else "batsu"
-                st.session_state[f"social_result_{tp_pos}"] = result_val
+                st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
                 # 注：ログ記録は GitHub Actions で別途処理
                 st.rerun()
 
@@ -357,13 +407,13 @@ st.markdown("")
 nav_c = st.columns([1, 2, 1, 2, 1])
 
 with nav_c[0]:
-    if st.button("◀", key=f"social_prev_{tp_pos}",
+    if st.button("◀", key=f"social_prev_{selected_title}_{tp_pos}",
                  disabled=(tp_pos == 0), use_container_width=True):
         st.session_state[tp_idx_key] = tp_pos - 1
         st.rerun()
 
 with nav_c[2]:
-    explain_key = f"social_explain_{tp_pos}"
+    explain_key = f"social_explain_{selected_title}_{tp_pos}"
     expl_label = "💡 非表示" if st.session_state.get(explain_key) else "💡"
     if st.button(expl_label, key=explain_key + "_btn",
                  use_container_width=True, help="解説を見る/隠す"):
@@ -380,25 +430,21 @@ with nav_c[4]:
     if tp_pos < tp_total - 1:
         btn_label = "NEXT ▶" if tp_result else "スキップ ▶"
         btn_type  = "primary" if tp_result else "secondary"
-        if st.button(btn_label, key=f"social_next_{tp_pos}",
+        if st.button(btn_label, key=f"social_next_{selected_title}_{tp_pos}",
                      use_container_width=True, type=btn_type):
             st.session_state[tp_idx_key] = tp_pos + 1
             st.rerun()
     else:
         if tp_result:
-            st.button("完了 ✓", key=f"social_next_{tp_pos}",
+            st.button("完了 ✓", key=f"social_next_{selected_title}_{tp_pos}",
                       use_container_width=True, disabled=True)
 
 # ========== 全問完了
 if tp_pos == tp_total - 1 and tp_result is not None:
     st.markdown("---")
-    st.success(f"✅ {tp_total}問 再TEST完了！🎉")
-    if st.button("🏠 最初に戻る", use_container_width=True):
-        st.session_state[tp_idx_key] = 0
-        for i in range(tp_total):
-            st.session_state.pop(f"social_result_{i}", None)
-            st.session_state.pop(f"social_selected_{i}", None)
-            st.session_state.pop(f"social_explain_{i}", None)
+    st.success(f"✅ {selected_title} {tp_total}問 再TEST完了！🎉")
+    if st.button("📖 タイトル一覧に戻る", use_container_width=True):
+        st.session_state.pop("selected_social_title", None)
         st.rerun()
 
 # ========== 教材・ワーク・プリントのアップロード
