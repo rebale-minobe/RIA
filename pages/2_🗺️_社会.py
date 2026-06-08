@@ -1,6 +1,9 @@
-"""社会ページ v4 - TOP と完全に同じロジック"""
+"""社会ページ v5 - answer_log_social_pivot.csv を直接参照"""
 import streamlit as st
 import json
+import csv
+from io import StringIO
+import requests
 from shared.ui import render_subject_page
 from datetime import datetime, timezone, timedelta
 
@@ -12,12 +15,71 @@ _JST = timezone(timedelta(hours=9))
 def _now_jst():
     return datetime.now(_JST).replace(tzinfo=None)
 
-# ========== answer_log_manager のインポート
-try:
-    from modules import answer_log_manager as alm
-    ALM_AVAILABLE = True
-except Exception:
-    ALM_AVAILABLE = False
+# ========== GitHub CSV ロード
+GITHUB_RAW = "https://raw.githubusercontent.com/rebale-minobe/RIA/main"
+
+@st.cache_data(ttl=60)
+def _load_social_pivot_csv():
+    """answer_log_social_pivot.csv を GitHub から読み込む"""
+    try:
+        url = f"{GITHUB_RAW}/data/answer_log_social_pivot.csv"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200 and r.text.strip():
+            reader = csv.DictReader(StringIO(r.text))
+            return list(reader)
+    except Exception:
+        pass
+    return []
+
+def _get_social_batsu_questions():
+    """新CSV形式から batsu 問題を抽出"""
+    rows = _load_social_pivot_csv()
+    if not rows:
+        return []
+    
+    result = []
+    for row in rows:
+        # 日付カラム（date_maru, date_batsu）から最新結果を判定
+        latest_result = None
+        latest_date = None
+        
+        for col_name in row.keys():
+            if col_name.endswith('_maru') or col_name.endswith('_batsu'):
+                value = row[col_name]
+                if not value:
+                    continue
+                
+                try:
+                    count = int(value)
+                    if count > 0:
+                        date = col_name.replace('_maru', '').replace('_batsu', '')
+                        if latest_date is None or date > latest_date:
+                            latest_date = date
+                            latest_result = 'maru' if col_name.endswith('_maru') else 'batsu'
+                except ValueError:
+                    pass
+        
+        # batsu が最新結果の問題のみを追加
+        if latest_result == 'batsu':
+            q_data = {
+                "page_num": row.get("page_num", ""),
+                "chapter_title": row.get("chapter_title", ""),
+                "lesson_title": row.get("lesson_title", ""),
+                "workbook_ref": row.get("workbook_ref", ""),
+                "section_code": row.get("section_code", ""),
+                "q_label": row.get("q_label", ""),
+                "q": row.get("q_label", ""),
+                "a": row.get("answer", ""),
+                "answer": row.get("answer", ""),
+                "subject_name": "社会",
+                "subject_key": "social",
+                "genre_name": "歴史",
+                "genre_key": "history",
+                "section_name": row.get("chapter_title", ""),
+            }
+            result.append(q_data)
+    
+    return result
 
 # ========== 教科定義（TOP と同じ）
 SUBJECTS = {
@@ -134,17 +196,6 @@ def generate_workbook_explanation(question_data, subject_name="社会"):
 st.markdown("---")
 st.subheader("🔄 ワーク再TEST")
 st.caption("誤答問題を4択で復習")
-
-# batsu 問題を取得（TOP と同じロジック）
-@st.cache_data(ttl=60)
-def _get_social_batsu_questions():
-    """社会の batsu 問題を取得（answer_log_manager使用）"""
-    if not ALM_AVAILABLE:
-        return []
-    try:
-        return alm.get_batsu_questions("social")
-    except Exception:
-        return []
 
 social_batsu = _get_social_batsu_questions()
 
@@ -298,11 +349,7 @@ if quiz:
                 st.session_state[f"social_selected_{tp_pos}"] = ch_text
                 result_val = "maru" if ch_text == correct_ans else "batsu"
                 st.session_state[f"social_result_{tp_pos}"] = result_val
-                if ALM_AVAILABLE:
-                    try:
-                        alm.append_log("social", tp_current, result_val)
-                    except Exception:
-                        pass
+                # 注：ログ記録は GitHub Actions で別途処理
                 st.rerun()
 
 # ========== ナビゲーション（TOP と同じ 5列）
