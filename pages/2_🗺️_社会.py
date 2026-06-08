@@ -81,6 +81,23 @@ def _get_social_batsu_questions():
     
     return result
 
+# CSV から全問題数を事前計算（各タイトルごと）
+@st.cache_data(ttl=60)
+def _get_title_total_counts():
+    """各タイトルの全問題数を CSV から計算"""
+    from collections import defaultdict
+    rows = _load_social_pivot_csv()
+    if not rows:
+        return {}
+    
+    title_counts = defaultdict(int)
+    for row in rows:
+        lesson_title = row.get('lesson_title', '')
+        if lesson_title:
+            title_counts[lesson_title] += 1
+    
+    return dict(title_counts)
+
 # ========== 教科定義（TOP と同じ）
 SUBJECTS = {
     "social": {"name": "社会", "emoji": "🗺️", "genres": {
@@ -225,13 +242,16 @@ for q in social_questions:
 # ========== タイトル選択 UI
 st.markdown("### 📖 タイトルを選択")
 
+# CSV から全問題数を取得
+title_total_counts = _get_title_total_counts()
+
 # タイトル一覧をボタンで表示
 selected_title = None
 for title in title_order:
     problems = titles_dict[title]
     maru_count = sum(1 for p in problems if st.session_state.get(f"social_result_{id(p)}", None) == "maru")
     batsu_count = len(problems) - maru_count
-    total_count = len(problems)
+    total_count_csv = title_total_counts.get(title, len(problems))  # CSV から取得した全問題数
     
     # バッジ表示
     if batsu_count == 0:
@@ -242,7 +262,7 @@ for title in title_order:
         badge = "🔴"  # 未解答
 
     label = f"{badge} {title} 本誌 {problems[0].get('workbook_ref', '')}"
-    progress = f"{maru_count}/{total_count}"
+    progress = f"{maru_count}/{total_count_csv}"
     
     col1, col2 = st.columns([10, 1])
     with col1:
