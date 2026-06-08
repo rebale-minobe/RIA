@@ -2573,9 +2573,11 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     if ALP_AVAILABLE:
                                         try:
                                             q_data["page_num"] = page_num
-                                            alp.append_pivot_log(skey, q_data, "batsu")
-                                        except Exception:
-                                            pass
+                                            ok = alp.append_pivot_log(skey, q_data, "batsu")
+                                            if not ok:
+                                                st.warning("⚠️ pivot CSV 書き込み失敗（GitHub API エラー）")
+                                        except Exception as e:
+                                            st.error(f"pivot CSV エラー: {e}")
                             st.rerun()
 
                     # 💡 解説
@@ -2598,9 +2600,11 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     try:
                                         _q = current.copy()
                                         _q["page_num"] = page_num
-                                        alp.append_pivot_log(skey, _q, "maru")
-                                    except Exception:
-                                        pass
+                                        ok = alp.append_pivot_log(skey, _q, "maru")
+                                        if not ok:
+                                            st.warning("⚠️ pivot CSV 書き込み失敗")
+                                    except Exception as e:
+                                        st.error(f"pivot CSV エラー: {e}")
                                 st.session_state[idx_key] = cur_pos + 1
                                 st.rerun()
                         else:
