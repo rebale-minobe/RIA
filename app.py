@@ -6,7 +6,7 @@ v1.4 追加:
 - ○✕記録は即座に GitHub に保存
 v1.3 追加: フラッシュカード形式、◀▶ナビ、○✕記録、💡解説、再テスト
 """
-APP_VERSION = "v2026-06-08.6"
+APP_VERSION = "v2026-06-08.7"
 
 import streamlit as st
 import json
@@ -2035,9 +2035,8 @@ else:
             tp_current.get("answer_yomi", "") or
             _get_yomi_from_pivot(tp_current.get("a", ""), skey)
         )
-        # デバッグ：読み仮名の取得確認
-        if not _a_yomi:
-            st.caption(f"🔍 yomi未取得: answer='{tp_current.get('a','')}' skey='{skey}'")
+        # デバッグ
+        st.caption(f"🔍 yomi='{_a_yomi}' | a='{tp_current.get('a','')}' | skey='{skey}'")
         _yomi_html = (f"<br><span style='font-size:16px;color:#8E8E93;font-weight:500;'>{_a_yomi}</span>"
                       if _a_yomi else "")
         _desc_banner = (
