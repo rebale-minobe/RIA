@@ -131,21 +131,23 @@ def _generate_quiz(q_data: dict) -> dict | None:
         
         prompt = (
             f"中学2年生の{subject}（{genre}）の単元「{lesson}」に関する問題を1問作ってください。\n"
-            f"正解は「{answer}」です。\n\n"
-            f"【ルール】\n"
+            f"正解は「{answer}」です。\n"
+            + (f"正解の読み仮名：「{q_data.get('answer_yomi', '')}」\n" if q_data.get('answer_yomi') else "")
+            + f"\n【ルール】\n"
             f"- 必ずこの単元・テーマの文脈で出題する（他の単元の知識は不要）\n"
             f"- 問題文は1文で、明確に問う\n"
             f"- 選択肢は4つ（正解1つ＋ダミー3つ）\n"
             f"- ダミーはこの単元に登場する似た語句・人物・地名から選ぶ\n"
             f"- 各選択肢には読み仮名（ふりがな・ひらがな）を必ず付ける\n"
-            f"  （カタカナ語はカタカナのままでよい。記号や数字だけの場合は空文字）\n"
+            f"  （カタカナ語はyomiを空文字にする。記号・アルファベットのみもyomiを空文字）\n"
+            f"  （正解「{answer}」のyomiは必ず「{q_data.get('answer_yomi', '')}」を使う）\n"
             f"- JSONのみ出力（説明不要）\n\n"
             f"出力フォーマット:\n"
             f'{{\n'
             f'  "question": "問題文",\n'
             f'  "choices": [\n'
             f'    {{"text": "選択肢A", "yomi": "せんたくしえー"}},\n'
-            f'    {{"text": "選択肢B", "yomi": "せんたくしびー"}},\n'
+            f'    {{"text": "選択肢B", "yomi": ""}},\n'
             f'    {{"text": "選択肢C", "yomi": "せんたくししー"}},\n'
             f'    {{"text": "選択肢D", "yomi": "せんたくしでぃー"}}\n'
             f'  ],\n'
@@ -262,7 +264,9 @@ for title in title_order:
         badge = "🔴"  # 未解答
 
     label = f"{badge} {title} 本誌 {problems[0].get('workbook_ref', '')}"
-    progress = f"{maru_count}/{total_count_csv}"
+    # 分子 = batsu問題数（CSVに登録されたバツの数）、分母 = CSV全問題数
+    batsu_count_csv = len(problems)  # titles_dict は batsu のみなので全部がバツ
+    progress = f"{batsu_count_csv}/{total_count_csv}"
     
     col1, col2 = st.columns([10, 1])
     with col1:
