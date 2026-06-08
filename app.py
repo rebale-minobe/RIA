@@ -2409,6 +2409,32 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
             if total == 0:
                 st.warning("このページに登録された問題がありません")
             else:
+                # ★ Let's Start!! 画面（ページを選択したら最初に表示）
+                start_key = f"wb_started_{page_num}"
+                # ページが変わったら start フラグをリセット
+                if st.session_state.get("wb_last_page") != page_num:
+                    st.session_state[start_key] = False
+                    st.session_state["wb_last_page"] = page_num
+
+                if not st.session_state.get(start_key, False):
+                    st.markdown(f"""
+                    <div style='background:white; border:2px solid #FF9500; border-radius:20px;
+                                padding:48px 24px; text-align:center; margin:16px 0;
+                                box-shadow:0 4px 20px rgba(0,0,0,.06);'>
+                        <div style='font-size:52px; margin-bottom:12px;'>📖</div>
+                        <div style='font-size:28px; font-weight:800; color:#FF9500; margin-bottom:8px;'>
+                            Let's Start!!
+                        </div>
+                        <div style='font-size:15px; color:#8E8E93;'>
+                            {page.get('lesson_title','')}　全 {total} 問
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button("NEXT ▶", type="primary", use_container_width=True,
+                                 key=f"wb_start_btn_{page_num}"):
+                        st.session_state[start_key] = True
+                        st.rerun()
+                    st.stop()
                 # モード判定
                 mode_key = f"wb_mode_{page_num}"
                 mode = st.session_state.get(mode_key, "normal")
