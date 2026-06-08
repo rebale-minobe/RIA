@@ -389,18 +389,19 @@ if quiz:
                 unsafe_allow_html=True
             )
     else:
-        # 未回答：st.button（TOP と同じ）
+        # 未回答：2列×2行レイアウト（解答後と統一）
+        cols = st.columns(2)
         for i, ch in enumerate(quiz["choices"]):
             ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
             ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
-            btn_label = f"{ch_text}（{ch_yomi}）" if ch_yomi else ch_text
-            if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
-                         use_container_width=True):
-                st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
-                result_val = "maru" if ch_text == correct_ans else "batsu"
-                st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
-                # 注：ログ記録は GitHub Actions で別途処理
-                st.rerun()
+            btn_label = f"{ch_text}\n（{ch_yomi}）" if ch_yomi else ch_text
+            with cols[i % 2]:
+                if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
+                             use_container_width=True):
+                    st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
+                    result_val = "maru" if ch_text == correct_ans else "batsu"
+                    st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
+                    st.rerun()
 
 # ========== ナビゲーション（TOP と同じ 5列）
 st.markdown("")
