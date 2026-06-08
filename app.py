@@ -6,6 +6,7 @@ v1.4 追加:
 - ○✕記録は即座に GitHub に保存
 v1.3 追加: フラッシュカード形式、◀▶ナビ、○✕記録、💡解説、再テスト
 """
+APP_VERSION = "v2026-06-08.3"
 
 import streamlit as st
 import json
@@ -66,6 +67,28 @@ st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_si
 
 # ===== サイドバー: 月間予定表アップロード =====
 with st.sidebar:
+    # ── バージョン情報 ──
+    st.markdown("---")
+    _alp_ver = "—"
+    _alm_ver = "—"
+    try:
+        from modules import answer_log_pivot as _alp_mod
+        _alp_ver = getattr(_alp_mod, "ALM_PIVOT_VERSION", "—")
+    except Exception:
+        pass
+    try:
+        from modules import answer_log_manager as _alm_mod
+        _alm_ver = "v2026-06-08.1"
+    except Exception:
+        pass
+    st.markdown(f"""
+    <div style='font-size:11px; color:#8E8E93; line-height:1.8;'>
+    📋 <b>バージョン情報</b><br>
+    app.py　　　　　{APP_VERSION}<br>
+    answer_log_pivot　{_alp_ver}
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("---")
     st.markdown("## 📅 月間予定表")
     st.caption("毎月の予定表をここから読み込めます")
 

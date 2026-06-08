@@ -1,4 +1,5 @@
-"""社会ページ v5 - answer_log_social_pivot.csv を直接参照"""
+"""社会ページ v2026-06-08.11"""
+SOCIAL_VERSION = "v2026-06-08.11"
 import streamlit as st
 import json
 import csv

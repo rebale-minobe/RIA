@@ -1,8 +1,8 @@
 """
 RIA Answer Log Pivot Manager
 answer_log_{subject}_pivot.csv を直接更新する
-
-フォーマット:
+"""
+ALM_PIVOT_VERSION = "v2026-06-08.1"
 page_num, chapter_title, workbook_ref, lesson_title,
 section_code, q_label, answer, answer_yomi,
 YYYY-MM-DD_maru, YYYY-MM-DD_batsu, ...
@@ -50,7 +50,7 @@ def _api_url(subject_key: str) -> str:
     return f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{_pivot_path(subject_key)}"
 
 
-def _load_pivot_csv(subject_key: str) -> tuple[list[dict], list[str]]:
+def _load_pivot_csv(subject_key):
     """GitHubからpivot CSVを読み込む（rows, fieldnames）"""
     headers = {
         "Authorization": f"Bearer {_get_token()}",
@@ -71,7 +71,7 @@ def _load_pivot_csv(subject_key: str) -> tuple[list[dict], list[str]]:
     return [], []
 
 
-def _get_sha(subject_key: str) -> str | None:
+def _get_sha(subject_key):
     try:
         r = requests.get(
             _api_url(subject_key) + f"?ref={BRANCH}",
