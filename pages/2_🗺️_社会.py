@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-08.11"""
-SOCIAL_VERSION = "v2026-06-08.11"
+"""社会ページ v2026-06-08.12"""
+SOCIAL_VERSION = "v2026-06-08.12"
 import streamlit as st
 import json
 import csv
@@ -561,38 +561,65 @@ else:
         st.info("このページのデータはありません")
     else:
         # ヘッダー行を構築
-        header_cols = ["section", "q", "answer"] + date_cols
-        col_widths = [1, 1, 3] + [1] * len(date_cols)
+        col_widths = [1, 3] + [1] * len(date_cols) + [1, 1]  # 問・答え・日付列・⭕/❌
 
         # ヘッダー
         h_cols = st.columns(col_widths)
-        h_cols[0].markdown("**区分**")
-        h_cols[1].markdown("**問**")
-        h_cols[2].markdown("**答え**")
+        h_cols[0].markdown("**問**")
+        h_cols[1].markdown("**答え**")
         for i, dc in enumerate(date_cols):
             parts = dc.rsplit('_', 1)
-            date_part = parts[0][-5:] if len(parts[0]) >= 5 else parts[0]  # MM-DD
+            date_part = parts[0][-5:] if len(parts[0]) >= 5 else parts[0]
             kind = "⭕" if dc.endswith('_maru') else "❌"
-            h_cols[3 + i].markdown(f"**{date_part}**<br>**{kind}**", unsafe_allow_html=True)
+            h_cols[2 + i].markdown(f"**{date_part}**<br>**{kind}**", unsafe_allow_html=True)
+        h_cols[-2].markdown("**⭕登録**")
+        h_cols[-1].markdown("**❌登録**")
 
         st.divider()
 
         # 各行を表示
         for row in page_rows:
             r_cols = st.columns(col_widths)
-            r_cols[0].markdown(f"<span style='font-size:12px;color:#8E8E93;'>{row.get('section_code','')}</span>", unsafe_allow_html=True)
-            r_cols[1].markdown(f"<span style='font-size:12px;'>{row.get('q_label','')}</span>", unsafe_allow_html=True)
-            r_cols[2].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
+            r_cols[0].markdown(f"<span style='font-size:12px;'>{row.get('q_label','')}</span>", unsafe_allow_html=True)
+            r_cols[1].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
             for i, dc in enumerate(date_cols):
                 val = row.get(dc, '')
                 if val:
                     color = "#34C759" if dc.endswith('_maru') else "#FF3B30"
-                    r_cols[3 + i].markdown(
+                    r_cols[2 + i].markdown(
                         f"<span style='font-weight:700;color:{color};font-size:14px;'>{val}</span>",
                         unsafe_allow_html=True
                     )
                 else:
-                    r_cols[3 + i].markdown("—")
+                    r_cols[2 + i].markdown("—")
+            # ⭕ 登録ボタン
+            btn_key_m = f"csv_maru_{row.get('page_num','')}_{row.get('section_code','')}_{row.get('q_label','')}"
+            if r_cols[-2].button("⭕", key=btn_key_m, use_container_width=True):
+                try:
+                    from modules import answer_log_pivot as alp
+                    ok = alp.append_pivot_log("social", row, "maru")
+                    if ok:
+                        st.success(f"⭕ 登録成功：{row.get('answer','')}")
+                        _load_csv_for_view.clear()
+                        st.rerun()
+                    else:
+                        st.error("登録失敗")
+                except Exception as e:
+                    st.error(f"エラー: {e}")
+            # ❌ 登録ボタン
+            btn_key_b = f"csv_batsu_{row.get('page_num','')}_{row.get('section_code','')}_{row.get('q_label','')}"
+            if r_cols[-1].button("❌", key=btn_key_b, use_container_width=True):
+                try:
+                    from modules import answer_log_pivot as alp
+                    ok = alp.append_pivot_log("social", row, "batsu")
+                    if ok:
+                        st.success(f"❌ 登録成功：{row.get('answer','')}")
+                        _load_csv_for_view.clear()
+                        st.rerun()
+                    else:
+                        st.error("登録失敗")
+                except Exception as e:
+                    st.error(f"エラー: {e}")
 
 # ========== 🔧 デバッグ（開発用）==========
 with st.expander("🔧 デバッグ"):
