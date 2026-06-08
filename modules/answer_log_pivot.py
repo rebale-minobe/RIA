@@ -1,12 +1,6 @@
-"""
-RIA Answer Log Pivot Manager
-answer_log_{subject}_pivot.csv を直接更新する
-"""
+"""RIA Answer Log Pivot Manager v2026-06-08.1"""
 ALM_PIVOT_VERSION = "v2026-06-08.1"
-page_num, chapter_title, workbook_ref, lesson_title,
-section_code, q_label, answer, answer_yomi,
-YYYY-MM-DD_maru, YYYY-MM-DD_batsu, ...
-"""
+
 import csv
 import io
 import base64
@@ -20,7 +14,7 @@ BRANCH = "main"
 _JST   = timezone(timedelta(hours=9))
 
 
-def _today_jst() -> str:
+def _today_jst():
     return datetime.now(_JST).strftime("%Y-%m-%d")
 
 
@@ -42,16 +36,16 @@ def _headers_json():
     }
 
 
-def _pivot_path(subject_key: str) -> str:
+def _pivot_path(subject_key):
     return f"data/answer_log_{subject_key}_pivot.csv"
 
 
-def _api_url(subject_key: str) -> str:
+def _api_url(subject_key):
     return f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{_pivot_path(subject_key)}"
 
 
 def _load_pivot_csv(subject_key):
-    """GitHubからpivot CSVを読み込む（rows, fieldnames）"""
+    """GitHubからpivot CSVを読み込む"""
     headers = {
         "Authorization": f"Bearer {_get_token()}",
         "Accept": "application/vnd.github.v3.raw",
@@ -84,7 +78,7 @@ def _get_sha(subject_key):
     return None
 
 
-def _push_pivot_csv(subject_key: str, rows: list[dict], fieldnames: list[str], message: str) -> bool:
+def _push_pivot_csv(subject_key, rows, fieldnames, message):
     """pivot CSVをGitHubにpush"""
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fieldnames, lineterminator="\n", extrasaction="ignore")
@@ -108,25 +102,17 @@ def _push_pivot_csv(subject_key: str, rows: list[dict], fieldnames: list[str], m
     return False
 
 
-def append_pivot_log(subject_key: str, q_data: dict, result: str) -> bool:
-    """
-    pivot CSVの該当行に今日の日付のマル/バツを記録
-
-    q_data には以下が必要:
-      page_num, section_code, q_label (または q), answer (または a)
-
-    result: "maru" or "batsu"
-    """
+def append_pivot_log(subject_key, q_data, result):
+    """pivot CSVの該当行に今日の日付のmaru/batsuを記録"""
     today = _today_jst()
-    col_name = f"{today}_{'maru' if result == 'maru' else 'batsu'}"
+    col_name = f"{today}_maru" if result == "maru" else f"{today}_batsu"
 
     rows, fieldnames = _load_pivot_csv(subject_key)
     if not rows:
         return False
 
-    # 日付列を追加（なければ）
+    # 日付列を追加
     if col_name not in fieldnames:
-        # answer_yomi の後に挿入
         if "answer_yomi" in fieldnames:
             idx = fieldnames.index("answer_yomi") + 1
         else:
@@ -143,8 +129,6 @@ def append_pivot_log(subject_key: str, q_data: dict, result: str) -> bool:
 
     matched = False
     for row in rows:
-        # マッチ条件：page_num + section_code + q_label
-        # q_labelが空の場合はanswerでも照合
         if (str(row.get("page_num","")) == page_num and
             str(row.get("section_code","")) == sec_code and
             (str(row.get("q_label","")) == q_label or
@@ -158,7 +142,6 @@ def append_pivot_log(subject_key: str, q_data: dict, result: str) -> bool:
             break
 
     if not matched:
-        # 行が見つからない場合は新規追加
         new_row = {f: "" for f in fieldnames}
         new_row.update({
             "page_num": page_num,
@@ -168,7 +151,6 @@ def append_pivot_log(subject_key: str, q_data: dict, result: str) -> bool:
             col_name: "1",
         })
         rows.append(new_row)
-        fieldnames = list(new_row.keys())
 
     return _push_pivot_csv(
         subject_key, rows, fieldnames,
