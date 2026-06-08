@@ -2410,11 +2410,12 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 st.warning("このページに登録された問題がありません")
             else:
                 # ★ Let's Start!! 画面（ページを選択したら最初に表示）
-                start_key = f"wb_started_{page_num}"
+                start_key = f"wb_started_{skey}_{gkey}_{sel_page}"
                 # ページが変わったら start フラグをリセット
-                if st.session_state.get("wb_last_page") != page_num:
+                last_key = f"wb_last_page_{skey}_{gkey}"
+                if st.session_state.get(last_key) != sel_page:
                     st.session_state[start_key] = False
-                    st.session_state["wb_last_page"] = page_num
+                    st.session_state[last_key] = sel_page
 
                 if not st.session_state.get(start_key, False):
                     st.markdown(f"""
