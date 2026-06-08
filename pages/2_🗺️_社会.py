@@ -521,21 +521,3 @@ if tp_pos == tp_total - 1 and tp_result is not None:
         st.session_state.pop("selected_social_title", None)
         st.rerun()
 
-# ========== 教材・ワーク・プリントのアップロード
-st.markdown("---")
-st.subheader("📸 教材・ワーク・プリントの写真をアップロード")
-st.caption("解答用紙やプリントの写真をアップロードして、AI で分析できるようにします")
-
-col1, col2 = st.columns([2, 1])
-with col1:
-    uploaded_image = st.file_uploader(
-        "写真をアップロード（JPG, PNG）",
-        type=["jpg", "jpeg", "png"],
-        label_visibility="collapsed"
-    )
-with col2:
-    upload_button = st.button("📤 アップロード", use_container_width=True)
-
-if uploaded_image and upload_button:
-    st.info("✅ アップロード機能は今後実装予定です")
-

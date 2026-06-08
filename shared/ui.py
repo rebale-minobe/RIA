@@ -178,12 +178,8 @@ def render_subject_page(subject_key: str, subject_name: str, icon: str):
     if session_key not in st.session_state:
         st.session_state[session_key] = []
 
-    # ─── 操作ボタン ───
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        if st.button("🔄 会話をクリア", key=f"clear_{subject_key}"):
-            st.session_state[session_key] = []
-            st.rerun()
+    # ─── 操作ボタン（非表示）───
+    # 会話クリアは不要のため非表示
 
     # ─── 会話履歴表示 ───
     for msg in st.session_state[session_key]:
@@ -205,13 +201,9 @@ def render_subject_page(subject_key: str, subject_name: str, icon: str):
                 if text_parts:
                     st.markdown("\n".join(text_parts))
 
-    # ─── 写真アップローダー ───
-    uploaded_files = st.file_uploader(
-        "📷 教材・ワーク・プリントの写真をアップロード",
-        type=["jpg", "jpeg", "png"],
-        accept_multiple_files=True,
-        key=f"uploader_{subject_key}",
-    )
+    # ─── 写真アップローダー（非表示）───
+    # 教科書・ワーク登録は教科書管理ページで行うため非表示
+    uploaded_files = []
 
     # ─── チャット入力 ───
     user_input = st.chat_input(f"{subject_name}について質問する…")
