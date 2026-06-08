@@ -6,26 +6,6 @@ v1.4 追加:
 - ○✕記録は即座に GitHub に保存
 v1.3 追加: フラッシュカード形式、◀▶ナビ、○✕記録、💡解説、再テスト
 """
-@st.cache_data(ttl=300)
-def _get_yomi_from_pivot(answer, subject_key="social"):
-    """pivot CSVのanswer_yomiから読み仮名を取得"""
-    try:
-        import requests, csv as _csv
-        from io import StringIO
-        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/answer_log_{subject_key}_pivot.csv"
-        r = requests.get(url, timeout=5)
-        if r.status_code == 200:
-            reader = _csv.DictReader(StringIO(r.text))
-            for row in reader:
-                if row.get("answer","").strip() == str(answer).strip():
-                    yomi = row.get("answer_yomi","").strip()
-                    if yomi:
-                        return yomi
-    except Exception:
-        pass
-    return ""
-
-
 APP_VERSION = "v2026-06-08.5"
 
 import streamlit as st
@@ -65,6 +45,25 @@ def _gh_put(path, content_bytes, message):
         return False
 
 # 解答ログ管理（CSV → GitHub 永続化）
+@st.cache_data(ttl=300)
+def _get_yomi_from_pivot(answer, subject_key="social"):
+    """pivot CSVのanswer_yomiから読み仮名を取得"""
+    try:
+        import requests, csv as _csv
+        from io import StringIO
+        url = f"https://raw.githubusercontent.com/rebale-minobe/RIA/main/data/answer_log_{subject_key}_pivot.csv"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            reader = _csv.DictReader(StringIO(r.text))
+            for row in reader:
+                if row.get("answer","").strip() == str(answer).strip():
+                    yomi = row.get("answer_yomi","").strip()
+                    if yomi:
+                        return yomi
+    except Exception:
+        pass
+    return ""
+
 try:
     from modules import answer_log
     ANSWER_LOG_AVAILABLE = True
