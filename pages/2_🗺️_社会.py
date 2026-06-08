@@ -231,6 +231,7 @@ for title in title_order:
     problems = titles_dict[title]
     maru_count = sum(1 for p in problems if st.session_state.get(f"social_result_{id(p)}", None) == "maru")
     batsu_count = len(problems) - maru_count
+    total_count = len(problems)
     
     # バッジ表示
     if batsu_count == 0:
@@ -241,10 +242,16 @@ for title in title_order:
         badge = "🔴"  # 未解答
 
     label = f"{badge} {title} 本誌 {problems[0].get('workbook_ref', '')}"
-    if st.button(label, use_container_width=True, key=f"select_title_{title}"):
-        selected_title = title
-        st.session_state["selected_social_title"] = title
-        st.rerun()
+    progress = f"{maru_count}/{total_count}"
+    
+    col1, col2 = st.columns([10, 1])
+    with col1:
+        if st.button(label, use_container_width=True, key=f"select_title_{title}"):
+            selected_title = title
+            st.session_state["selected_social_title"] = title
+            st.rerun()
+    with col2:
+        st.markdown(f"<div style='text-align:right; font-weight:700; color:#007AFF; margin-top:8px;'>{progress}</div>", unsafe_allow_html=True)
 
 # 以前選択したタイトルを復元
 if "selected_social_title" not in st.session_state and title_order:
