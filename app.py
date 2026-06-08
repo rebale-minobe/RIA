@@ -53,8 +53,14 @@ except Exception:
 try:
     from modules import answer_log_manager as alm
     ALM_AVAILABLE = True
+    try:
+        from modules import answer_log_pivot as alp
+        ALP_AVAILABLE = True
+    except Exception:
+        ALP_AVAILABLE = False
 except Exception:
     ALM_AVAILABLE = False
+    ALP_AVAILABLE = False
 
 st.set_page_config(page_title="RIA", page_icon="🌟", layout="wide", initial_sidebar_state="collapsed")
 
@@ -2432,7 +2438,7 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                     </div>
                     """, unsafe_allow_html=True)
                     if st.button("NEXT ▶", type="primary", use_container_width=True,
-                                 key=f"wb_start_btn_{page_num}"):
+                                 key=f"wb_start_btn_{skey}_{gkey}_{sel_page}"):
                         st.session_state[start_key] = True
                         st.rerun()
                     st.stop()
@@ -2563,6 +2569,13 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                         alm.append_log(skey, q_data, "batsu")
                                     except Exception:
                                         pass
+                                    # ★ pivot CSV にも記録
+                                    if ALP_AVAILABLE:
+                                        try:
+                                            q_data["page_num"] = page_num
+                                            alp.append_pivot_log(skey, q_data, "batsu")
+                                        except Exception:
+                                            pass
                             st.rerun()
 
                     # 💡 解説
@@ -2580,6 +2593,14 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                         if cur_pos < n_active - 1:
                             if st.button("NEXT ▶", key=f"next_{page_num}_{original_idx}",
                                          use_container_width=True, help="次の問題"):
+                                # ★ ❌なしでNEXT → maru として pivot CSV に記録
+                                if result != "batsu" and ALP_AVAILABLE:
+                                    try:
+                                        _q = current.copy()
+                                        _q["page_num"] = page_num
+                                        alp.append_pivot_log(skey, _q, "maru")
+                                    except Exception:
+                                        pass
                                 st.session_state[idx_key] = cur_pos + 1
                                 st.rerun()
                         else:
