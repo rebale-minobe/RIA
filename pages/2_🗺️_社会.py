@@ -526,7 +526,7 @@ if tp_pos == tp_total - 1 and tp_result is not None:
 st.markdown("---")
 st.subheader("📊 学習データ（answer_log_social_pivot）")
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10)
 def _load_csv_for_view():
     rows = _load_social_pivot_csv()
     if not rows:
@@ -592,3 +592,31 @@ else:
                     )
                 else:
                     r_cols[3 + i].markdown("—")
+
+# ========== 🔧 デバッグ（開発用）==========
+with st.expander("🔧 デバッグ"):
+    st.write("**pivot log テスト**")
+    try:
+        from modules import answer_log_pivot as alp
+        ALP_OK = True
+        st.success("✅ answer_log_pivot インポート成功")
+    except Exception as e:
+        ALP_OK = False
+        st.error(f"❌ インポート失敗: {e}")
+
+    if ALP_OK:
+        if st.button("▶ テストデータを書き込む（P.2 地図①）"):
+            test_q = {
+                "page_num": 2,
+                "section_code": "地図",
+                "q_label": "①",
+                "answer": "イ",
+            }
+            try:
+                ok = alp.append_pivot_log("social", test_q, "maru")
+                if ok:
+                    st.success("✅ 書き込み成功！60秒後に表に反映")
+                else:
+                    st.error("❌ 書き込み失敗（GitHub API エラー）")
+            except Exception as e:
+                st.error(f"❌ エラー: {e}")
