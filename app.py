@@ -2640,6 +2640,28 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                         alm.append_logs_batch(skey, st.session_state["alm_pending"][skey])
                         st.session_state["alm_pending"][skey] = []
 
+                # ★ CSV登録ボタン
+                st.markdown("")
+                csv_col1, csv_col2 = st.columns([2, 1])
+                with csv_col1:
+                    if st.button("📊 CSV登録", key=f"csv_reg_{page_num}_{original_idx}",
+                                 use_container_width=True, help="この問題の結果をpivot CSVに登録"):
+                        try:
+                            from modules import answer_log_pivot as _alp_direct
+                            _q2 = current.copy()
+                            _q2["page_num"] = page_num
+                            _result_val = st.session_state.get(f"wb_result_{page_num}_{original_idx}", "maru")
+                            ok = _alp_direct.append_pivot_log(skey, _q2, _result_val)
+                            if ok:
+                                st.success(f"✅ CSV登録成功（{_result_val}）")
+                            else:
+                                st.error("❌ CSV登録失敗（GitHub API エラー）")
+                        except Exception as e:
+                            st.error(f"❌ エラー: {e}")
+                with csv_col2:
+                    result_label = "❌ バツ" if result == "batsu" else "⭕ マル"
+                    st.caption(f"現在: {result_label}")
+
                 # 解説表示
                 explain_key = f"wb_explain_{page_num}_{original_idx}"
                 if st.session_state.get(explain_key):
