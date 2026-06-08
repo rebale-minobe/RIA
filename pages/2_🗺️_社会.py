@@ -1,4 +1,4 @@
-"""社会ページ v2 - AI 4択問題対応"""
+"""社会ページ v3 - AI 4択問題 + TOP同等UIデザイン対応"""
 import streamlit as st
 import json
 from shared.ui import render_subject_page
@@ -12,6 +12,105 @@ render_subject_page("social", "社会", "🗺️")
 _JST = timezone(timedelta(hours=9))
 def _now_jst():
     return datetime.now(_JST).replace(tzinfo=None)
+
+# ========== TOP 同等のUI スタイル
+st.markdown("""
+<style>
+    /* 4択選択肢のデザイン */
+    .choice-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        border-radius: 12px;
+        border: 2px solid #E5E5EA;
+        background: white;
+        color: #1c1c1e;
+        font-weight: 600;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-height: 60px;
+        text-align: center;
+        line-height: 1.4;
+    }
+    .choice-button:hover {
+        border-color: #007AFF;
+        background: #F0F7FF;
+    }
+    
+    /* 正解ボタン */
+    .choice-correct {
+        border-color: #34C759;
+        background: #E8F8EE;
+        color: #34C759;
+    }
+    
+    /* 不正解ボタン */
+    .choice-incorrect {
+        border-color: #FF3B30;
+        background: #FFE8E6;
+        color: #FF3B30;
+    }
+    
+    /* 問題文コンテナ */
+    .question-container {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        border-left: 4px solid #FF9500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .question-text {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1c1c1e;
+        line-height: 1.6;
+        margin: 0;
+    }
+    
+    .question-meta {
+        font-size: 13px;
+        color: #8E8E93;
+        margin-top: 8px;
+        font-weight: 500;
+    }
+    
+    /* タイトルセクション */
+    .title-section {
+        background: linear-gradient(135deg, #FF9500 0%, #FFB84D 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 14px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(255, 149, 0, 0.2);
+    }
+    
+    .title-section h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+    
+    .title-section p {
+        margin: 4px 0 0 0;
+        font-size: 13px;
+        opacity: 0.9;
+    }
+    
+    /* ナビゲーションボタン */
+    .nav-button {
+        min-height: 44px;
+        font-weight: 600;
+        border-radius: 10px;
+        font-size: 14px;
+        letter-spacing: -0.01em;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ========== ワーク再TEST セクション
 st.markdown("---")
@@ -32,7 +131,7 @@ log = load_answer_log()
 if not log:
     st.stop()
 
-# ========== AI 4択問題生成関数（app.py から流用）
+# ========== AI 4択問題生成関数
 def _generate_quiz(q_data: dict) -> dict | None:
     """AI に4択問題を生成させる"""
     try:
@@ -99,10 +198,9 @@ if "retest_started_social" not in st.session_state:
     st.session_state.retest_started_social = False
 
 if not st.session_state.retest_started_social:
-    # ===== タイトル選択画面（workbook_ref 付き）
+    # ===== タイトル選択画面
     st.markdown("### 📖 タイトルを選択")
     
-    # すべての章から lesson を抽出
     all_lessons = []
     for chapter_title, _ in log.get_chapters():
         lessons = log.get_lessons_in_chapter(chapter_title)
@@ -112,7 +210,6 @@ if not st.session_state.retest_started_social:
         st.info("学習記録がまだありません")
         st.stop()
     
-    # lesson をボタンとして表示
     for lesson in all_lessons:
         total = lesson['total_count']
         maru = lesson['maru_count']
@@ -125,13 +222,11 @@ if not st.session_state.retest_started_social:
             progress = f"⭕ {maru}/{total}"
             badge = "🟢"
         
-        # workbook_ref を取得
         questions = log.get_questions_in_lesson(lesson['lesson_key'], filter_batsu_only=False)
         workbook_ref = ""
         if questions and 'workbook_ref' in questions[0]:
             workbook_ref = questions[0]['workbook_ref']
         
-        # ボタンラベル
         if workbook_ref:
             label = f"{badge} {lesson['lesson_title']} {workbook_ref} 【{progress}】"
         else:
@@ -143,6 +238,7 @@ if not st.session_state.retest_started_social:
             use_container_width=True
         ):
             st.session_state.selected_lesson_social = lesson['lesson_key']
+            st.session_state.selected_lesson_title = lesson['lesson_title']
             st.session_state.retest_questions_social = log.get_questions_in_lesson(
                 lesson['lesson_key'],
                 filter_batsu_only=True
@@ -164,36 +260,46 @@ else:
     
     questions = st.session_state.retest_questions_social
     current_idx = st.session_state.retest_current_index_social
+    lesson_title = st.session_state.get("selected_lesson_title", "")
     
     if current_idx >= len(questions):
         # ===== 完了画面
-        st.success(f"✅ {len(questions)}問 再TEST完了！")
-        st.balloons()
+        st.success(f"✅ {len(questions)}問 再TEST完了！🎉")
         
-        if st.button("🏠 最初に戻る", use_container_width=True):
-            st.session_state.retest_started_social = False
-            st.session_state.pop("selected_lesson_social", None)
-            st.session_state.pop("retest_questions_social", None)
-            st.rerun()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🏠 タイトル一覧に戻る", use_container_width=True):
+                st.session_state.retest_started_social = False
+                st.session_state.pop("selected_lesson_social", None)
+                st.session_state.pop("retest_questions_social", None)
+                st.rerun()
     
     else:
         q = questions[current_idx]
         
-        # ===== ヘッダー
-        col1, col2, col3 = st.columns([1, 2, 1])
+        # ===== タイトルセクション（TOP同等デザイン）
+        st.markdown(f"""
+        <div class='title-section'>
+            <h3>📖 {lesson_title}</h3>
+            <p>問題 {current_idx + 1} / {len(questions)}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # ===== 進捗バーと正解数
+        col1, col2, col3 = st.columns([1, 2, 1], gap="small")
         with col1:
-            st.markdown(f"### 🎯 {current_idx + 1} / {len(questions)}")
+            st.markdown("**進捗**")
         with col2:
             progress_pct = int(100 * (current_idx + 1) / len(questions))
             st.progress(progress_pct / 100, f"{progress_pct}%")
         with col3:
-            score = sum(1 for qq in questions[:current_idx] 
-                       if st.session_state.get(f"social_result_{qq['q_label']}", "") == "maru")
+            score = sum(1 for i in range(current_idx) 
+                       if st.session_state.get(f"social_result_{i}", "") == "maru")
             st.markdown(f"**⭕ {score}**")
         
         st.divider()
         
-        # ===== 問題データを整形（AI向け）
+        # ===== 問題データを整形
         quiz_data = {
             "lesson_title": q.get('lesson_title', ''),
             "answer": q.get('answer', ''),
@@ -216,12 +322,15 @@ else:
                 st.session_state.retest_current_index_social += 1
                 st.rerun()
         else:
-            # ===== 問題表示
-            st.markdown(f"### 📝 {quiz['question']}")
+            # ===== 問題表示（TOP同等デザイン）
+            st.markdown(f"""
+            <div class='question-container'>
+                <p class='question-text'>{quiz['question']}</p>
+                <p class='question-meta'>p{q['page']} [{q['section_code']}]</p>
+            </div>
+            """, unsafe_allow_html=True)
             
-            st.divider()
-            
-            # ===== 選択肢ボタン
+            # ===== 選択肢ボタン（2列×2行）
             cols = st.columns(2, gap="medium")
             for i, choice in enumerate(quiz['choices']):
                 col_idx = i % 2
@@ -229,44 +338,52 @@ else:
                     choice_text = choice.get('text', '')
                     choice_yomi = choice.get('yomi', '')
                     
-                    # 読み仮名表示
                     display_label = f"{choice_text}\n（{choice_yomi}）" if choice_yomi else choice_text
                     
                     if st.button(
                         display_label,
                         key=f"social_choice_{current_idx}_{i}",
                         use_container_width=True,
-                        type="primary" if choice_text == quiz['answer'] else "secondary"
                     ):
-                        # 採点
                         is_correct = choice_text == quiz['answer']
-                        st.session_state[f"social_result_{q.get('q_label','')}_idx{current_idx}"] = "maru" if is_correct else "batsu"
+                        st.session_state[f"social_result_{current_idx}"] = "maru" if is_correct else "batsu"
                         
                         if is_correct:
                             st.success("✅ 正解！")
                         else:
-                            st.error(f"❌ 不正解 → 正解：{quiz['answer']}")
+                            st.error(f"❌ 不正解\n正解：**{quiz['answer']}**")
                         
                         st.session_state.retest_current_index_social += 1
                         import time
-                        time.sleep(1)
+                        time.sleep(1.5)
                         st.rerun()
             
             st.divider()
             
-            # ===== ナビボタン
-            nav_cols = st.columns(5, gap="small")
+            # ===== ナビゲーション
+            nav_cols = st.columns([1, 1, 1, 1, 1], gap="small")
+            
             with nav_cols[0]:
-                if st.button("◀", use_container_width=True, disabled=(current_idx == 0), key=f"prev_{current_idx}"):
+                if st.button("◀ 前へ", use_container_width=True, disabled=(current_idx == 0), key=f"prev_{current_idx}"):
                     st.session_state.retest_current_index_social -= 1
+                    st.rerun()
+            
+            with nav_cols[1]:
+                if st.button("↩️ 戻る", use_container_width=True, key=f"back_{current_idx}"):
+                    st.session_state.retest_started_social = False
+                    st.session_state.pop("selected_lesson_social", None)
+                    st.session_state.pop("retest_questions_social", None)
                     st.rerun()
             
             with nav_cols[2]:
                 if st.button("💡", use_container_width=True, key=f"hint_{current_idx}"):
-                    st.info(f"**答え：{q.get('answer', '不明')}**\n\nもう一度考えてみてください。")
+                    st.info(f"**ヒント：答えは「{q.get('answer', '？')}」です**")
+            
+            with nav_cols[3]:
+                st.empty()
             
             with nav_cols[4]:
-                if st.button("▶", use_container_width=True, key=f"next_{current_idx}"):
+                if st.button("次へ ▶", use_container_width=True, key=f"next_{current_idx}"):
                     st.session_state.retest_current_index_social += 1
                     st.rerun()
 
