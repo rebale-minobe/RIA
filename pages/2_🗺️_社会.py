@@ -393,7 +393,11 @@ if quiz:
         for i, ch in enumerate(quiz["choices"]):
             ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
             ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
-            btn_label = f"{ch_text}（{ch_yomi}）" if ch_yomi else ch_text
+            # ラベルをフォーマット（改行で下に表示）
+            if ch_yomi:
+                btn_label = f"{ch_text}\n（{ch_yomi}）"
+            else:
+                btn_label = ch_text
             if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
                          use_container_width=True):
                 st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
