@@ -266,6 +266,17 @@ for q in social_questions:
 # ========== タイトル選択 UI
 st.markdown("### 📖 タイトルを選択")
 
+# タイトルボタンを左寄せにするCSS
+st.markdown("""
+<style>
+div[data-testid="stButton"] > button {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding-left: 20px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # CSV から全問題数と最新TEST日を取得
 title_total_counts = _get_title_total_counts()
 title_latest_dates = _get_title_latest_dates()
