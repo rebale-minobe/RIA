@@ -111,9 +111,38 @@ def _render_workbook_answers(subject_key: str):
                     st.markdown(f"　**{group['label']}**")
                 for ans in group["answers"]:
                     note = f" *※{ans['note']}*" if ans.get("note") else ""
-                    st.markdown(f"　`{ans['q']}` {ans['a']}{note}")
-                    if ans.get("context"):
-                        st.caption(f"　　💭 {ans['context']}")
+                    # CSV登録ボタン（socialのみ）
+                    if subject_key == "social":
+                        col_q, col_o, col_x = st.columns([6, 1, 1])
+                        col_q.markdown(f"　`{ans['q']}` {ans['a']}{note}")
+                        if ans.get("context"):
+                            col_q.caption(f"　　💭 {ans['context']}")
+                        q_data = {
+                            "page_num": str(page.get("page_number", "")),
+                            "section_code": section.get("code", ""),
+                            "q_label": ans.get("q", ""),
+                            "answer": ans.get("a", ""),
+                        }
+                        btn_o = f"wb_csv_o_{subject_key}_{page.get('page_number','')}_{section.get('code','')}_{ans.get('q','')}"
+                        btn_x = f"wb_csv_x_{subject_key}_{page.get('page_number','')}_{section.get('code','')}_{ans.get('q','')}"
+                        if col_o.button("⭕", key=btn_o, use_container_width=True):
+                            try:
+                                from modules import answer_log_pivot as _alp
+                                ok = _alp.append_pivot_log(subject_key, q_data, "maru")
+                                st.toast("⭕ 登録完了" if ok else "❌ 登録失敗")
+                            except Exception as e:
+                                st.toast(f"エラー: {e}")
+                        if col_x.button("❌", key=btn_x, use_container_width=True):
+                            try:
+                                from modules import answer_log_pivot as _alp
+                                ok = _alp.append_pivot_log(subject_key, q_data, "batsu")
+                                st.toast("❌ 登録完了" if ok else "登録失敗")
+                            except Exception as e:
+                                st.toast(f"エラー: {e}")
+                    else:
+                        st.markdown(f"　`{ans['q']}` {ans['a']}{note}")
+                        if ans.get("context"):
+                            st.caption(f"　　💭 {ans['context']}")
             st.markdown("")
 
 
