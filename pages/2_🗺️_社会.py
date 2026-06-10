@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.12"""
-SOCIAL_VERSION = "v2026-06-09.12"
+"""社会ページ v2026-06-09.14"""
+SOCIAL_VERSION = "v2026-06-09.14"
 
 import streamlit as st
 import json, csv, requests, random
@@ -799,33 +799,36 @@ else:
                 else:
                     # 未回答：回答済みと完全同一スタイル
                     # HTMLラベル付きボタン（CSSでボタン自体を同一スタイルに上書き）
+                    # 未回答：回答済みと完全同一スタイルのHTMLで各選択肢を描画
+                    # 選択はst.buttonで検知（HTMLの直後に配置、CSSで完全非表示）
                     st.markdown("""
                     <style>
+                    [class*="st-key-social_choice_"] { margin-top: -8px !important; }
                     [class*="st-key-social_choice_"] > div > button {
-                        background: white !important;
-                        border: 2px solid #E5E5EA !important;
-                        border-radius: 14px !important;
-                        color: #1c1c1e !important;
-                        font-size: 17px !important;
-                        font-weight: 700 !important;
-                        font-family: -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif !important;
-                        min-height: 58px !important;
+                        opacity: 0 !important;
+                        height: 4px !important;
+                        min-height: 4px !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        border: none !important;
                         width: 100% !important;
-                        padding: 14px 20px !important;
-                        line-height: 1.4 !important;
-                        margin: 4px 0 !important;
-                    }
-                    [class*="st-key-social_choice_"] > div > button:hover {
-                        border-color: #FF9500 !important;
-                        background: #FFF4E5 !important;
+                        display: block !important;
                     }
                     </style>
                     """, unsafe_allow_html=True)
+                    _s_unans = ("width:100%;text-align:center;padding:14px 20px;border-radius:14px;"
+                                "margin:8px 0 0 0;font-size:17px;font-weight:700;line-height:1.4;"
+                                "box-sizing:border-box;background:white;"
+                                "border:2px solid #E5E5EA;color:#1c1c1e;"
+                                "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;")
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        btn_label = (f"{ch_text}\n（{ch_yomi}）" if ch_yomi else ch_text)
-                        if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
+                        yomi_line = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>"
+                                     if ch_yomi else "")
+                        st.markdown(f'<div style="{_s_unans}">{ch_text}{yomi_line}</div>',
+                                    unsafe_allow_html=True)
+                        if st.button("　", key=f"social_choice_{selected_title}_{tp_pos}_{i}",
                                      use_container_width=True):
                             st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
                             result_val = "maru" if ch_text == correct_ans else "batsu"
