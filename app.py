@@ -1659,20 +1659,15 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
 st.caption("💡 タスクや時間をタップして編集できます")
 
 # ===== 今日の問題（バツがついた問題をランダム出題） =====
-st.markdown('<div class="section-title">📌 再TEST</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📌 今日の10問TEST</div>', unsafe_allow_html=True)
 
-# モード選択
-_mode_col1, _mode_col2, _mode_col3 = st.columns([1,1,2])
-with _mode_col1:
-    _mode_batsu  = st.checkbox("❌ 不正解問題", value=True,  key="tp_mode_batsu")
-with _mode_col2:
-    _mode_random = st.checkbox("🎲 ランダム",   value=False, key="tp_mode_random")
-with _mode_col3:
+# 今日の10問TEST: 8割バツ問題 + 2割ランダム・教科選択
+_mode_batsu = True
+_mode_random = False
+_tp_col1, _tp_col2 = st.columns([1, 3])
+with _tp_col1:
     st.radio("教科", ["社会", "理科"], horizontal=True, index=0,
              key="tp_quiz_subj", label_visibility="collapsed")
-# 両方オフの場合はbatsuをデフォルトに
-if not _mode_batsu and not _mode_random:
-    _mode_batsu = True
 
 def _get_batsu_questions():
     """
@@ -1768,15 +1763,17 @@ _need_refresh = (
 )
 
 if _need_refresh:
-    if _tp_mode == "random" and ALM_AVAILABLE:
-        # ランダム：全問題からシャッフル
-        _all = []
-        import random as _rnd
+    import random as _rnd
+    # バツ問題を取得
+    _batsu_pool = _get_batsu_questions()
+    # 全問題プール（ランダム用）
+    _all_pool = []
+    if ALM_AVAILABLE:
         for _sk in SUBJECTS:
             try:
                 _rows = alm.get_all_questions(_sk)
                 for _row in _rows:
-                    _all.append({
+                    _all_pool.append({
                         "page_number":  int(_row.get("page_num", 0) or 0),
                         "workbook_ref": _row.get("workbook_ref", ""),
                         "lesson_title": _row.get("lesson_title", ""),
@@ -1795,13 +1792,21 @@ if _need_refresh:
                     })
             except Exception:
                 pass
-        _rnd.shuffle(_all)
-        st.session_state["tp_questions_list"] = _all
-    else:
-        st.session_state["tp_questions_list"] = _get_batsu_questions()
+    # 10問を8:2で構成（バツ8問 + ランダム2問）
+    _TOTAL = 10
+    _BATSU_N = 8
+    _rnd.shuffle(_batsu_pool)
+    _selected_batsu = _batsu_pool[:_BATSU_N]
+    # ランダム2問（バツ問題と重複しないもの）
+    _batsu_qs = set(q.get("q","") for q in _selected_batsu)
+    _rand_pool = [q for q in _all_pool if q.get("q","") not in _batsu_qs]
+    _rnd.shuffle(_rand_pool)
+    _selected_rand = _rand_pool[:(_TOTAL - len(_selected_batsu))]
+    _combined = _selected_batsu + _selected_rand
+    _rnd.shuffle(_combined)
+    st.session_state["tp_questions_list"] = _combined if _combined else _batsu_pool[:_TOTAL]
     st.session_state["tp_prev_mode"] = _tp_mode
     st.session_state["tp_batsu_count_at_cache"] = _current_batsu_count
-    # モードが変わったら進捗もリセット
     if _tp_mode != _prev_mode:
         for _k in [_k for _k in list(st.session_state.keys()) if _k.startswith("tp_") and _k not in ("tp_mode_batsu","tp_mode_random","tp_prev_mode","tp_questions_list","tp_batsu_count_at_cache","tp_quiz_subj")]:
             del st.session_state[_k]
@@ -2748,30 +2753,8 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
 # ===== フッター =====
 st.markdown("---")
 
-# フォントサイズ変更
-fc1, fc2, fc3 = st.columns([1, 2, 1])
-with fc2:
-    font_size = st.select_slider(
-        "🔤 文字サイズ",
-        options=[12, 13, 14, 15, 16, 17, 18, 20, 22],
-        value=st.session_state.get("font_size", 17),
-        key="font_size_slider",
-        format_func=lambda x: f"{x}px"
-    )
-    if font_size != st.session_state.get("font_size", 17):
-        st.session_state["font_size"] = font_size
-        st.rerun()
-
-    ans_size = st.select_slider(
-        "📝 解答文字サイズ",
-        options=[24, 28, 32, 36, 40, 48, 56, 64],
-        value=st.session_state.get("ans_size", 40),
-        key="ans_size_slider",
-        format_func=lambda x: f"{x}px"
-    )
-    if ans_size != st.session_state.get("ans_size", 40):
-        st.session_state["ans_size"] = ans_size
-        st.rerun()
+# フォントサイズ変更（非表示）
+# fc1, fc2, fc3 = st.columns([1, 2, 1])
 
 # CSSで適用
 fs  = st.session_state.get("font_size", 17)
@@ -2817,4 +2800,4 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-st.caption(f"🌟 RIA v1.5 | 文字 {fs}px｜解答 {ans}px")
+st.caption(f"🌟 RIA v1.5")
