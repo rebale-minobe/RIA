@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.23"""
-SOCIAL_VERSION = "v2026-06-09.23"
+"""社会ページ v2026-06-09.24"""
+SOCIAL_VERSION = "v2026-06-09.24"
 
 import streamlit as st
 import json, csv, requests, random
@@ -813,24 +813,19 @@ else:
                                 pass
                         st.rerun()
 
-                    _s = ("width:100%;text-align:center;padding:14px 20px 10px;"
-                          "border-radius:14px;margin:8px 0 2px;"
-                          "font-size:17px;font-weight:700;line-height:1.4;"
-                          "box-sizing:border-box;background:white;"
-                          "border:2px solid #E5E5EA;color:#1c1c1e;cursor:pointer;"
-                          "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;")
-                    _sy = ("font-size:13px;color:#8E8E93;font-weight:400;"
-                           "display:block;margin-bottom:10px;")
+                    import urllib.parse
+                    # スタイルはダブルクォート内に書く（シングルクォート混在を避ける）
+                    _s = 'width:100%;text-align:center;padding:14px 20px 6px;border-radius:14px;margin:8px 0 0;font-size:17px;font-weight:700;line-height:1.4;box-sizing:border-box;background:white;border:2px solid #E5E5EA;color:#1c1c1e;cursor:pointer;font-family:-apple-system,sans-serif;'
+                    _sy = 'font-size:13px;color:#8E8E93;font-weight:400;display:block;padding-bottom:8px;'
                     html_choices = ""
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        import urllib.parse
                         _enc = urllib.parse.quote(ch_text)
-                        yomi_part = f"<span style='{_sy}'>{ch_yomi}</span>" if ch_yomi else f"<span style='{_sy}'>&nbsp;</span>"
+                        yomi_part = f'<span style="{_sy}">{ch_yomi if ch_yomi else "&nbsp;"}</span>'
                         html_choices += (
-                            f"<a href='?sc={_enc}' style='text-decoration:none;display:block;'>"
-                            f"<div style='{_s}'>{ch_text}{yomi_part}</div></a>"
+                            f'<a href="?sc={_enc}" style="text-decoration:none;display:block;">'
+                            f'<div style="{_s}">{ch_text}{yomi_part}</div></a>'
                         )
                     st.markdown(html_choices, unsafe_allow_html=True)
 
