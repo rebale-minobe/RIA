@@ -1659,464 +1659,464 @@ for row_start in range(0, len(TODO_TODAY), n_per_row):
 st.caption("💡 タスクや時間をタップして編集できます")
 
 # ===== 今日の問題（バツがついた問題をランダム出題） =====
-st.markdown('<div class="section-title">📌 再TEST</div>', unsafe_allow_html=True)
+# st.markdown('<div class="section-title">📌 再TEST</div>', unsafe_allow_html=True)
 
 # モード選択
-_mode_col1, _mode_col2, _mode_col3 = st.columns([1,1,2])
-with _mode_col1:
-    _mode_batsu  = st.checkbox("❌ 不正解問題", value=True,  key="tp_mode_batsu")
-with _mode_col2:
-    _mode_random = st.checkbox("🎲 ランダム",   value=False, key="tp_mode_random")
-with _mode_col3:
-    st.radio("教科", ["社会", "理科"], horizontal=True, index=0,
-             key="tp_quiz_subj", label_visibility="collapsed")
+# _mode_col1, _mode_col2, _mode_col3 = st.columns([1,1,2])
+# with _mode_col1:
+#     _mode_batsu  = st.checkbox("❌ 不正解問題", value=True,  key="tp_mode_batsu")
+# with _mode_col2:
+#     _mode_random = st.checkbox("🎲 ランダム",   value=False, key="tp_mode_random")
+# with _mode_col3:
+#     st.radio("教科", ["社会", "理科"], horizontal=True, index=0,
+#              key="tp_quiz_subj", label_visibility="collapsed")
 # 両方オフの場合はbatsuをデフォルトに
-if not _mode_batsu and not _mode_random:
-    _mode_batsu = True
+# if not _mode_batsu and not _mode_random:
+#     _mode_batsu = True
 
-def _get_batsu_questions():
-    """
-    CSVから最新がbatsuの問題を取得（永続）
-    + session_stateの未保存batsuも合わせて返す
-    """
-    batsu_list = []
-    seen_keys = set()
+# def _get_batsu_questions():
+#     """
+#     CSVから最新がbatsuの問題を取得（永続）
+#     + session_stateの未保存batsuも合わせて返す
+#     """
+#     batsu_list = []
+#     seen_keys = set()
 
     # ① CSVから取得（永続・教科別）
-    if ALM_AVAILABLE:
-        for skey in SUBJECTS:
-            try:
-                csv_rows = alm.get_batsu_questions(skey)
-                for row in csv_rows:
-                    ukey = (skey, row.get("genre_key",""),
-                            str(row.get("page_num","")), row.get("q",""))
-                    if ukey in seen_keys:
-                        continue
-                    seen_keys.add(ukey)
-                    batsu_list.append({
-                        "page_number":  int(row.get("page_num", 0) or 0),
-                        "workbook_ref": row.get("workbook_ref", ""),
-                        "lesson_title": row.get("lesson_title", ""),
-                        "section_code": row.get("section_code", ""),
-                        "section_name": row.get("section_name", ""),
-                        "group_label":  row.get("group_label", ""),
-                        "q":            row.get("q", ""),
-                        "a":            row.get("a", ""),
-                        "note":         row.get("note", "") or None,
-                        "context":      None,
-                        "subject_key":  skey,
-                        "subject_name": SUBJECTS[skey]["name"],
-                        "genre_key":    row.get("genre_key", ""),
-                        "genre_name":   SUBJECTS[skey]["genres"].get(
-                            row.get("genre_key",""), {}).get("name", ""),
-                    })
-            except Exception:
-                pass
+#     if ALM_AVAILABLE:
+#         for skey in SUBJECTS:
+#             try:
+#                 csv_rows = alm.get_batsu_questions(skey)
+#                 for row in csv_rows:
+#                     ukey = (skey, row.get("genre_key",""),
+#                             str(row.get("page_num","")), row.get("q",""))
+#                     if ukey in seen_keys:
+#                         continue
+#                     seen_keys.add(ukey)
+#                     batsu_list.append({
+#                         "page_number":  int(row.get("page_num", 0) or 0),
+#                         "workbook_ref": row.get("workbook_ref", ""),
+#                         "lesson_title": row.get("lesson_title", ""),
+#                         "section_code": row.get("section_code", ""),
+#                         "section_name": row.get("section_name", ""),
+#                         "group_label":  row.get("group_label", ""),
+#                         "q":            row.get("q", ""),
+#                         "a":            row.get("a", ""),
+#                         "note":         row.get("note", "") or None,
+#                         "context":      None,
+#                         "subject_key":  skey,
+#                         "subject_name": SUBJECTS[skey]["name"],
+#                         "genre_key":    row.get("genre_key", ""),
+#                         "genre_name":   SUBJECTS[skey]["genres"].get(
+#                             row.get("genre_key",""), {}).get("name", ""),
+#                     })
+#             except Exception:
+#                 pass
 
     # ② session_stateのbatsuも常に追加（ALM未使用時はこれがメイン）
-    for key, val in st.session_state.items():
-        if val != "batsu" or not key.startswith("wb_result_"):
-            continue
-        parts = key.split("_")
-        if len(parts) < 4:
-            continue
-        try:
-            page_num = int(parts[2])
-            orig_idx = int(parts[3])
-            for skey in SUBJECTS:
-                for gkey in SUBJECTS[skey]["genres"]:
-                    wb = load_workbook_answers(skey, gkey)
-                    if not wb:
-                        continue
-                    for page in wb.get("pages", []):
-                        if page["page_number"] != page_num:
-                            continue
-                        flat = flatten_workbook_questions(page)
-                        if orig_idx >= len(flat):
-                            continue
-                        q = flat[orig_idx].copy()
-                        ukey = (skey, gkey, str(page_num), q.get("q",""))
-                        if ukey in seen_keys:
-                            continue
-                        seen_keys.add(ukey)
-                        q["subject_key"]  = skey
-                        q["subject_name"] = SUBJECTS[skey]["name"]
-                        q["genre_key"]    = gkey
-                        q["genre_name"]   = SUBJECTS[skey]["genres"][gkey]["name"]
-                        batsu_list.append(q)
-        except Exception:
-            pass
+#     for key, val in st.session_state.items():
+#         if val != "batsu" or not key.startswith("wb_result_"):
+#             continue
+#         parts = key.split("_")
+#         if len(parts) < 4:
+#             continue
+#         try:
+#             page_num = int(parts[2])
+#             orig_idx = int(parts[3])
+#             for skey in SUBJECTS:
+#                 for gkey in SUBJECTS[skey]["genres"]:
+#                     wb = load_workbook_answers(skey, gkey)
+#                     if not wb:
+#                         continue
+#                     for page in wb.get("pages", []):
+#                         if page["page_number"] != page_num:
+#                             continue
+#                         flat = flatten_workbook_questions(page)
+#                         if orig_idx >= len(flat):
+#                             continue
+#                         q = flat[orig_idx].copy()
+#                         ukey = (skey, gkey, str(page_num), q.get("q",""))
+#                         if ukey in seen_keys:
+#                             continue
+#                         seen_keys.add(ukey)
+#                         q["subject_key"]  = skey
+#                         q["subject_name"] = SUBJECTS[skey]["name"]
+#                         q["genre_key"]    = gkey
+#                         q["genre_name"]   = SUBJECTS[skey]["genres"][gkey]["name"]
+#                         batsu_list.append(q)
+#         except Exception:
+#             pass
 
-    random.shuffle(batsu_list)
-    return batsu_list
+#     random.shuffle(batsu_list)
+#     return batsu_list
 
 
 # ===== 今日の問題：AI 4択出題 =====
 # モードに応じて問題リストを取得
-_tp_mode = "random" if _mode_random else "batsu"
-_prev_mode = st.session_state.get("tp_prev_mode", "")
-_current_batsu_count = sum(
-    1 for k, v in st.session_state.items()
-    if k.startswith("wb_result_") and v == "batsu"
-)
-_cached_count = st.session_state.get("tp_batsu_count_at_cache", 0)
+# _tp_mode = "random" if _mode_random else "batsu"
+# _prev_mode = st.session_state.get("tp_prev_mode", "")
+# _current_batsu_count = sum(
+#     1 for k, v in st.session_state.items()
+#     if k.startswith("wb_result_") and v == "batsu"
+# )
+# _cached_count = st.session_state.get("tp_batsu_count_at_cache", 0)
 
-_need_refresh = (
-    "tp_questions_list" not in st.session_state
-    or _tp_mode != _prev_mode
-    or _current_batsu_count != _cached_count
-)
+# _need_refresh = (
+#     "tp_questions_list" not in st.session_state
+#     or _tp_mode != _prev_mode
+#     or _current_batsu_count != _cached_count
+# )
 
-if _need_refresh:
-    if _tp_mode == "random" and ALM_AVAILABLE:
+# if _need_refresh:
+#     if _tp_mode == "random" and ALM_AVAILABLE:
         # ランダム：全問題からシャッフル
-        _all = []
-        import random as _rnd
-        for _sk in SUBJECTS:
-            try:
-                _rows = alm.get_all_questions(_sk)
-                for _row in _rows:
-                    _all.append({
-                        "page_number":  int(_row.get("page_num", 0) or 0),
-                        "workbook_ref": _row.get("workbook_ref", ""),
-                        "lesson_title": _row.get("lesson_title", ""),
-                        "section_code": _row.get("section_code", ""),
-                        "section_name": _row.get("section_name", ""),
-                        "group_label":  _row.get("group_label", ""),
-                        "q":            _row.get("q", ""),
-                        "a":            _row.get("a", ""),
-                        "note":         _row.get("note") or None,
-                        "context":      None,
-                        "subject_key":  _sk,
-                        "subject_name": SUBJECTS[_sk]["name"],
-                        "genre_key":    _row.get("genre_key", ""),
-                        "genre_name":   SUBJECTS[_sk]["genres"].get(
-                            _row.get("genre_key",""), {}).get("name", ""),
-                    })
-            except Exception:
-                pass
-        _rnd.shuffle(_all)
-        st.session_state["tp_questions_list"] = _all
-    else:
-        st.session_state["tp_questions_list"] = _get_batsu_questions()
-    st.session_state["tp_prev_mode"] = _tp_mode
-    st.session_state["tp_batsu_count_at_cache"] = _current_batsu_count
+#         _all = []
+#         import random as _rnd
+#         for _sk in SUBJECTS:
+#             try:
+#                 _rows = alm.get_all_questions(_sk)
+#                 for _row in _rows:
+#                     _all.append({
+#                         "page_number":  int(_row.get("page_num", 0) or 0),
+#                         "workbook_ref": _row.get("workbook_ref", ""),
+#                         "lesson_title": _row.get("lesson_title", ""),
+#                         "section_code": _row.get("section_code", ""),
+#                         "section_name": _row.get("section_name", ""),
+#                         "group_label":  _row.get("group_label", ""),
+#                         "q":            _row.get("q", ""),
+#                         "a":            _row.get("a", ""),
+#                         "note":         _row.get("note") or None,
+#                         "context":      None,
+#                         "subject_key":  _sk,
+#                         "subject_name": SUBJECTS[_sk]["name"],
+#                         "genre_key":    _row.get("genre_key", ""),
+#                         "genre_name":   SUBJECTS[_sk]["genres"].get(
+#                             _row.get("genre_key",""), {}).get("name", ""),
+#                     })
+#             except Exception:
+#                 pass
+#         _rnd.shuffle(_all)
+#         st.session_state["tp_questions_list"] = _all
+#     else:
+#         st.session_state["tp_questions_list"] = _get_batsu_questions()
+#     st.session_state["tp_prev_mode"] = _tp_mode
+#     st.session_state["tp_batsu_count_at_cache"] = _current_batsu_count
     # モードが変わったら進捗もリセット
-    if _tp_mode != _prev_mode:
-        for _k in [_k for _k in list(st.session_state.keys()) if _k.startswith("tp_") and _k not in ("tp_mode_batsu","tp_mode_random","tp_prev_mode","tp_questions_list","tp_batsu_count_at_cache","tp_quiz_subj")]:
-            del st.session_state[_k]
+#     if _tp_mode != _prev_mode:
+#         for _k in [_k for _k in list(st.session_state.keys()) if _k.startswith("tp_") and _k not in ("tp_mode_batsu","tp_mode_random","tp_prev_mode","tp_questions_list","tp_batsu_count_at_cache","tp_quiz_subj")]:
+#             del st.session_state[_k]
 
-tp_questions = st.session_state["tp_questions_list"]
+# tp_questions = st.session_state["tp_questions_list"]
 # 教科で絞り込み（再TESTの教科ラジオ・デフォルト社会）
-_qsubj = st.session_state.get("tp_quiz_subj", "社会")
-tp_questions = [q for q in tp_questions if q.get("subject_name") == _qsubj]
-tp_total = len(tp_questions)
+# _qsubj = st.session_state.get("tp_quiz_subj", "社会")
+# tp_questions = [q for q in tp_questions if q.get("subject_name") == _qsubj]
+# tp_total = len(tp_questions)
 
-if tp_total == 0:
-    if _tp_mode == "random":
-        st.info("📚 ワークで問題を解いて記録を作りましょう！")
-    else:
-        st.success("🎉 全問3回連続正解達成！完璧です！")
-        st.caption("ランダム出題モードで復習することもできます。")
-else:
+# if tp_total == 0:
+#     if _tp_mode == "random":
+#         st.info("📚 ワークで問題を解いて記録を作りましょう！")
+#     else:
+#         st.success("🎉 全問3回連続正解達成！完璧です！")
+#         st.caption("ランダム出題モードで復習することもできます。")
+# else:
     # 現在位置
-    tp_idx_key = "tp_idx"
-    if tp_idx_key not in st.session_state:
-        st.session_state[tp_idx_key] = 0
-    tp_pos = max(0, min(st.session_state[tp_idx_key], tp_total - 1))
-    st.session_state[tp_idx_key] = tp_pos
-    tp_current = tp_questions[tp_pos]
+#     tp_idx_key = "tp_idx"
+#     if tp_idx_key not in st.session_state:
+#         st.session_state[tp_idx_key] = 0
+#     tp_pos = max(0, min(st.session_state[tp_idx_key], tp_total - 1))
+#     st.session_state[tp_idx_key] = tp_pos
+#     tp_current = tp_questions[tp_pos]
 
     # 進捗
-    tp_correct = sum(1 for i in range(tp_total)
-                    if st.session_state.get(f"tp_result_{i}") == "maru")
-    tp_wrong   = sum(1 for i in range(tp_total)
-                    if st.session_state.get(f"tp_result_{i}") == "batsu")
-    st.markdown(f"""
-    <div class='wb-progress-row'>
-        <span>問題 <b>{tp_pos + 1}</b> / {tp_total}</span>
-        <span>
-            <span style='color:#007AFF;'>⭕ {tp_correct}</span>　
-            <span style='color:#FF3B30;'>❌ {tp_wrong}</span>
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
-    st.progress((tp_pos + 1) / tp_total)
+#     tp_correct = sum(1 for i in range(tp_total)
+#                     if st.session_state.get(f"tp_result_{i}") == "maru")
+#     tp_wrong   = sum(1 for i in range(tp_total)
+#                     if st.session_state.get(f"tp_result_{i}") == "batsu")
+#     st.markdown(f"""
+#     <div class='wb-progress-row'>
+#         <span>問題 <b>{tp_pos + 1}</b> / {tp_total}</span>
+#         <span>
+#             <span style='color:#007AFF;'>⭕ {tp_correct}</span>　
+#             <span style='color:#FF3B30;'>❌ {tp_wrong}</span>
+#         </span>
+#     </div>
+#     """, unsafe_allow_html=True)
+#     st.progress((tp_pos + 1) / tp_total)
 
     # 教科バッジ
-    subj_name  = tp_current.get("subject_name", "")
-    genre_name = tp_current.get("genre_name", "")
-    subj_col   = subject_color(subj_name)
-    subject_badge_html = (
-        f'<div style="display:inline-block; background:{subj_col["light"]}; '
-        f'color:{subj_col["primary"]}; padding:4px 14px; border-radius:14px; '
-        f'font-size:13px; font-weight:700; margin-bottom:6px;">'
-        f'{subj_col["emoji"]} {subj_name}'
-        + (f' / {genre_name}' if genre_name else "")
-        + "</div>"
-    )
+#     subj_name  = tp_current.get("subject_name", "")
+#     genre_name = tp_current.get("genre_name", "")
+#     subj_col   = subject_color(subj_name)
+#     subject_badge_html = (
+#         f'<div style="display:inline-block; background:{subj_col["light"]}; '
+#         f'color:{subj_col["primary"]}; padding:4px 14px; border-radius:14px; '
+#         f'font-size:13px; font-weight:700; margin-bottom:6px;">'
+#         f'{subj_col["emoji"]} {subj_name}'
+#         + (f' / {genre_name}' if genre_name else "")
+#         + "</div>"
+#     )
 
     # AI 4択問題生成
-    def _generate_quiz(q_data: dict) -> dict | None:
-        """AI に4択問題を生成させる"""
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
-            lesson  = q_data.get("lesson_title", "")
-            answer  = q_data.get("a", "")
-            subject = q_data.get("subject_name", "社会")
-            genre   = q_data.get("genre_name", "")
-            section = q_data.get("section_name", "")
-            context = f"{subject} / {genre} / {lesson} / {section}"
-            prompt = (
-                f"中学2年生の{subject}（{genre}）の単元「{lesson}」に関する問題を1問作ってください。\n"
-                f"正解は「{answer}」です。\n\n"
-                f"【ルール】\n"
-                f"- 必ずこの単元・テーマの文脈で出題する（他の単元の知識は不要）\n"
-                f"- 問題文は1文で、明確に問う\n"
-                f"- 選択肢は4つ（正解1つ＋ダミー3つ）\n"
-                f"- ダミーはこの単元に登場する似た語句・人物・地名から選ぶ\n"
-                f"- 各選択肢には読み仮名（ふりがな・ひらがな）を必ず付ける\n"
-                f"  （カタカナ語はカタカナのままでよい。記号や数字だけの場合は空文字）\n"
-                f"- JSONのみ出力（説明不要）\n\n"
-                f"出力フォーマット:\n"
-                f'{{\n'
-                f'  "question": "問題文",\n'
-                f'  "choices": [\n'
-                f'    {{"text": "選択肢A", "yomi": "せんたくしえー"}},\n'
-                f'    {{"text": "選択肢B", "yomi": "せんたくしびー"}},\n'
-                f'    {{"text": "選択肢C", "yomi": "せんたくししー"}},\n'
-                f'    {{"text": "選択肢D", "yomi": "せんたくしでぃー"}}\n'
-                f'  ],\n'
-                f'  "answer": "正解の選択肢テキスト（いずれかのtextと完全一致）"\n'
-                f'}}'
-            )
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                max_tokens=800,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": "中学生向けに問題を作る先生です。必ずJSONで返答してください。"},
-                    {"role": "user", "content": prompt},
-                ]
-            )
-            import json as _json
-            data = _json.loads(resp.choices[0].message.content)
+#     def _generate_quiz(q_data: dict) -> dict | None:
+#         """AI に4択問題を生成させる"""
+#         try:
+#             from openai import OpenAI
+#             client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
+#             lesson  = q_data.get("lesson_title", "")
+#             answer  = q_data.get("a", "")
+#             subject = q_data.get("subject_name", "社会")
+#             genre   = q_data.get("genre_name", "")
+#             section = q_data.get("section_name", "")
+#             context = f"{subject} / {genre} / {lesson} / {section}"
+#             prompt = (
+#                 f"中学2年生の{subject}（{genre}）の単元「{lesson}」に関する問題を1問作ってください。\n"
+#                 f"正解は「{answer}」です。\n\n"
+#                 f"【ルール】\n"
+#                 f"- 必ずこの単元・テーマの文脈で出題する（他の単元の知識は不要）\n"
+#                 f"- 問題文は1文で、明確に問う\n"
+#                 f"- 選択肢は4つ（正解1つ＋ダミー3つ）\n"
+#                 f"- ダミーはこの単元に登場する似た語句・人物・地名から選ぶ\n"
+#                 f"- 各選択肢には読み仮名（ふりがな・ひらがな）を必ず付ける\n"
+#                 f"  （カタカナ語はカタカナのままでよい。記号や数字だけの場合は空文字）\n"
+#                 f"- JSONのみ出力（説明不要）\n\n"
+#                 f"出力フォーマット:\n"
+#                 f'{{\n'
+#                 f'  "question": "問題文",\n'
+#                 f'  "choices": [\n'
+#                 f'    {{"text": "選択肢A", "yomi": "せんたくしえー"}},\n'
+#                 f'    {{"text": "選択肢B", "yomi": "せんたくしびー"}},\n'
+#                 f'    {{"text": "選択肢C", "yomi": "せんたくししー"}},\n'
+#                 f'    {{"text": "選択肢D", "yomi": "せんたくしでぃー"}}\n'
+#                 f'  ],\n'
+#                 f'  "answer": "正解の選択肢テキスト（いずれかのtextと完全一致）"\n'
+#                 f'}}'
+#             )
+#             resp = client.chat.completions.create(
+#                 model="gpt-4o-mini",
+#                 max_tokens=800,
+#                 response_format={"type": "json_object"},
+#                 messages=[
+#                     {"role": "system", "content": "中学生向けに問題を作る先生です。必ずJSONで返答してください。"},
+#                     {"role": "user", "content": prompt},
+#                 ]
+#             )
+#             import json as _json
+#             data = _json.loads(resp.choices[0].message.content)
             # choices正規化（旧形式の文字列リストにも後方互換）
-            _norm = []
-            for c in data.get("choices", []):
-                if isinstance(c, dict):
-                    _norm.append({"text": str(c.get("text", "")),
-                                  "yomi": str(c.get("yomi", "") or "")})
-                else:
-                    _norm.append({"text": str(c), "yomi": ""})
-            data["choices"] = _norm
+#             _norm = []
+#             for c in data.get("choices", []):
+#                 if isinstance(c, dict):
+#                     _norm.append({"text": str(c.get("text", "")),
+#                                   "yomi": str(c.get("yomi", "") or "")})
+#                 else:
+#                     _norm.append({"text": str(c), "yomi": ""})
+#             data["choices"] = _norm
             # choicesをシャッフル
-            import random as _rnd
-            _rnd.shuffle(data["choices"])
-            return data
-        except Exception as e:
-            return None
+#             import random as _rnd
+#             _rnd.shuffle(data["choices"])
+#             return data
+#         except Exception as e:
+#             return None
 
     # 記述問題（長文回答）は4択にしない → 説明文で答えさせる
-    def _is_descriptive(ans):
-        a = str(ans or "")
-        return ("（例）" in a or "(例)" in a
-                or a.rstrip().endswith("。") or len(a) >= 20)
+#     def _is_descriptive(ans):
+#         a = str(ans or "")
+#         return ("（例）" in a or "(例)" in a
+#                 or a.rstrip().endswith("。") or len(a) >= 20)
 
-    _is_desc = _is_descriptive(tp_current.get("a", ""))
+#     _is_desc = _is_descriptive(tp_current.get("a", ""))
 
     # クイズをsession_stateにキャッシュ（問題が変わったら再生成）
-    quiz_key = f"tp_quiz_{tp_pos}_{tp_current.get('q','')}"
-    if _is_desc:
-        quiz = None  # 記述問題：4択を作らず説明文で答えさせる
-    else:
-        if quiz_key not in st.session_state:
-            with st.spinner("AI が問題を生成中..."):
-                quiz = _generate_quiz(tp_current)
-                st.session_state[quiz_key] = quiz
-        quiz = st.session_state.get(quiz_key)
+#     quiz_key = f"tp_quiz_{tp_pos}_{tp_current.get('q','')}"
+#     if _is_desc:
+#         quiz = None  # 記述問題：4択を作らず説明文で答えさせる
+#     else:
+#         if quiz_key not in st.session_state:
+#             with st.spinner("AI が問題を生成中..."):
+#                 quiz = _generate_quiz(tp_current)
+#                 st.session_state[quiz_key] = quiz
+#         quiz = st.session_state.get(quiz_key)
 
-    tp_result = st.session_state.get(f"tp_result_{tp_pos}")
+#     tp_result = st.session_state.get(f"tp_result_{tp_pos}")
 
     # カード表示
-    meta_parts = []
-    if tp_current.get("section_code"):
-        meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
-    if tp_current.get("workbook_ref"):
-        meta_parts.append(tp_current["workbook_ref"])
+#     meta_parts = []
+#     if tp_current.get("section_code"):
+#         meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
+#     if tp_current.get("workbook_ref"):
+#         meta_parts.append(tp_current["workbook_ref"])
 
-    if quiz:
-        st.markdown(f"""
-        <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
-            <div class='wb-fc-header'>
-                {subject_badge_html}
-                <div class='wb-fc-meta'>{" ／ ".join(meta_parts)}</div>
-                <div class='wb-fc-lesson'>{tp_current.get("lesson_title","")}</div>
-            </div>
-            <div class='wb-fc-divider'></div>
-            <div style='font-size:18px; font-weight:700; color:#1c1c1e;
-                        text-align:center; padding:8px 8px 16px; line-height:1.6;'>
-                {quiz["question"]}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+#     if quiz:
+#         st.markdown(f"""
+#         <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
+#             <div class='wb-fc-header'>
+#                 {subject_badge_html}
+#                 <div class='wb-fc-meta'>{" ／ ".join(meta_parts)}</div>
+#                 <div class='wb-fc-lesson'>{tp_current.get("lesson_title","")}</div>
+#             </div>
+#             <div class='wb-fc-divider'></div>
+#             <div style='font-size:18px; font-weight:700; color:#1c1c1e;
+#                         text-align:center; padding:8px 8px 16px; line-height:1.6;'>
+#                 {quiz["question"]}
+#             </div>
+#         </div>
+#         """, unsafe_allow_html=True)
 
-        selected    = st.session_state.get(f"tp_selected_{tp_pos}", "")
-        correct_ans = quiz.get("answer", "")
+#         selected    = st.session_state.get(f"tp_selected_{tp_pos}", "")
+#         correct_ans = quiz.get("answer", "")
 
         # 選択肢CSS（回答前後で統一）
-        _div_base = (
-            "width:100%; text-align:center; padding:14px 20px; "
-            "border-radius:14px; margin:8px 0; font-size:17px; font-weight:700; "
-            "line-height:1.4; box-sizing:border-box; "
-            "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;"
-        )
+#         _div_base = (
+#             "width:100%; text-align:center; padding:14px 20px; "
+#             "border-radius:14px; margin:8px 0; font-size:17px; font-weight:700; "
+#             "line-height:1.4; box-sizing:border-box; "
+#             "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;"
+#         )
 
-        if tp_result:
+#         if tp_result:
             # 回答済み：HTML div で正誤をカラー表示
-            html = ""
-            for ch in quiz["choices"]:
-                ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
-                ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
-                is_correct  = ch_text == correct_ans
-                is_selected = ch_text == selected
-                yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>"
-                             if ch_yomi else "")
-                if is_correct:
-                    s = _div_base + "background:#E5F8EE; border:2px solid #34C759; color:#1a8a3c;"
-                    lbl = "⭕ " + ch_text + yomi_html
-                elif is_selected:
-                    s = _div_base + "background:#FFE5E2; border:2px solid #FF3B30; color:#c0392b;"
-                    lbl = "❌ " + ch_text + yomi_html
-                else:
-                    s = _div_base + "background:#F9F9F9; border:1px solid #E5E5EA; color:#8E8E93;"
-                    lbl = ch_text + yomi_html
-                html += "<div style=\"" + s + "\">" + lbl + "</div>"
-            st.markdown(html, unsafe_allow_html=True)
+#             html = ""
+#             for ch in quiz["choices"]:
+#                 ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
+#                 ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
+#                 is_correct  = ch_text == correct_ans
+#                 is_selected = ch_text == selected
+#                 yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>"
+#                              if ch_yomi else "")
+#                 if is_correct:
+#                     s = _div_base + "background:#E5F8EE; border:2px solid #34C759; color:#1a8a3c;"
+#                     lbl = "⭕ " + ch_text + yomi_html
+#                 elif is_selected:
+#                     s = _div_base + "background:#FFE5E2; border:2px solid #FF3B30; color:#c0392b;"
+#                     lbl = "❌ " + ch_text + yomi_html
+#                 else:
+#                     s = _div_base + "background:#F9F9F9; border:1px solid #E5E5EA; color:#8E8E93;"
+#                     lbl = ch_text + yomi_html
+#                 html += "<div style=\"" + s + "\">" + lbl + "</div>"
+#             st.markdown(html, unsafe_allow_html=True)
             # 解説は💡ボタン押下時のみ表示
-            expl_key = f"tp_explain_{tp_pos}"
-            if st.session_state.get(expl_key):
-                expl_s = (
-                    "background:#FFF8E1; border-left:4px solid #FFCC00; "
-                    "padding:14px 16px; border-radius:10px; margin-top:12px; "
-                    "font-size:15px; line-height:1.8; font-weight:500; "
-                    "font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
-                )
-                st.markdown(
-                    "<div style=\"" + expl_s + "\">💡 " + st.session_state[expl_key] + "</div>",
-                    unsafe_allow_html=True
-                )
-        else:
+#             expl_key = f"tp_explain_{tp_pos}"
+#             if st.session_state.get(expl_key):
+#                 expl_s = (
+#                     "background:#FFF8E1; border-left:4px solid #FFCC00; "
+#                     "padding:14px 16px; border-radius:10px; margin-top:12px; "
+#                     "font-size:15px; line-height:1.8; font-weight:500; "
+#                     "font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
+#                 )
+#                 st.markdown(
+#                     "<div style=\"" + expl_s + "\">💡 " + st.session_state[expl_key] + "</div>",
+#                     unsafe_allow_html=True
+#                 )
+#         else:
             # 未回答：st.button（CSSで見た目を統一）
-            for i, ch in enumerate(quiz["choices"]):
-                ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
-                ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
-                btn_label = f"{ch_text}（{ch_yomi}）" if ch_yomi else ch_text
-                if st.button(btn_label, key=f"tp_choice_{tp_pos}_{i}",
-                             use_container_width=True):
-                    st.session_state[f"tp_selected_{tp_pos}"] = ch_text
-                    result_val = "maru" if ch_text == correct_ans else "batsu"
-                    st.session_state[f"tp_result_{tp_pos}"] = result_val
-                    if ALM_AVAILABLE:
-                        try:
-                            alm.append_log(
-                                tp_current.get("subject_key", "social"),
-                                tp_current, result_val
-                            )
-                        except Exception:
-                            pass
-                    st.rerun()
+#             for i, ch in enumerate(quiz["choices"]):
+#                 ch_text = ch["text"] if isinstance(ch, dict) else str(ch)
+#                 ch_yomi = ch.get("yomi", "") if isinstance(ch, dict) else ""
+#                 btn_label = f"{ch_text}（{ch_yomi}）" if ch_yomi else ch_text
+#                 if st.button(btn_label, key=f"tp_choice_{tp_pos}_{i}",
+#                              use_container_width=True):
+#                     st.session_state[f"tp_selected_{tp_pos}"] = ch_text
+#                     result_val = "maru" if ch_text == correct_ans else "batsu"
+#                     st.session_state[f"tp_result_{tp_pos}"] = result_val
+#                     if ALM_AVAILABLE:
+#                         try:
+#                             alm.append_log(
+#                                 tp_current.get("subject_key", "social"),
+#                                 tp_current, result_val
+#                             )
+#                         except Exception:
+#                             pass
+#                     st.rerun()
 
-    else:
+#     else:
         # 記述問題（_is_desc）は説明文で答えさせる。それ以外（quiz=None）はAI失敗フォールバック
-        try:
-            _a_yomi = (
-                tp_current.get("yomi", "") or
-                tp_current.get("answer_yomi", "") or
-                _get_yomi_from_pivot(tp_current.get("a", ""), skey)
-            )
-        except Exception:
-            _a_yomi = tp_current.get("yomi", "") or tp_current.get("answer_yomi", "")
-        _yomi_html = (f"<br><span style='font-size:16px;color:#8E8E93;font-weight:500;'>{_a_yomi}</span>"
-                      if _a_yomi else "")
-        _desc_banner = (
-            "<div style='text-align:center;margin:8px 0 2px;font-size:14px;"
-            "font-weight:700;color:#FF6B00;letter-spacing:0.03em;'>"
-            "✍️ 説明文で答えてください！</div>"
-        ) if _is_desc else ""
-        st.markdown(f"""
-        <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
-            <div class='wb-fc-header'>
-                {subject_badge_html}
-                <div class='wb-fc-meta'>{" ／ ".join(meta_parts)}</div>
-                <div class='wb-fc-lesson'>{tp_current.get("lesson_title","")}</div>
-            </div>
-            <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current["q"]}</div>
-            {_desc_banner}
-            <div class='wb-fc-divider'></div>
-            <div class='wb-fc-a-area'>
-                <div class='wb-fc-a-shown' style="font-family:'Klee One',serif;">{tp_current["a"]}{_yomi_html}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+#         try:
+#             _a_yomi = (
+#                 tp_current.get("yomi", "") or
+#                 tp_current.get("answer_yomi", "") or
+#                 _get_yomi_from_pivot(tp_current.get("a", ""), skey)
+#             )
+#         except Exception:
+#             _a_yomi = tp_current.get("yomi", "") or tp_current.get("answer_yomi", "")
+#         _yomi_html = (f"<br><span style='font-size:16px;color:#8E8E93;font-weight:500;'>{_a_yomi}</span>"
+#                       if _a_yomi else "")
+#         _desc_banner = (
+#             "<div style='text-align:center;margin:8px 0 2px;font-size:14px;"
+#             "font-weight:700;color:#FF6B00;letter-spacing:0.03em;'>"
+#             "✍️ 説明文で答えてください！</div>"
+#         ) if _is_desc else ""
+#         st.markdown(f"""
+#         <div class='wb-flashcard' style='border-color:{subj_col["primary"]};'>
+#             <div class='wb-fc-header'>
+#                 {subject_badge_html}
+#                 <div class='wb-fc-meta'>{" ／ ".join(meta_parts)}</div>
+#                 <div class='wb-fc-lesson'>{tp_current.get("lesson_title","")}</div>
+#             </div>
+#             <div class='wb-fc-q' style='color:{subj_col["primary"]};'>{tp_current["q"]}</div>
+#             {_desc_banner}
+#             <div class='wb-fc-divider'></div>
+#             <div class='wb-fc-a-area'>
+#                 <div class='wb-fc-a-shown' style="font-family:'Klee One',serif;">{tp_current["a"]}{_yomi_html}</div>
+#             </div>
+#         </div>
+#         """, unsafe_allow_html=True)
 
     # ナビゲーション（◀  💡  ▶）
-    st.markdown("")
-    nav_c = st.columns([1, 2, 1, 2, 1])
-    with nav_c[0]:
-        if st.button("◀", key=f"tp_prev_{tp_pos}",
-                     disabled=(tp_pos == 0), use_container_width=True):
-            st.session_state[tp_idx_key] = tp_pos - 1
-            st.rerun()
-    with nav_c[2]:
-        explain_key = f"tp_explain_{tp_pos}"
-        expl_label = "💡 非表示" if st.session_state.get(explain_key) else "💡"
-        if st.button(expl_label, key=explain_key + "_btn",
-                     use_container_width=True, help="解説を見る/隠す"):
-            if st.session_state.get(explain_key):
+#     st.markdown("")
+#     nav_c = st.columns([1, 2, 1, 2, 1])
+#     with nav_c[0]:
+#         if st.button("◀", key=f"tp_prev_{tp_pos}",
+#                      disabled=(tp_pos == 0), use_container_width=True):
+#             st.session_state[tp_idx_key] = tp_pos - 1
+#             st.rerun()
+#     with nav_c[2]:
+#         explain_key = f"tp_explain_{tp_pos}"
+#         expl_label = "💡 非表示" if st.session_state.get(explain_key) else "💡"
+#         if st.button(expl_label, key=explain_key + "_btn",
+#                      use_container_width=True, help="解説を見る/隠す"):
+#             if st.session_state.get(explain_key):
                 # 非表示にする
-                del st.session_state[explain_key]
-            else:
+#                 del st.session_state[explain_key]
+#             else:
                 # 生成して表示
-                with st.spinner("解説生成中..."):
-                    st.session_state[explain_key] = (
-                        generate_workbook_explanation(tp_current, subj_name)
-                    )
-            st.rerun()
-    with nav_c[4]:
-        if tp_pos < tp_total - 1:
+#                 with st.spinner("解説生成中..."):
+#                     st.session_state[explain_key] = (
+#                         generate_workbook_explanation(tp_current, subj_name)
+#                     )
+#             st.rerun()
+#     with nav_c[4]:
+#         if tp_pos < tp_total - 1:
             # 回答済みなら「NEXT」、未回答なら「スキップ」
-            btn_label = "NEXT ▶" if tp_result else "スキップ ▶"
-            btn_type  = "primary" if tp_result else "secondary"
-            if st.button(btn_label, key=f"tp_next_{tp_pos}",
-                         use_container_width=True, type=btn_type):
-                st.session_state[tp_idx_key] = tp_pos + 1
-                st.rerun()
-        else:
+#             btn_label = "NEXT ▶" if tp_result else "スキップ ▶"
+#             btn_type  = "primary" if tp_result else "secondary"
+#             if st.button(btn_label, key=f"tp_next_{tp_pos}",
+#                          use_container_width=True, type=btn_type):
+#                 st.session_state[tp_idx_key] = tp_pos + 1
+#                 st.rerun()
+#         else:
             # 最後の問題で回答済み
-            if tp_result:
-                st.button("完了 ✓", key=f"tp_next_{tp_pos}",
-                          use_container_width=True, disabled=True)
+#             if tp_result:
+#                 st.button("完了 ✓", key=f"tp_next_{tp_pos}",
+#                           use_container_width=True, disabled=True)
 
     # 解説は選択肢ブロック内で表示済み
 
     # 全問完了
-    if tp_pos == tp_total - 1 and tp_result is not None:
-        st.markdown("---")
-        still_wrong = sum(1 for i in range(tp_total)
-                         if st.session_state.get(f"tp_result_{i}") == "batsu")
-        if still_wrong:
-            st.warning(f"❌ {still_wrong} 問 まだ間違えています")
-        else:
-            st.success("🎉 全問正解！素晴らしい！")
-        if st.button("🔄 シャッフルして再出題", key="tp_reload",
-                     use_container_width=True, type="primary"):
-            for k in [k for k in list(st.session_state.keys()) if k.startswith("tp_")]:
-                del st.session_state[k]
+#     if tp_pos == tp_total - 1 and tp_result is not None:
+#         st.markdown("---")
+#         still_wrong = sum(1 for i in range(tp_total)
+#                          if st.session_state.get(f"tp_result_{i}") == "batsu")
+#         if still_wrong:
+#             st.warning(f"❌ {still_wrong} 問 まだ間違えています")
+#         else:
+#             st.success("🎉 全問正解！素晴らしい！")
+#         if st.button("🔄 シャッフルして再出題", key="tp_reload",
+#                      use_container_width=True, type="primary"):
+#             for k in [k for k in list(st.session_state.keys()) if k.startswith("tp_")]:
+#                 del st.session_state[k]
             # 問題リストも再取得
-            st.session_state["tp_questions_list"] = _get_batsu_questions()
-            st.rerun()
+#             st.session_state["tp_questions_list"] = _get_batsu_questions()
+#             st.rerun()
 
 # ===== 今日の時間割 =====
 _today_label = f"{today.month}月{today.day}日（{JP_WD[today.weekday()]}）"
@@ -2372,13 +2372,13 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                 unsafe_allow_html=True
             )
 
-        with st.container(key="wb_open_btn_wrap"):
-            if st.button("📋 解答を見る", key=f"open_wb_{skey}_{gkey}",
-                         use_container_width=True, type="primary"):
-                st.session_state.detail_subject = skey
-                st.session_state.detail_genre = gkey
-                st.session_state.detail_type = "workbook"
-                st.rerun()
+#         with st.container(key="wb_open_btn_wrap"):
+#             if st.button("📋 解答を見る", key=f"open_wb_{skey}_{gkey}",
+#                          use_container_width=True, type="primary"):
+#                 st.session_state.detail_subject = skey
+#                 st.session_state.detail_genre = gkey
+#                 st.session_state.detail_type = "workbook"
+#                 st.rerun()
 
     # === 教科書詳細 (目次) ===
     if (st.session_state.get("detail_type") == "textbook"
@@ -2427,322 +2427,322 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
                                     render_point_box(st.session_state[pt_key], color="yellow")
 
     # === ワーク詳細 (フラッシュカード) ===
-    if (st.session_state.get("detail_type") == "workbook"
-        and st.session_state.get("detail_genre") == gkey
-        and st.session_state.get("detail_subject") == skey):
-        wbd = load_workbook_answers(st.session_state.detail_subject, st.session_state.detail_genre)
-        if wbd and wbd.get("pages"):
-            st.markdown("---")
-            st.markdown(
-                f"<div class='wb-detail-title'>📋 {wbd.get('workbook_title', '')}</div>",
-                unsafe_allow_html=True
-            )
+#     if (st.session_state.get("detail_type") == "workbook"
+#         and st.session_state.get("detail_genre") == gkey
+#         and st.session_state.get("detail_subject") == skey):
+#         wbd = load_workbook_answers(st.session_state.detail_subject, st.session_state.detail_genre)
+#         if wbd and wbd.get("pages"):
+#             st.markdown("---")
+#             st.markdown(
+#                 f"<div class='wb-detail-title'>📋 {wbd.get('workbook_title', '')}</div>",
+#                 unsafe_allow_html=True
+#             )
 
             # ページ選択（pills でキーボードを出さない・ボタンで分かりやすく）
-            page_nums = [f"P.{p['page_number']}" for p in wbd["pages"]]
-            sel_page = st.pills(
-                "📄 ページを選択", page_nums,
-                key=f"wb_page_sel_{skey}_{gkey}",
-                default=page_nums[0],
-            )
-            if not sel_page:
-                sel_page = page_nums[0]
-            page_idx = page_nums.index(sel_page)
-            page = wbd["pages"][page_idx]
-            page_num = page['page_number']
+#             page_nums = [f"P.{p['page_number']}" for p in wbd["pages"]]
+#             sel_page = st.pills(
+#                 "📄 ページを選択", page_nums,
+#                 key=f"wb_page_sel_{skey}_{gkey}",
+#                 default=page_nums[0],
+#             )
+#             if not sel_page:
+#                 sel_page = page_nums[0]
+#             page_idx = page_nums.index(sel_page)
+#             page = wbd["pages"][page_idx]
+#             page_num = page['page_number']
             # 選択中ページのタイトルを大きく表示
-            st.markdown(
-                f"<div style='font-size:16px;font-weight:600;margin:6px 0 14px;color:#1d1d1f;'>"
-                f"📖 {page.get('lesson_title','')}</div>",
-                unsafe_allow_html=True
-            )
+#             st.markdown(
+#                 f"<div style='font-size:16px;font-weight:600;margin:6px 0 14px;color:#1d1d1f;'>"
+#                 f"📖 {page.get('lesson_title','')}</div>",
+#                 unsafe_allow_html=True
+#             )
 
             # 問題フラット化
-            questions = flatten_workbook_questions(page)
-            total = len(questions)
+#             questions = flatten_workbook_questions(page)
+#             total = len(questions)
 
-            if total == 0:
-                st.warning("このページに登録された問題がありません")
-            else:
+#             if total == 0:
+#                 st.warning("このページに登録された問題がありません")
+#             else:
                 # ★ Let's Start!! 画面（ページを選択したら最初に表示）
-                start_key = f"wb_started_{skey}_{gkey}_{sel_page}"
+#                 start_key = f"wb_started_{skey}_{gkey}_{sel_page}"
                 # ページが変わったら start フラグをリセット
-                last_key = f"wb_last_page_{skey}_{gkey}"
-                if st.session_state.get(last_key) != sel_page:
-                    st.session_state[start_key] = False
-                    st.session_state[last_key] = sel_page
+#                 last_key = f"wb_last_page_{skey}_{gkey}"
+#                 if st.session_state.get(last_key) != sel_page:
+#                     st.session_state[start_key] = False
+#                     st.session_state[last_key] = sel_page
 
-                if not st.session_state.get(start_key, False):
-                    st.markdown(f"""
-                    <div style='background:white; border:2px solid #FF9500; border-radius:20px;
-                                padding:48px 24px; text-align:center; margin:16px 0;
-                                box-shadow:0 4px 20px rgba(0,0,0,.06);'>
-                        <div style='font-size:52px; margin-bottom:12px;'>📖</div>
-                        <div style='font-size:28px; font-weight:800; color:#FF9500; margin-bottom:8px;'>
-                            Let's Start!!
-                        </div>
-                        <div style='font-size:15px; color:#8E8E93;'>
-                            {page.get('lesson_title','')}　全 {total} 問
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    if st.button("NEXT ▶", type="primary", use_container_width=True,
-                                 key=f"wb_start_btn_{skey}_{gkey}_{sel_page}"):
-                        st.session_state[start_key] = True
-                        st.rerun()
-                    st.stop()
+#                 if not st.session_state.get(start_key, False):
+#                     st.markdown(f"""
+#                     <div style='background:white; border:2px solid #FF9500; border-radius:20px;
+#                                 padding:48px 24px; text-align:center; margin:16px 0;
+#                                 box-shadow:0 4px 20px rgba(0,0,0,.06);'>
+#                         <div style='font-size:52px; margin-bottom:12px;'>📖</div>
+#                         <div style='font-size:28px; font-weight:800; color:#FF9500; margin-bottom:8px;'>
+#                             Let's Start!!
+#                         </div>
+#                         <div style='font-size:15px; color:#8E8E93;'>
+#                             {page.get('lesson_title','')}　全 {total} 問
+#                         </div>
+#                     </div>
+#                     """, unsafe_allow_html=True)
+#                     if st.button("NEXT ▶", type="primary", use_container_width=True,
+#                                  key=f"wb_start_btn_{skey}_{gkey}_{sel_page}"):
+#                         st.session_state[start_key] = True
+#                         st.rerun()
+#                     st.stop()
                 # モード判定
-                mode_key = f"wb_mode_{page_num}"
-                mode = st.session_state.get(mode_key, "normal")
+#                 mode_key = f"wb_mode_{page_num}"
+#                 mode = st.session_state.get(mode_key, "normal")
 
                 # アクティブインデックスリスト
-                if mode == "normal":
-                    active = list(range(total))
-                else:
-                    active = [i for i in range(total)
-                             if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
-                    if not active:
-                        st.session_state[mode_key] = "normal"
-                        active = list(range(total))
-                        mode = "normal"
+#                 if mode == "normal":
+#                     active = list(range(total))
+#                 else:
+#                     active = [i for i in range(total)
+#                              if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
+#                     if not active:
+#                         st.session_state[mode_key] = "normal"
+#                         active = list(range(total))
+#                         mode = "normal"
 
-                n_active = len(active)
+#                 n_active = len(active)
 
                 # 現在位置
-                idx_key = f"wb_idx_{page_num}_{mode}"
-                if idx_key not in st.session_state:
-                    st.session_state[idx_key] = 0
-                cur_pos = max(0, min(st.session_state[idx_key], n_active - 1))
-                st.session_state[idx_key] = cur_pos
-                original_idx = active[cur_pos]
-                current = questions[original_idx]
+#                 idx_key = f"wb_idx_{page_num}_{mode}"
+#                 if idx_key not in st.session_state:
+#                     st.session_state[idx_key] = 0
+#                 cur_pos = max(0, min(st.session_state[idx_key], n_active - 1))
+#                 st.session_state[idx_key] = cur_pos
+#                 original_idx = active[cur_pos]
+#                 current = questions[original_idx]
 
                 # モードバッジ
-                if mode == "retest":
-                    st.markdown(
-                        f"<div class='wb-mode-badge wb-mode-retest'>🔄 再テストモード（×問題のみ）</div>",
-                        unsafe_allow_html=True
-                    )
+#                 if mode == "retest":
+#                     st.markdown(
+#                         f"<div class='wb-mode-badge wb-mode-retest'>🔄 再テストモード（×問題のみ）</div>",
+#                         unsafe_allow_html=True
+#                     )
 
                 # 進捗
-                correct = sum(1 for i in range(total)
-                             if st.session_state.get(f"wb_result_{page_num}_{i}") == "maru")
-                wrong = sum(1 for i in range(total)
-                           if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
+#                 correct = sum(1 for i in range(total)
+#                              if st.session_state.get(f"wb_result_{page_num}_{i}") == "maru")
+#                 wrong = sum(1 for i in range(total)
+#                            if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
 
                 # ×カウント（batsuのみ）
-                wrong = sum(1 for i in range(total)
-                            if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
-                wrong_label = f"❌ {wrong} 問" if wrong else ""
-                st.markdown(f"""
-                <div class='wb-progress-row'>
-                    <span>問題 <b>{cur_pos + 1}</b> / {n_active}</span>
-                    <span style='color:#FF3B30; font-weight:700;'>{wrong_label}</span>
-                </div>
-                """, unsafe_allow_html=True)
-                st.progress((cur_pos + 1) / n_active)
+#                 wrong = sum(1 for i in range(total)
+#                             if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu")
+#                 wrong_label = f"❌ {wrong} 問" if wrong else ""
+#                 st.markdown(f"""
+#                 <div class='wb-progress-row'>
+#                     <span>問題 <b>{cur_pos + 1}</b> / {n_active}</span>
+#                     <span style='color:#FF3B30; font-weight:700;'>{wrong_label}</span>
+#                 </div>
+#                 """, unsafe_allow_html=True)
+#                 st.progress((cur_pos + 1) / n_active)
 
                 # 現在の×状態
-                result = st.session_state.get(f"wb_result_{page_num}_{original_idx}")
+#                 result = st.session_state.get(f"wb_result_{page_num}_{original_idx}")
 
                 # ヘッダー情報
-                meta_parts = []
-                meta_parts.append(f"{current.get('section_code','')} {current.get('section_name','')}")
-                if current.get('group_label'):
-                    meta_parts.append(current['group_label'])
-                if current.get('workbook_ref'):
-                    meta_parts.append(current['workbook_ref'])
-                if current.get('textbook_ref'):
-                    meta_parts.append(current['textbook_ref'])
+#                 meta_parts = []
+#                 meta_parts.append(f"{current.get('section_code','')} {current.get('section_name','')}")
+#                 if current.get('group_label'):
+#                     meta_parts.append(current['group_label'])
+#                 if current.get('workbook_ref'):
+#                     meta_parts.append(current['workbook_ref'])
+#                 if current.get('textbook_ref'):
+#                     meta_parts.append(current['textbook_ref'])
 
                 # ×バッジをカードボーダーに反映
-                border_color = "#FF3B30" if result == "batsu" else "#FF9500"
-                _ans = st.session_state.get("ans_size", 40)
-                _fs  = st.session_state.get("font_size", 17)
-                card_html = f"""
-                <div class='wb-flashcard' style='border-color:{border_color};'>
-                    <div class='wb-fc-header'>
-                        <div class='wb-fc-meta'>{' ／ '.join(meta_parts)}</div>
-                        <div class='wb-fc-lesson'>{current.get('lesson_title','')}</div>
-                    </div>
-                    <div class='wb-fc-q' style='font-size:{_fs+12}px;font-weight:800;'>{current['q']}</div>
-                    <div class='wb-fc-divider'></div>
-                    <div class='wb-fc-a-area'>
-                        <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}</div>
-                    </div>
-                    {('<div style="text-align:center;margin-top:8px;font-size:13px;'
-                      'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
-                     if result == "batsu" else ''}
-                </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
+#                 border_color = "#FF3B30" if result == "batsu" else "#FF9500"
+#                 _ans = st.session_state.get("ans_size", 40)
+#                 _fs  = st.session_state.get("font_size", 17)
+#                 card_html = f"""
+#                 <div class='wb-flashcard' style='border-color:{border_color};'>
+#                     <div class='wb-fc-header'>
+#                         <div class='wb-fc-meta'>{' ／ '.join(meta_parts)}</div>
+#                         <div class='wb-fc-lesson'>{current.get('lesson_title','')}</div>
+#                     </div>
+#                     <div class='wb-fc-q' style='font-size:{_fs+12}px;font-weight:800;'>{current['q']}</div>
+#                     <div class='wb-fc-divider'></div>
+#                     <div class='wb-fc-a-area'>
+#                         <div class='wb-fc-a-shown' style='font-size:{_ans}px;font-weight:800;line-height:1.3;'>{current['a']}</div>
+#                     </div>
+#                     {('<div style="text-align:center;margin-top:8px;font-size:13px;'
+#                       'color:#FF3B30;font-weight:700;letter-spacing:0.03em;">❌ もう一度</div>')
+#                      if result == "batsu" else ''}
+#                 </div>
+#                 """
+#                 st.markdown(card_html, unsafe_allow_html=True)
 
                 # 注記
-                info_lines = []
-                if current.get('note'):    info_lines.append(f"※ {current['note']}")
-                if current.get('context'): info_lines.append(f"💭 {current['context']}")
-                if info_lines:
-                    st.caption(" ／ ".join(info_lines))
+#                 info_lines = []
+#                 if current.get('note'):    info_lines.append(f"※ {current['note']}")
+#                 if current.get('context'): info_lines.append(f"💭 {current['context']}")
+#                 if info_lines:
+#                     st.caption(" ／ ".join(info_lines))
 
                 # ナビゲーション (◀  ❌toggle  💡  ▶) — 4ボタン
-                with st.container(key="wb_nav_row"):
-                    nav_cols = st.columns([1, 1.2, 1.2, 1.6])
+#                 with st.container(key="wb_nav_row"):
+#                     nav_cols = st.columns([1, 1.2, 1.2, 1.6])
 
                     # ◀ 前へ
-                    with nav_cols[0]:
-                        if st.button("◀", key=f"prev_{page_num}_{original_idx}",
-                                     disabled=(cur_pos == 0), use_container_width=True,
-                                     help="前の問題"):
-                            st.session_state[idx_key] = cur_pos - 1
-                            st.rerun()
+#                     with nav_cols[0]:
+#                         if st.button("◀", key=f"prev_{page_num}_{original_idx}",
+#                                      disabled=(cur_pos == 0), use_container_width=True,
+#                                      help="前の問題"):
+#                             st.session_state[idx_key] = cur_pos - 1
+#                             st.rerun()
 
                     # ❌ トグル（押すと×、もう一度押すと解除）
-                    with nav_cols[1]:
-                        batsu_label = "❌ 消す" if result == "batsu" else "❌"
-                        if st.button(batsu_label, key=f"batsu_{page_num}_{original_idx}",
-                                     use_container_width=True, help="わからなかった問題にマーク"):
-                            if result == "batsu":
+#                     with nav_cols[1]:
+#                         batsu_label = "❌ 消す" if result == "batsu" else "❌"
+#                         if st.button(batsu_label, key=f"batsu_{page_num}_{original_idx}",
+#                                      use_container_width=True, help="わからなかった問題にマーク"):
+#                             if result == "batsu":
                                 # トグルOFF → 削除
-                                st.session_state.pop(f"wb_result_{page_num}_{original_idx}", None)
-                            else:
+#                                 st.session_state.pop(f"wb_result_{page_num}_{original_idx}", None)
+#                             else:
                                 # トグルON → batsu記録
-                                st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
+#                                 st.session_state[f"wb_result_{page_num}_{original_idx}"] = "batsu"
                                 # CSV永続化（即時push）
-                                if ALM_AVAILABLE:
-                                    q_data = current.copy()
-                                    q_data["subject_key"]  = skey
-                                    q_data["subject_name"] = sinfo["name"]
-                                    q_data["genre_key"]    = gkey
-                                    q_data["genre_name"]   = ginfo["name"]
-                                    try:
-                                        alm.append_log(skey, q_data, "batsu")
-                                    except Exception:
-                                        pass
+#                                 if ALM_AVAILABLE:
+#                                     q_data = current.copy()
+#                                     q_data["subject_key"]  = skey
+#                                     q_data["subject_name"] = sinfo["name"]
+#                                     q_data["genre_key"]    = gkey
+#                                     q_data["genre_name"]   = ginfo["name"]
+#                                     try:
+#                                         alm.append_log(skey, q_data, "batsu")
+#                                     except Exception:
+#                                         pass
                                     # ★ pivot CSV にも記録
-                                    if ALP_AVAILABLE:
-                                        try:
-                                            q_data["page_num"] = page_num
-                                            ok = alp.append_pivot_log(skey, q_data, "batsu")
-                                            if not ok:
-                                                st.warning("⚠️ pivot CSV 書き込み失敗（GitHub API エラー）")
-                                        except Exception as e:
-                                            st.error(f"pivot CSV エラー: {e}")
-                            st.rerun()
+#                                     if ALP_AVAILABLE:
+#                                         try:
+#                                             q_data["page_num"] = page_num
+#                                             ok = alp.append_pivot_log(skey, q_data, "batsu")
+#                                             if not ok:
+#                                                 st.warning("⚠️ pivot CSV 書き込み失敗（GitHub API エラー）")
+#                                         except Exception as e:
+#                                             st.error(f"pivot CSV エラー: {e}")
+#                             st.rerun()
 
                     # 💡 解説
-                    with nav_cols[2]:
-                        if st.button("💡", key=f"explain_{page_num}_{original_idx}",
-                                     use_container_width=True, help="解説を見る"):
-                            with st.spinner("解説生成中..."):
-                                st.session_state[f"wb_explain_{page_num}_{original_idx}"] = (
-                                    generate_workbook_explanation(current, sinfo['name'])
-                                )
-                            st.rerun()
+#                     with nav_cols[2]:
+#                         if st.button("💡", key=f"explain_{page_num}_{original_idx}",
+#                                      use_container_width=True, help="解説を見る"):
+#                             with st.spinner("解説生成中..."):
+#                                 st.session_state[f"wb_explain_{page_num}_{original_idx}"] = (
+#                                     generate_workbook_explanation(current, sinfo['name'])
+#                                 )
+#                             st.rerun()
 
                     # ▶ 次へ（主アクション）
-                    with nav_cols[3]:
-                        if cur_pos < n_active - 1:
-                            if st.button("NEXT ▶", key=f"next_{page_num}_{original_idx}",
-                                         use_container_width=True, help="次の問題"):
+#                     with nav_cols[3]:
+#                         if cur_pos < n_active - 1:
+#                             if st.button("NEXT ▶", key=f"next_{page_num}_{original_idx}",
+#                                          use_container_width=True, help="次の問題"):
                                 # ★ ❌なしでNEXT → maru として pivot CSV に記録
-                                if result != "batsu" and ALP_AVAILABLE:
-                                    try:
-                                        _q = current.copy()
-                                        _q["page_num"] = page_num
-                                        ok = alp.append_pivot_log(skey, _q, "maru")
-                                        if not ok:
-                                            st.warning("⚠️ pivot CSV 書き込み失敗")
-                                    except Exception as e:
-                                        st.error(f"pivot CSV エラー: {e}")
-                                st.session_state[idx_key] = cur_pos + 1
-                                st.rerun()
-                        else:
-                            st.button("最後", key=f"next_{page_num}_{original_idx}",
-                                      use_container_width=True, disabled=True)
+#                                 if result != "batsu" and ALP_AVAILABLE:
+#                                     try:
+#                                         _q = current.copy()
+#                                         _q["page_num"] = page_num
+#                                         ok = alp.append_pivot_log(skey, _q, "maru")
+#                                         if not ok:
+#                                             st.warning("⚠️ pivot CSV 書き込み失敗")
+#                                     except Exception as e:
+#                                         st.error(f"pivot CSV エラー: {e}")
+#                                 st.session_state[idx_key] = cur_pos + 1
+#                                 st.rerun()
+#                         else:
+#                             st.button("最後", key=f"next_{page_num}_{original_idx}",
+#                                       use_container_width=True, disabled=True)
 
                 # ページ完了時にpendingをflush
-                if ALM_AVAILABLE and st.session_state.get("alm_pending", {}).get(skey):
-                    if cur_pos == n_active - 1:
-                        alm.append_logs_batch(skey, st.session_state["alm_pending"][skey])
-                        st.session_state["alm_pending"][skey] = []
+#                 if ALM_AVAILABLE and st.session_state.get("alm_pending", {}).get(skey):
+#                     if cur_pos == n_active - 1:
+#                         alm.append_logs_batch(skey, st.session_state["alm_pending"][skey])
+#                         st.session_state["alm_pending"][skey] = []
 
                 # ★ CSV登録ボタン
-                st.markdown("")
-                csv_col1, csv_col2 = st.columns([2, 1])
-                with csv_col1:
-                    if st.button("📊 CSV登録", key=f"csv_reg_{page_num}_{original_idx}",
-                                 use_container_width=True, help="この問題の結果をpivot CSVに登録"):
-                        try:
-                            from modules import answer_log_pivot as _alp_direct
-                            _q2 = current.copy()
-                            _q2["page_num"] = page_num
-                            _result_val = st.session_state.get(f"wb_result_{page_num}_{original_idx}", "maru")
-                            ok = _alp_direct.append_pivot_log(skey, _q2, _result_val)
-                            if ok:
-                                st.success(f"✅ CSV登録成功（{_result_val}）")
-                            else:
-                                st.error("❌ CSV登録失敗（GitHub API エラー）")
-                        except Exception as e:
-                            st.error(f"❌ エラー: {e}")
-                with csv_col2:
-                    result_label = "❌ バツ" if result == "batsu" else "⭕ マル"
-                    st.caption(f"現在: {result_label}")
+#                 st.markdown("")
+#                 csv_col1, csv_col2 = st.columns([2, 1])
+#                 with csv_col1:
+#                     if st.button("📊 CSV登録", key=f"csv_reg_{page_num}_{original_idx}",
+#                                  use_container_width=True, help="この問題の結果をpivot CSVに登録"):
+#                         try:
+#                             from modules import answer_log_pivot as _alp_direct
+#                             _q2 = current.copy()
+#                             _q2["page_num"] = page_num
+#                             _result_val = st.session_state.get(f"wb_result_{page_num}_{original_idx}", "maru")
+#                             ok = _alp_direct.append_pivot_log(skey, _q2, _result_val)
+#                             if ok:
+#                                 st.success(f"✅ CSV登録成功（{_result_val}）")
+#                             else:
+#                                 st.error("❌ CSV登録失敗（GitHub API エラー）")
+#                         except Exception as e:
+#                             st.error(f"❌ エラー: {e}")
+#                 with csv_col2:
+#                     result_label = "❌ バツ" if result == "batsu" else "⭕ マル"
+#                     st.caption(f"現在: {result_label}")
 
                 # 解説表示
-                explain_key = f"wb_explain_{page_num}_{original_idx}"
-                if st.session_state.get(explain_key):
-                    st.markdown("")
-                    render_point_box(st.session_state[explain_key], color="yellow")
+#                 explain_key = f"wb_explain_{page_num}_{original_idx}"
+#                 if st.session_state.get(explain_key):
+#                     st.markdown("")
+#                     render_point_box(st.session_state[explain_key], color="yellow")
 
                 # ページ完了時（最後の問題に到達）
-                if cur_pos == n_active - 1:
+#                 if cur_pos == n_active - 1:
                     # answer_log flush
-                    if ANSWER_LOG_AVAILABLE and st.session_state.get("wb_pending_logs"):
-                        try:
-                            answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
-                            st.session_state["wb_pending_logs"] = []
-                        except Exception:
-                            pass
+#                     if ANSWER_LOG_AVAILABLE and st.session_state.get("wb_pending_logs"):
+#                         try:
+#                             answer_log.append_logs_batch(st.session_state["wb_pending_logs"])
+#                             st.session_state["wb_pending_logs"] = []
+#                         except Exception:
+#                             pass
                     # ALM CSV flush（教科別）
-                    if ALM_AVAILABLE and st.session_state.get("alm_pending"):
-                        for sk, entries in st.session_state["alm_pending"].items():
-                            if entries:
-                                try:
-                                    alm.append_logs_batch(sk, entries)
-                                except Exception:
-                                    pass
-                        st.session_state["alm_pending"] = {}
+#                     if ALM_AVAILABLE and st.session_state.get("alm_pending"):
+#                         for sk, entries in st.session_state["alm_pending"].items():
+#                             if entries:
+#                                 try:
+#                                     alm.append_logs_batch(sk, entries)
+#                                 except Exception:
+#                                     pass
+#                         st.session_state["alm_pending"] = {}
 
-                    wrong_indices = [i for i in range(total)
-                                     if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
-                    st.markdown("---")
-                    if wrong_indices:
-                        st.warning(f"❌ {len(wrong_indices)} 問にマークあり")
-                        if mode == "normal":
-                            if st.button(f"🔄 ×の {len(wrong_indices)} 問で再テスト",
-                                         use_container_width=True, type="primary",
-                                         key=f"start_retest_{page_num}"):
-                                st.session_state[mode_key] = "retest"
-                                st.session_state[f"wb_idx_{page_num}_retest"] = 0
-                                st.rerun()
-                        else:
-                            if st.button("↩️ 通常モードに戻る",
-                                         use_container_width=True,
-                                         key=f"back_normal_{page_num}"):
-                                st.session_state[mode_key] = "normal"
-                                st.rerun()
-                    else:
-                        st.success("🎉 全問チェック完了！")
+#                     wrong_indices = [i for i in range(total)
+#                                      if st.session_state.get(f"wb_result_{page_num}_{i}") == "batsu"]
+#                     st.markdown("---")
+#                     if wrong_indices:
+#                         st.warning(f"❌ {len(wrong_indices)} 問にマークあり")
+#                         if mode == "normal":
+#                             if st.button(f"🔄 ×の {len(wrong_indices)} 問で再テスト",
+#                                          use_container_width=True, type="primary",
+#                                          key=f"start_retest_{page_num}"):
+#                                 st.session_state[mode_key] = "retest"
+#                                 st.session_state[f"wb_idx_{page_num}_retest"] = 0
+#                                 st.rerun()
+#                         else:
+#                             if st.button("↩️ 通常モードに戻る",
+#                                          use_container_width=True,
+#                                          key=f"back_normal_{page_num}"):
+#                                 st.session_state[mode_key] = "normal"
+#                                 st.rerun()
+#                     else:
+#                         st.success("🎉 全問チェック完了！")
 
-                    if st.button("🗑️ このページの×をリセット",
-                                 key=f"reset_{page_num}",
-                                 use_container_width=True):
-                        for i in range(total):
-                            st.session_state.pop(f"wb_result_{page_num}_{i}", None)
-                            st.session_state.pop(f"wb_explain_{page_num}_{i}", None)
-                        st.session_state[mode_key] = "normal"
-                        st.session_state[f"wb_idx_{page_num}_normal"] = 0
-                        st.rerun()
+#                     if st.button("🗑️ このページの×をリセット",
+#                                  key=f"reset_{page_num}",
+#                                  use_container_width=True):
+#                         for i in range(total):
+#                             st.session_state.pop(f"wb_result_{page_num}_{i}", None)
+#                             st.session_state.pop(f"wb_explain_{page_num}_{i}", None)
+#                         st.session_state[mode_key] = "normal"
+#                         st.session_state[f"wb_idx_{page_num}_normal"] = 0
+#                         st.rerun()
 
 # ===== フッター =====
 st.markdown("---")
