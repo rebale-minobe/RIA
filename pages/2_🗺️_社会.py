@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.7"""
-SOCIAL_VERSION = "v2026-06-09.7"
+"""社会ページ v2026-06-09.8"""
+SOCIAL_VERSION = "v2026-06-09.8"
 
 import streamlit as st
 import json, csv, requests, random
@@ -676,36 +676,34 @@ else:
 
         selected_title = st.session_state.get("selected_social_title", title_order[0] if title_order else None)
 
-        # タイトル選択（expander、選択中タイトルを表示）
-        _cur_label = f"📖 {selected_title}" if selected_title else "📖 タイトルを選択"
-        with st.expander(_cur_label, expanded=False):
-            st.markdown("""
-            <style>
-            div[data-testid="stButton"] > button {
-                text-align: left !important; justify-content: flex-start !important; padding-left: 20px !important;
-            }
-            </style>""", unsafe_allow_html=True)
-            for title in title_order:
-                problems = titles_dict[title]
-                total_count_csv = title_total_counts.get(title, len(problems))
-                batsu_count_csv = len(problems)
-                progress = f"{batsu_count_csv}/{total_count_csv}"
-                col1, col2 = st.columns([10, 2])
-                with col1:
-                    _is_sel = (title == selected_title)
-                    _btn_style = "primary" if _is_sel else "secondary"
-                    if st.button(f"{'✅' if _is_sel else '🔴'} {title} 本誌 {problems[0].get('workbook_ref','')}",
-                                 use_container_width=True, key=f"select_title_{title}", type=_btn_style):
-                        st.session_state["selected_social_title"] = title
-                        st.session_state["soc_retest_scroll"] = True
-                        st.rerun()
-                with col2:
-                    ld = title_latest_dates.get(title,'')
-                    st.markdown(
-                        f"<div style='text-align:right;font-weight:700;color:#007AFF;margin-top:8px;'>"
-                        f"{progress}&nbsp;&nbsp;<span style='font-size:11px;color:#8E8E93;'>{ld}</span></div>",
-                        unsafe_allow_html=True
-                    )
+        # タイトル選択（常時表示）
+        st.markdown("""
+        <style>
+        div[data-testid="stButton"] > button {
+            text-align: left !important; justify-content: flex-start !important; padding-left: 20px !important;
+        }
+        </style>""", unsafe_allow_html=True)
+        for title in title_order:
+            problems = titles_dict[title]
+            total_count_csv = title_total_counts.get(title, len(problems))
+            batsu_count_csv = len(problems)
+            progress = f"{batsu_count_csv}/{total_count_csv}"
+            col1, col2 = st.columns([10, 2])
+            with col1:
+                _is_sel = (title == selected_title)
+                _btn_style = "primary" if _is_sel else "secondary"
+                if st.button(f"{'✅' if _is_sel else '🔴'} {title} 本誌 {problems[0].get('workbook_ref','')}",
+                             use_container_width=True, key=f"select_title_{title}", type=_btn_style):
+                    st.session_state["selected_social_title"] = title
+                    st.session_state["soc_retest_scroll"] = True
+                    st.rerun()
+            with col2:
+                ld = title_latest_dates.get(title,'')
+                st.markdown(
+                    f"<div style='text-align:right;font-weight:700;color:#007AFF;margin-top:8px;'>"
+                    f"{progress}&nbsp;&nbsp;<span style='font-size:11px;color:#8E8E93;'>{ld}</span></div>",
+                    unsafe_allow_html=True
+                )
 
         if selected_title:
             # スクロールアンカー
@@ -756,6 +754,23 @@ else:
                     meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
                 if tp_current.get("workbook_ref"):
                     meta_parts.append(tp_current["workbook_ref"])
+                st.markdown("""
+                <style>
+                [class*="st-key-social_choice_"] button {
+                    font-size: 20px !important;
+                    font-family: "Hiragino Mincho ProN","Yu Mincho","游明朝",Georgia,serif !important;
+                    font-weight: 700 !important;
+                    min-height: 64px !important;
+                    line-height: 1.4 !important;
+                }
+                [class*="st-key-social_choice_"] button small,
+                [class*="st-key-social_choice_"] button span {
+                    font-size: 13px !important;
+                    font-family: -apple-system, sans-serif !important;
+                    opacity: 0.65;
+                }
+                </style>
+                """, unsafe_allow_html=True)
                 st.markdown(
                     f"<div style='border:2px solid #FF9500;border-radius:14px;padding:24px;background:white;'>"
                     f"<div style='font-size:13px;color:#8E8E93;font-weight:500;'>{' ／ '.join(meta_parts)}</div>"
@@ -768,15 +783,16 @@ else:
                 selected = st.session_state.get(f"social_selected_{selected_title}_{tp_pos}","")
                 correct_ans = quiz.get("answer","")
                 _div_base = ("width:100%;text-align:center;padding:14px 20px;border-radius:14px;"
-                             "margin:8px 0;font-size:17px;font-weight:700;line-height:1.4;"
-                             "box-sizing:border-box;font-family:-apple-system,sans-serif;")
+                             "margin:8px 0;font-size:22px;font-weight:700;line-height:1.4;"
+                             "box-sizing:border-box;"
+                             "font-family:\"Hiragino Mincho ProN\",\"Yu Mincho\",\"游明朝\",Georgia,serif;")
 
                 if tp_result:
                     html = ""
                     for ch in quiz["choices"]:
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>" if ch_yomi else "")
+                        yomi_html = (f"<br><span style='font-size:13px;font-weight:400;font-family:-apple-system,sans-serif;opacity:0.6;'>{ch_yomi}</span>" if ch_yomi else "")
                         if ch_text == correct_ans:
                             s = _div_base + "background:#E5F8EE;border:2px solid #34C759;color:#1a8a3c;"
                             lbl = "⭕ " + ch_text + yomi_html
