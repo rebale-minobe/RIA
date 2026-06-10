@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.4"""
-SOCIAL_VERSION = "v2026-06-09.4"
+"""社会ページ v2026-06-09.5"""
+SOCIAL_VERSION = "v2026-06-09.5"
 
 import streamlit as st
 import json, csv, requests, random
@@ -391,42 +391,54 @@ else:
 st.markdown("---")
 st.markdown('<div class="soc-section-title">📖 ワーク</div>', unsafe_allow_html=True)
 
-# ワーク選択（将来複数対応：今は歴史のみ）
-_wb_books = {"history": "📜 歴史ワーク"}
-_wb_sel = st.segmented_control(
-    "ワーク選択", list(_wb_books.values()),
-    default="📜 歴史ワーク", key="soc_wb_book_sel", label_visibility="collapsed"
-)
-_wb_genre_key = {v: k for k, v in _wb_books.items()}.get(_wb_sel, "history")
+# 登録済みワーク一覧（将来複数対応）
+_WB_BOOKS = [
+    {"genre_key": "history", "label": "歴史", "emoji": "📜"},
+]
+
+import base64 as _b64wb
+
+# ワークを教科書と同じレイアウトで表示
+_wb_cols = st.columns(len(_WB_BOOKS)) if len(_WB_BOOKS) > 1 else [st.columns([1, 2, 1])[1]]
+_wb_genre_key = st.session_state.get("soc_wb_open_genre", _WB_BOOKS[0]["genre_key"])
+
+for _wi, _wbk in enumerate(_WB_BOOKS):
+    _wgk = _wbk["genre_key"]
+    _wcol = _wb_cols[_wi] if len(_WB_BOOKS) > 1 else _wb_cols[0]
+    with _wcol:
+        _cover_url = f"{GITHUB_RAW}/data/workbook_covers/social_{_wgk}.jpg"
+        try:
+            _cr = requests.get(_cover_url, timeout=5)
+            if _cr.status_code == 200:
+                _b64wb_img = _b64wb.b64encode(_cr.content).decode()
+                st.markdown(
+                    f"<div style='text-align:center;padding:8px 0 4px;'>"
+                    f"<img src='data:image/jpeg;base64,{_b64wb_img}' "
+                    f"style='width:100%;max-width:200px;border-radius:10px;"
+                    f"box-shadow:0 4px 16px rgba(0,0,0,0.12);'>"
+                    f"</div>", unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"<div style='background:linear-gradient(135deg,#FFF4E5,#FFE0B2);"
+                    f"height:160px;border-radius:10px;display:flex;align-items:center;"
+                    f"justify-content:center;color:#FF9500;font-size:14px;font-weight:700;"
+                    f"margin-bottom:4px;'>{_wbk['emoji']} {_wbk['label']}ワーク</div>",
+                    unsafe_allow_html=True
+                )
+        except Exception:
+            pass
+        st.markdown(
+            f"<div style='text-align:center;font-size:14px;font-weight:700;"
+            f"color:#1c1c1e;margin:6px 0 8px;'>{_wbk['emoji']} {_wbk['label']}ワーク</div>",
+            unsafe_allow_html=True
+        )
+
 _wb_data = load_workbook_social(_wb_genre_key)
 
 if not _wb_data or not _wb_data.get("pages"):
     st.info("ワークデータがありません（social_data.xlsx / ワーク歴史_解答 シート）")
 else:
-    # ── 表紙（中央表示）
-    import base64 as _b64wb
-    _cover_url = f"{GITHUB_RAW}/data/workbook_covers/social_{_wb_genre_key}.jpg"
-    try:
-        _cr = requests.get(_cover_url, timeout=5)
-        if _cr.status_code == 200:
-            _b64wb_img = _b64wb.b64encode(_cr.content).decode()
-            st.markdown(
-                f"<div style='text-align:center;padding:12px 0 8px;'>"
-                f"<img src='data:image/jpeg;base64,{_b64wb_img}' "
-                f"style='width:200px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'>"
-                f"</div>", unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"<div style='text-align:center;background:linear-gradient(135deg,#e0e0e0,#c0c0c0);"
-                f"height:160px;border-radius:10px;display:flex;align-items:center;"
-                f"justify-content:center;color:#888;font-size:14px;margin:8px auto;max-width:220px;'>"
-                f"📝 {_wb_data.get('workbook_title','ワーク')}</div>",
-                unsafe_allow_html=True
-            )
-    except Exception:
-        pass
-
     # ── ページ選択
     _wb_pages = _wb_data["pages"]
     _page_labels = [f"P.{p['page_number']}" for p in _wb_pages]
