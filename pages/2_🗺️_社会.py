@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.22"""
-SOCIAL_VERSION = "v2026-06-09.22"
+"""社会ページ v2026-06-09.23"""
+SOCIAL_VERSION = "v2026-06-09.23"
 
 import streamlit as st
 import json, csv, requests, random
@@ -798,69 +798,41 @@ else:
                             "💡 " + st.session_state[expl_key] + "</div>", unsafe_allow_html=True
                         )
                 else:
-                    # 未回答：回答済みと完全同一スタイル
-                    # HTMLラベル付きボタン（CSSでボタン自体を同一スタイルに上書き）
-                    # 未回答：st.buttonのスタイルを回答済みHTMLと完全一致させる
-                    st.markdown("""
-                    <style>
-                    [class*="st-key-social_choice_"] button {
-                        background: white !important;
-                        border: 2px solid #E5E5EA !important;
-                        border-radius: 14px !important;
-                        color: #1c1c1e !important;
-                        font-size: 17px !important;
-                        font-weight: 700 !important;
-                        font-family: -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif !important;
-                        min-height: 62px !important;
-                        padding: 10px 20px !important;
-                        line-height: 1.4 !important;
-                        width: 100% !important;
-                        text-align: center !important;
-                        justify-content: center !important;
-                        flex-direction: column !important;
-                        display: flex !important;
-                    }
-                    [class*="st-key-social_choice_"] button:hover {
-                        border-color: #FF9500 !important;
-                        background: #FFF4E5 !important;
-                        color: #1c1c1e !important;
-                    }
-                    [class*="st-key-social_choice_"] button p {
-                        font-size: 17px !important;
-                        font-weight: 700 !important;
-                        font-family: -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif !important;
-                        color: #1c1c1e !important;
-                        white-space: pre-line !important;
-                        text-align: center !important;
-                        line-height: 1.0 !important;
-                    }
-                    [class*="st-key-social_choice_"] button p::first-line {
-                        font-size: 17px !important;
-                        font-weight: 700 !important;
-                        color: #1c1c1e !important;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
+                    # 未回答：query_params経由でクリック検知、HTMLで完全描画
+                    _qp = st.query_params.get("sc", "")
+                    if _qp:
+                        _chosen = _qp
+                        st.query_params.clear()
+                        st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = _chosen
+                        result_val = "maru" if _chosen == correct_ans else "batsu"
+                        st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
+                        if ALP_AVAILABLE:
+                            try:
+                                alp.append_pivot_log("social", tp_current, result_val)
+                            except Exception:
+                                pass
+                        st.rerun()
+
+                    _s = ("width:100%;text-align:center;padding:14px 20px 10px;"
+                          "border-radius:14px;margin:8px 0 2px;"
+                          "font-size:17px;font-weight:700;line-height:1.4;"
+                          "box-sizing:border-box;background:white;"
+                          "border:2px solid #E5E5EA;color:#1c1c1e;cursor:pointer;"
+                          "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;")
+                    _sy = ("font-size:13px;color:#8E8E93;font-weight:400;"
+                           "display:block;margin-bottom:10px;")
+                    html_choices = ""
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        if st.button(ch_text, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
-                                     use_container_width=True):
-                            st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
-                            result_val = "maru" if ch_text == correct_ans else "batsu"
-                            st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
-                            if ALP_AVAILABLE:
-                                try:
-                                    alp.append_pivot_log("social", tp_current, result_val)
-                                except Exception:
-                                    pass
-                            st.rerun()
-                        st.markdown(
-                            f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
-                            f"font-weight:400;margin:-6px 0 8px;min-height:20px;'>"
-                            f"{ch_yomi}</div>",
-                            unsafe_allow_html=True
+                        import urllib.parse
+                        _enc = urllib.parse.quote(ch_text)
+                        yomi_part = f"<span style='{_sy}'>{ch_yomi}</span>" if ch_yomi else f"<span style='{_sy}'>&nbsp;</span>"
+                        html_choices += (
+                            f"<a href='?sc={_enc}' style='text-decoration:none;display:block;'>"
+                            f"<div style='{_s}'>{ch_text}{yomi_part}</div></a>"
                         )
+                    st.markdown(html_choices, unsafe_allow_html=True)
 
             # ナビ
             st.markdown("")
