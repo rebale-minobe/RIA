@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.6"""
-SOCIAL_VERSION = "v2026-06-09.6"
+"""社会ページ v2026-06-09.7"""
+SOCIAL_VERSION = "v2026-06-09.7"
 
 import streamlit as st
 import json, csv, requests, random
@@ -668,42 +668,57 @@ else:
                 title_order.append(lt)
             titles_dict[lt].append(q)
 
-        st.markdown("#### 📖 タイトルを選択")
-        st.markdown("""
-        <style>
-        div[data-testid="stButton"] > button {
-            text-align: left !important; justify-content: flex-start !important; padding-left: 20px !important;
-        }
-        </style>""", unsafe_allow_html=True)
-
         title_total_counts = _get_title_total_counts()
         title_latest_dates = _get_title_latest_dates()
-
-        for title in title_order:
-            problems = titles_dict[title]
-            total_count_csv = title_total_counts.get(title, len(problems))
-            batsu_count_csv = len(problems)
-            progress = f"{batsu_count_csv}/{total_count_csv}"
-            col1, col2 = st.columns([10, 2])
-            with col1:
-                if st.button(f"🔴 {title} 本誌 {problems[0].get('workbook_ref','')}", 
-                             use_container_width=True, key=f"select_title_{title}"):
-                    st.session_state["selected_social_title"] = title
-                    st.rerun()
-            with col2:
-                ld = title_latest_dates.get(title,'')
-                st.markdown(
-                    f"<div style='text-align:right;font-weight:700;color:#007AFF;margin-top:8px;'>"
-                    f"{progress}&nbsp;&nbsp;<span style='font-size:11px;color:#8E8E93;'>{ld}</span></div>",
-                    unsafe_allow_html=True
-                )
 
         if "selected_social_title" not in st.session_state and title_order:
             st.session_state["selected_social_title"] = title_order[0]
 
         selected_title = st.session_state.get("selected_social_title", title_order[0] if title_order else None)
 
+        # タイトル選択（expander、選択中タイトルを表示）
+        _cur_label = f"📖 {selected_title}" if selected_title else "📖 タイトルを選択"
+        with st.expander(_cur_label, expanded=False):
+            st.markdown("""
+            <style>
+            div[data-testid="stButton"] > button {
+                text-align: left !important; justify-content: flex-start !important; padding-left: 20px !important;
+            }
+            </style>""", unsafe_allow_html=True)
+            for title in title_order:
+                problems = titles_dict[title]
+                total_count_csv = title_total_counts.get(title, len(problems))
+                batsu_count_csv = len(problems)
+                progress = f"{batsu_count_csv}/{total_count_csv}"
+                col1, col2 = st.columns([10, 2])
+                with col1:
+                    _is_sel = (title == selected_title)
+                    _btn_style = "primary" if _is_sel else "secondary"
+                    if st.button(f"{'✅' if _is_sel else '🔴'} {title} 本誌 {problems[0].get('workbook_ref','')}",
+                                 use_container_width=True, key=f"select_title_{title}", type=_btn_style):
+                        st.session_state["selected_social_title"] = title
+                        st.session_state["soc_retest_scroll"] = True
+                        st.rerun()
+                with col2:
+                    ld = title_latest_dates.get(title,'')
+                    st.markdown(
+                        f"<div style='text-align:right;font-weight:700;color:#007AFF;margin-top:8px;'>"
+                        f"{progress}&nbsp;&nbsp;<span style='font-size:11px;color:#8E8E93;'>{ld}</span></div>",
+                        unsafe_allow_html=True
+                    )
+
         if selected_title:
+            # スクロールアンカー
+            st.markdown('<div id="soc_retest_anchor"></div>', unsafe_allow_html=True)
+            if st.session_state.pop("soc_retest_scroll", False):
+                st.markdown("""
+                <script>
+                window.setTimeout(function(){
+                    var el = document.getElementById('soc_retest_anchor');
+                    if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+                }, 300);
+                </script>
+                """, unsafe_allow_html=True)
             st.divider()
             selected_questions = titles_dict[selected_title]
             tp_idx_key = f"social_tp_idx_{selected_title}"
