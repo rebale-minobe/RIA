@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.31"""
-SOCIAL_VERSION = "v2026-06-09.31"
+"""社会ページ v2026-06-09.32"""
+SOCIAL_VERSION = "v2026-06-09.32"
 
 import streamlit as st
 import json, csv, requests, random
@@ -918,11 +918,19 @@ else:
         st.info("このページのデータはありません")
     else:
         batsu_cols = [c for c in date_cols if c.endswith('_batsu')]
-        col_widths = [1, 3] + [1] * len(batsu_cols)
         batsu_rows = [r for r in page_rows if any(r.get(c,'') for c in batsu_cols)]
         if not batsu_rows:
             st.success("🎉 このページに❌はありません！")
         else:
+            # 答え表示トグル
+            _show_key = f"csv_show_ans_{sel_p_num}"
+            _showing = st.session_state.get(_show_key, False)
+            _btn_label = "🙈 答えを隠す" if _showing else "👁 答えを表示"
+            if st.button(_btn_label, key=f"csv_toggle_{sel_p_num}"):
+                st.session_state[_show_key] = not _showing
+                st.rerun()
+
+            col_widths = [1, 3] + [1] * len(batsu_cols)
             h_cols = st.columns(col_widths)
             h_cols[0].markdown("**問**")
             h_cols[1].markdown("**答え**")
@@ -932,7 +940,10 @@ else:
             for row in batsu_rows:
                 r_cols = st.columns(col_widths)
                 r_cols[0].markdown(f"<span style='font-size:12px;'>{row.get('q_label','')}</span>", unsafe_allow_html=True)
-                r_cols[1].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
+                if _showing:
+                    r_cols[1].markdown(f"<span style='font-size:13px;'>{row.get('answer','')}</span>", unsafe_allow_html=True)
+                else:
+                    r_cols[1].markdown("<span style='font-size:13px;color:#C7C7CC;'>●●●</span>", unsafe_allow_html=True)
                 for i, dc in enumerate(batsu_cols):
                     val = row.get(dc,'')
                     if val:
