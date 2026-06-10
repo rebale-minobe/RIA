@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.9"""
-SOCIAL_VERSION = "v2026-06-09.9"
+"""社会ページ v2026-06-09.10"""
+SOCIAL_VERSION = "v2026-06-09.10"
 
 import streamlit as st
 import json, csv, requests, random
@@ -754,23 +754,6 @@ else:
                     meta_parts.append(f"{tp_current['section_code']} {tp_current.get('section_name','')}")
                 if tp_current.get("workbook_ref"):
                     meta_parts.append(tp_current["workbook_ref"])
-                st.markdown("""
-                <style>
-                [class*="st-key-social_choice_"] button {
-                    font-size: 20px !important;
-                    font-family: "Hiragino Mincho ProN","Yu Mincho","游明朝",Georgia,serif !important;
-                    font-weight: 700 !important;
-                    min-height: 64px !important;
-                    line-height: 1.4 !important;
-                }
-                [class*="st-key-social_choice_"] button small,
-                [class*="st-key-social_choice_"] button span {
-                    font-size: 13px !important;
-                    font-family: -apple-system, sans-serif !important;
-                    opacity: 0.65;
-                }
-                </style>
-                """, unsafe_allow_html=True)
                 st.markdown(
                     f"<div style='border:2px solid #FF9500;border-radius:14px;padding:24px;background:white;'>"
                     f"<div style='font-size:13px;color:#8E8E93;font-weight:500;'>{' ／ '.join(meta_parts)}</div>"
