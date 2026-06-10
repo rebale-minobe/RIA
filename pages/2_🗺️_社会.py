@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.12"""
-SOCIAL_VERSION = "v2026-06-09.12"
+"""社会ページ v2026-06-09.27"""
+SOCIAL_VERSION = "v2026-06-09.27"
 
 import streamlit as st
 import json, csv, requests, random
@@ -806,10 +806,10 @@ else:
                         border: 2px solid #E5E5EA !important;
                         border-radius: 14px !important;
                         color: #1c1c1e !important;
-                        font-size: 17px !important;
-                        font-weight: 700 !important;
+                        font-size: 20px !important;
+                        font-weight: 800 !important;
                         font-family: -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif !important;
-                        min-height: 58px !important;
+                        min-height: 62px !important;
                         width: 100% !important;
                         padding: 14px 20px !important;
                         line-height: 1.4 !important;
@@ -824,7 +824,11 @@ else:
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        btn_label = (f"{ch_text}\n（{ch_yomi}）" if ch_yomi else ch_text)
+                        # カタカナのみなら読み仮名不要
+                        def _is_katakana(s):
+                            return all(('゠' <= c <= 'ヿ' or c in '・ー') for c in s) if s else False
+                        _show_yomi = ch_yomi and not _is_katakana(ch_text)
+                        btn_label = (ch_text + "\n（" + ch_yomi + "）") if _show_yomi else ch_text
                         if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
                                      use_container_width=True):
                             st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
