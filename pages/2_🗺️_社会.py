@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.5"""
-SOCIAL_VERSION = "v2026-06-09.5"
+"""社会ページ v2026-06-09.6"""
+SOCIAL_VERSION = "v2026-06-09.6"
 
 import streamlit as st
 import json, csv, requests, random
@@ -244,6 +244,17 @@ def _load_social_pivot_csv():
     except Exception:
         pass
     return []
+
+@st.cache_data(ttl=60)
+def _get_yomi_from_pivot(answer: str) -> str:
+    """pivot CSV の answer_yomi 列から読み仮名を返す"""
+    rows = _load_social_pivot_csv()
+    for row in rows:
+        if row.get("answer","").strip() == str(answer).strip():
+            yomi = row.get("answer_yomi","").strip()
+            if yomi:
+                return yomi
+    return ""
 
 def _get_social_batsu_questions():
     rows = _load_social_pivot_csv()
@@ -533,7 +544,11 @@ else:
                 f"</div>"
                 f"<div class='wb-fc-q'>{_cur_q['q']}</div>"
                 f"<div class='wb-fc-divider'></div>"
-                f"<div class='wb-fc-a-area'><div class='wb-fc-a-shown'>{_cur_q['a']}</div></div>"
+                f"<div class='wb-fc-a-area'><div style='text-align:center;'><div style='font-size:38px;font-weight:700;color:#1c1c1e;line-height:1.4;word-break:break-word;font-family:\"Hiragino Mincho ProN\",\"Yu Mincho\",\"游明朝\",Georgia,serif;'>{_cur_q['a']}</div>"
+                + ("<div style='font-size:16px;color:#8E8E93;font-weight:500;margin-top:4px;'>"
+                   f"({_get_yomi_from_pivot(_cur_q['a'])})</div>"
+                   if _get_yomi_from_pivot(_cur_q['a']) else "")
++ "</div></div>"
                 + ("<div style='text-align:center;margin-top:8px;font-size:13px;color:#FF3B30;font-weight:700;'>❌ もう一度</div>"
                    if _result == "batsu" else "")
                 + "</div>",
