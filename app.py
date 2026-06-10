@@ -2382,50 +2382,50 @@ if "selected_study" in st.session_state and st.session_state.selected_study in S
     sel_material = "📖 教科書"
 
     # === 教科書詳細 (目次) ===
-    if (st.session_state.get("detail_type") == "textbook"
-        and st.session_state.get("detail_genre") == gkey
-        and st.session_state.get("detail_subject") == skey):
-        ddata = load_textbook(st.session_state.detail_subject, st.session_state.detail_genre)
-        if ddata:
-            st.markdown("---")
-            st.markdown(
-                f"<div class='wb-detail-title'>📄 目次 — {ddata['textbook'].get('name', '')}</div>",
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                "<div style='font-size:13px; color:#8E8E93; margin-bottom:10px;'>"
-                "章を開いて、各項目の「💡」でポイントを見られます ✨</div>",
-                unsafe_allow_html=True
-            )
+#     if (st.session_state.get("detail_type") == "textbook"
+#         and st.session_state.get("detail_genre") == gkey
+#         and st.session_state.get("detail_subject") == skey):
+#         ddata = load_textbook(st.session_state.detail_subject, st.session_state.detail_genre)
+#         if ddata:
+#             st.markdown("---")
+#             st.markdown(
+#                 f"<div class='wb-detail-title'>📄 目次 — {ddata['textbook'].get('name', '')}</div>",
+#                 unsafe_allow_html=True
+#             )
+#             st.markdown(
+#                 "<div style='font-size:13px; color:#8E8E93; margin-bottom:10px;'>"
+#                 "章を開いて、各項目の「💡」でポイントを見られます ✨</div>",
+#                 unsafe_allow_html=True
+#             )
 
-            with st.container(key="tb_toc"):
-                for chapter in ddata["textbook"]["chapters"]:
-                    ch_title = f"{chapter.get('chapter_number', '')} {chapter['title']}"
-                    with st.expander(f"📖 {ch_title}"):
-                        for section in chapter.get("sections", []):
-                            if section.get("title"):
-                                st.markdown(
-                                    f"<div class='toc-sect-title'>{section['title']}</div>",
-                                    unsafe_allow_html=True
-                                )
-                            for sub in section.get("subsections", []):
-                                c1, c2 = st.columns([1, 6])
-                                with c1:
-                                    if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
-                                        with st.spinner("生成中..."):
-                                            st.session_state[f"pt_text_{sub['id']}"] = generate_point(
-                                                sub["title"], subject_name=sinfo['name'],
-                                                genre_name=ginfo['name']
-                                            )
-                                with c2:
-                                    st.markdown(
-                                        f"<div class='toc-sub'>{sub['title']} "
-                                        f"<span class='toc-page'>(p.{sub['page']})</span></div>",
-                                        unsafe_allow_html=True
-                                    )
-                                pt_key = f"pt_text_{sub['id']}"
-                                if st.session_state.get(pt_key):
-                                    render_point_box(st.session_state[pt_key], color="yellow")
+#             with st.container(key="tb_toc"):
+#                 for chapter in ddata["textbook"]["chapters"]:
+#                     ch_title = f"{chapter.get('chapter_number', '')} {chapter['title']}"
+#                     with st.expander(f"📖 {ch_title}"):
+#                         for section in chapter.get("sections", []):
+#                             if section.get("title"):
+#                                 st.markdown(
+#                                     f"<div class='toc-sect-title'>{section['title']}</div>",
+#                                     unsafe_allow_html=True
+#                                 )
+#                             for sub in section.get("subsections", []):
+#                                 c1, c2 = st.columns([1, 6])
+#                                 with c1:
+#                                     if st.button("💡", key=f"pt_{sub['id']}", help="ポイントを見る"):
+#                                         with st.spinner("生成中..."):
+#                                             st.session_state[f"pt_text_{sub['id']}"] = generate_point(
+#                                                 sub["title"], subject_name=sinfo['name'],
+#                                                 genre_name=ginfo['name']
+#                                             )
+#                                 with c2:
+#                                     st.markdown(
+#                                         f"<div class='toc-sub'>{sub['title']} "
+#                                         f"<span class='toc-page'>(p.{sub['page']})</span></div>",
+#                                         unsafe_allow_html=True
+#                                     )
+#                                 pt_key = f"pt_text_{sub['id']}"
+#                                 if st.session_state.get(pt_key):
+#                                     render_point_box(st.session_state[pt_key], color="yellow")
 
     # === ワーク詳細 (フラッシュカード) ===
     if (st.session_state.get("detail_type") == "workbook"
