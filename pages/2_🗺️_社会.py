@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.30"""
-SOCIAL_VERSION = "v2026-06-09.30"
+"""社会ページ v2026-06-09.31"""
+SOCIAL_VERSION = "v2026-06-09.31"
 
 import streamlit as st
 import json, csv, requests, random
@@ -831,7 +831,7 @@ else:
                         def _is_katakana(s):
                             return all(('゠' <= c <= 'ヿ' or c in '・ー') for c in s) if s else False
                         _show_yomi = ch_yomi and not _is_katakana(ch_text)
-                        btn_label = (ch_text + "\n（" + ch_yomi + "）") if _show_yomi else ch_text
+                        btn_label = ch_text  # 読み仮名は直後のmarkdownで表示
                         if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
                                      use_container_width=True):
                             st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
@@ -843,6 +843,12 @@ else:
                                 except Exception:
                                     pass
                             st.rerun()
+                        if _show_yomi:
+                            st.markdown(
+                                f"<div style='text-align:center;font-size:12px;color:#8E8E93;"
+                                f"font-weight:400;margin:-14px 0 6px;line-height:1;'>{ch_yomi}</div>",
+                                unsafe_allow_html=True
+                            )
 
             # ナビ
             st.markdown("")
