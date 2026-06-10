@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.20"""
-SOCIAL_VERSION = "v2026-06-09.20"
+"""社会ページ v2026-06-09.21"""
+SOCIAL_VERSION = "v2026-06-09.21"
 
 import streamlit as st
 import json, csv, requests, random
@@ -787,8 +787,7 @@ else:
                             s = _div_result + "background:#F9F9F9;border:1px solid #E5E5EA;color:#8E8E93;"
                             lbl = ch_text
                         yomi_div = (f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
-                                    f"font-weight:400;margin:-6px 0 8px;'>{ch_yomi}</div>"
-                                    if ch_yomi else "")
+                                    f"font-weight:400;margin:-6px 0 8px;min-height:20px;'>{ch_yomi}</div>")
                         html += f'<div style="{s}">{lbl}</div>{yomi_div}'
                     st.markdown(html, unsafe_allow_html=True)
                     expl_key = f"social_explain_{selected_title}_{tp_pos}"
@@ -856,12 +855,12 @@ else:
                                 except Exception:
                                     pass
                             st.rerun()
-                        if ch_yomi:
-                            st.markdown(
-                                f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
-                                f"font-weight:400;margin:-6px 0 8px;'>{ch_yomi}</div>",
-                                unsafe_allow_html=True
-                            )
+                        st.markdown(
+                            f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
+                            f"font-weight:400;margin:-6px 0 8px;min-height:20px;'>"
+                            f"{ch_yomi}</div>",
+                            unsafe_allow_html=True
+                        )
 
             # ナビ
             st.markdown("")
