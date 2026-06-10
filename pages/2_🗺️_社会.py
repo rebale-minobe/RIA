@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.28"""
-SOCIAL_VERSION = "v2026-06-09.28"
+"""社会ページ v2026-06-09.29"""
+SOCIAL_VERSION = "v2026-06-09.29"
 
 import streamlit as st
 import json, csv, requests, random
@@ -679,8 +679,13 @@ else:
         # タイトル選択（常時表示）
         st.markdown("""
         <style>
-        div[data-testid="stButton"] > button {
-            text-align: left !important; justify-content: flex-start !important; padding-left: 20px !important;
+        [class*="st-key-select_title_"] button {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            padding-left: 20px !important;
+        }
+        [class*="st-key-select_title_"] p {
+            text-align: left !important;
         }
         </style>""", unsafe_allow_html=True)
         for title in title_order:
