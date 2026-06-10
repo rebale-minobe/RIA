@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.8"""
-SOCIAL_VERSION = "v2026-06-09.8"
+"""社会ページ v2026-06-09.9"""
+SOCIAL_VERSION = "v2026-06-09.9"
 
 import streamlit as st
 import json, csv, requests, random
@@ -782,25 +782,27 @@ else:
 
                 selected = st.session_state.get(f"social_selected_{selected_title}_{tp_pos}","")
                 correct_ans = quiz.get("answer","")
-                _div_base = ("width:100%;text-align:center;padding:14px 20px;border-radius:14px;"
-                             "margin:8px 0;font-size:22px;font-weight:700;line-height:1.4;"
-                             "box-sizing:border-box;"
-                             "font-family:\"Hiragino Mincho ProN\",\"Yu Mincho\",\"游明朝\",Georgia,serif;")
+
+                # 回答済み表示用スタイル（旧スタイル維持）
+                _div_result = ("width:100%;text-align:center;padding:14px 20px;border-radius:14px;"
+                               "margin:8px 0;font-size:17px;font-weight:700;line-height:1.4;"
+                               "box-sizing:border-box;"
+                               "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;")
 
                 if tp_result:
                     html = ""
                     for ch in quiz["choices"]:
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        yomi_html = (f"<br><span style='font-size:13px;font-weight:400;font-family:-apple-system,sans-serif;opacity:0.6;'>{ch_yomi}</span>" if ch_yomi else "")
+                        yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>" if ch_yomi else "")
                         if ch_text == correct_ans:
-                            s = _div_base + "background:#E5F8EE;border:2px solid #34C759;color:#1a8a3c;"
+                            s = _div_result + "background:#E5F8EE;border:2px solid #34C759;color:#1a8a3c;"
                             lbl = "⭕ " + ch_text + yomi_html
                         elif ch_text == selected:
-                            s = _div_base + "background:#FFE5E2;border:2px solid #FF3B30;color:#c0392b;"
+                            s = _div_result + "background:#FFE5E2;border:2px solid #FF3B30;color:#c0392b;"
                             lbl = "❌ " + ch_text + yomi_html
                         else:
-                            s = _div_base + "background:#F9F9F9;border:1px solid #E5E5EA;color:#8E8E93;"
+                            s = _div_result + "background:#F9F9F9;border:1px solid #E5E5EA;color:#8E8E93;"
                             lbl = ch_text + yomi_html
                         html += f'<div style="{s}">{lbl}</div>'
                     st.markdown(html, unsafe_allow_html=True)
