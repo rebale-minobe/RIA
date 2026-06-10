@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.10"""
-SOCIAL_VERSION = "v2026-06-09.10"
+"""社会ページ v2026-06-09.11"""
+SOCIAL_VERSION = "v2026-06-09.11"
 
 import streamlit as st
 import json, csv, requests, random
@@ -797,12 +797,20 @@ else:
                             "💡 " + st.session_state[expl_key] + "</div>", unsafe_allow_html=True
                         )
                 else:
+                    # 未回答：回答済みと完全同一スタイルのHTMLで描画
+                    # クリックは st.button を1行ずつ重ねて透明ボタンで検知
+                    _div_unans = ("width:100%;text-align:center;padding:14px 20px;border-radius:14px;"
+                                  "margin:8px 0;font-size:17px;font-weight:700;line-height:1.4;"
+                                  "box-sizing:border-box;cursor:pointer;"
+                                  "background:white;border:2px solid #E5E5EA;color:#1c1c1e;"
+                                  "font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;")
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        btn_label = f"{ch_text}\n（{ch_yomi}）" if ch_yomi else ch_text
-                        if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
-                                     use_container_width=True):
+                        yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>" if ch_yomi else "")
+                        st.markdown(f'<div style="{_div_unans}">{ch_text}{yomi_html}</div>', unsafe_allow_html=True)
+                        if st.button(ch_text, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
+                                     use_container_width=True, label_visibility="collapsed"):
                             st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
                             result_val = "maru" if ch_text == correct_ans else "batsu"
                             st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
