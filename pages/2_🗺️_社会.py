@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.3"""
-SOCIAL_VERSION = "v2026-06-09.3"
+"""社会ページ v2026-06-09.4"""
+SOCIAL_VERSION = "v2026-06-09.4"
 
 import streamlit as st
 import json, csv, requests, random
@@ -307,28 +307,83 @@ def _get_title_latest_dates():
 st.markdown("---")
 st.markdown('<div class="soc-section-title">📚 教科書</div>', unsafe_allow_html=True)
 
-# ジャンル選択（歴史/地理/公民）
-_tb_genres = {"history": "📜 歴史", "geography": "🌏 地理", "civics": "⚖️ 公民"}
-_tb_sel = st.segmented_control(
-    "教科書ジャンル", list(_tb_genres.values()),
-    default="📜 歴史", key="soc_tb_genre", label_visibility="collapsed"
-)
-_tb_genre_key = {v: k for k, v in _tb_genres.items()}.get(_tb_sel, "history")
+import base64 as _b64
 
-_tb_data = load_textbook_social(_tb_genre_key)
-if not _tb_data:
-    st.info("教科書データがありません（social_data.xlsx / 目次_歴史 シート）")
+# データのある教科書のみ表示（歴史・地理・公民の順で試す）
+_tb_all_genres = [
+    ("history",   "📜 歴史",  "歴史教科書"),
+    ("geography", "🌏 地理",  "地理教科書"),
+    ("civics",    "⚖️ 公民", "公民教科書"),
+]
+
+_available_books = []
+for _gk, _glabel, _gname in _tb_all_genres:
+    _d = load_textbook_social(_gk)
+    if _d:
+        _available_books.append((_gk, _glabel, _gname, _d))
+
+if not _available_books:
+    st.info("教科書データがありません（social_data.xlsx / 目次_歴史 シート等）")
 else:
-    _chapters = _tb_data["textbook"]["chapters"]
-    for ch in _chapters:
-        ch_label = f"{ch.get('chapter_number','')} {ch['title']}".strip()
-        with st.expander(ch_label, expanded=False):
-            for sec in ch.get("sections", []):
-                if sec.get("title"):
-                    st.markdown(f"**{sec['title']}**")
-                for sub in sec.get("subsections", []):
-                    page_str = f"　p.{sub['page']}" if sub.get("page") else ""
-                    st.markdown(f"　・{sub['title']}{page_str}")
+    # 教科書カードを横並びで表示
+    _tb_cols = st.columns(len(_available_books))
+    for _col, (_gk, _glabel, _gname, _d) in zip(_tb_cols, _available_books):
+        with _col:
+            # 表紙画像
+            _cover_url = f"{GITHUB_RAW}/data/textbook_covers/social_{_gk}.jpg"
+            try:
+                _cr = requests.get(_cover_url, timeout=5)
+                if _cr.status_code == 200:
+                    _b64img = _b64.b64encode(_cr.content).decode()
+                    st.markdown(
+                        f"<div style='text-align:center;padding:8px 0 4px;'>"
+                        f"<img src='data:image/jpeg;base64,{_b64img}' "
+                        f"style='width:100%;max-width:200px;border-radius:10px;"
+                        f"box-shadow:0 4px 16px rgba(0,0,0,0.12);'>"
+                        f"</div>", unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(
+                        f"<div style='background:linear-gradient(135deg,#FFF4E5,#FFE0B2);"
+                        f"height:160px;border-radius:10px;display:flex;align-items:center;"
+                        f"justify-content:center;color:#FF9500;font-size:14px;font-weight:700;"
+                        f"margin-bottom:4px;'>{_glabel}</div>",
+                        unsafe_allow_html=True
+                    )
+            except Exception:
+                pass
+
+            st.markdown(
+                f"<div style='text-align:center;font-size:14px;font-weight:700;"
+                f"color:#1c1c1e;margin:6px 0 8px;'>{_glabel}</div>",
+                unsafe_allow_html=True
+            )
+
+            # 目次ボタン
+            _toc_key = f"soc_tb_toc_{_gk}"
+            _toc_label = "📖 目次を閉じる" if st.session_state.get(_toc_key) else "📖 目次"
+            if st.button(_toc_label, key=f"soc_tb_toc_btn_{_gk}", use_container_width=True):
+                st.session_state[_toc_key] = not st.session_state.get(_toc_key, False)
+                st.rerun()
+
+    # 目次展開（開いている教科書があれば下に表示）
+    for _gk, _glabel, _gname, _d in _available_books:
+        if st.session_state.get(f"soc_tb_toc_{_gk}"):
+            st.markdown(
+                f"<div style='font-size:17px;font-weight:700;margin:16px 0 8px;"
+                f"color:#FF9500;'>{_glabel} 目次</div>",
+                unsafe_allow_html=True
+            )
+            _chapters = _d["textbook"]["chapters"]
+            for ch in _chapters:
+                ch_label = f"{ch.get('chapter_number','')} {ch['title']}".strip()
+                with st.expander(ch_label, expanded=False):
+                    for sec in ch.get("sections", []):
+                        if sec.get("title"):
+                            st.markdown(f"**{sec['title']}**")
+                        for sub in sec.get("subsections", []):
+                            page_str = f"　p.{sub['page']}" if sub.get("page") else ""
+                            st.markdown(f"　・{sub['title']}{page_str}")
 
 # ══════════════════════════════════════════════
 # 📖 2. ワーク
