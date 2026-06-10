@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.21"""
-SOCIAL_VERSION = "v2026-06-09.21"
+"""社会ページ v2026-06-09.22"""
+SOCIAL_VERSION = "v2026-06-09.22"
 
 import streamlit as st
 import json, csv, requests, random
@@ -997,3 +997,10 @@ with st.expander("🔧 デバッグ"):
             st.success("✅ OK") if ok else st.error("❌ 失敗")
     except Exception as e:
         st.error(f"❌ インポート失敗: {e}")
+
+# ========== バージョン表示
+st.markdown("---")
+st.markdown(
+    f"<div style='text-align:right;font-size:11px;color:#C7C7CC;'>2_🗺️_社会.py　{SOCIAL_VERSION}</div>",
+    unsafe_allow_html=True
+)
