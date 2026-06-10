@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.32"""
-SOCIAL_VERSION = "v2026-06-09.32"
+"""社会ページ v2026-06-09.33"""
+SOCIAL_VERSION = "v2026-06-09.33"
 
 import streamlit as st
 import json, csv, requests, random
@@ -814,13 +814,17 @@ else:
                     [class*="st-key-social_choice_"] button,
                     [class*="st-key-social_choice_"] button:focus,
                     [class*="st-key-social_choice_"] button[kind="secondary"] {
-                        font-size: 20px !important;
+                        font-size: 24px !important;
                         font-weight: 800 !important;
-                        min-height: 62px !important;
+                        min-height: 72px !important;
+                        line-height: 1.3 !important;
                     }
-                    [class*="st-key-social_choice_"] p {
-                        font-size: 20px !important;
+                    [class*="st-key-social_choice_"] p,
+                    [class*="st-key-social_choice_"] span,
+                    [class*="st-key-social_choice_"] div {
+                        font-size: 24px !important;
                         font-weight: 800 !important;
+                        line-height: 1.3 !important;
                     }
                     </style>
                     """, unsafe_allow_html=True)
