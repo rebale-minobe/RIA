@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.27"""
-SOCIAL_VERSION = "v2026-06-09.27"
+"""社会ページ v2026-06-09.28"""
+SOCIAL_VERSION = "v2026-06-09.28"
 
 import streamlit as st
 import json, csv, requests, random
@@ -801,23 +801,16 @@ else:
                     # HTMLラベル付きボタン（CSSでボタン自体を同一スタイルに上書き）
                     st.markdown("""
                     <style>
-                    [class*="st-key-social_choice_"] > div > button {
-                        background: white !important;
-                        border: 2px solid #E5E5EA !important;
-                        border-radius: 14px !important;
-                        color: #1c1c1e !important;
+                    [class*="st-key-social_choice_"] button,
+                    [class*="st-key-social_choice_"] button:focus,
+                    [class*="st-key-social_choice_"] button[kind="secondary"] {
                         font-size: 20px !important;
                         font-weight: 800 !important;
-                        font-family: -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif !important;
                         min-height: 62px !important;
-                        width: 100% !important;
-                        padding: 14px 20px !important;
-                        line-height: 1.4 !important;
-                        margin: 4px 0 !important;
                     }
-                    [class*="st-key-social_choice_"] > div > button:hover {
-                        border-color: #FF9500 !important;
-                        background: #FFF4E5 !important;
+                    [class*="st-key-social_choice_"] p {
+                        font-size: 20px !important;
+                        font-weight: 800 !important;
                     }
                     </style>
                     """, unsafe_allow_html=True)
@@ -964,6 +957,13 @@ try:
                 st.session_state[session_key].pop()
 except Exception:
     pass
+
+# ========== バージョン表示
+st.markdown("---")
+st.markdown(
+    f"<div style='text-align:right;font-size:11px;color:#C7C7CC;'>2_🗺️_社会.py　{SOCIAL_VERSION}</div>",
+    unsafe_allow_html=True
+)
 
 # ========== デバッグ（開発用）
 with st.expander("🔧 デバッグ"):
