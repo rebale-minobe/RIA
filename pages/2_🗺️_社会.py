@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-08.13"""
-SOCIAL_VERSION = "v2026-06-08.13"
+"""社会ページ v2026-06-09.2"""
+SOCIAL_VERSION = "v2026-06-09.2"
 import streamlit as st
 import json
 import csv
@@ -11,6 +11,19 @@ from datetime import datetime, timezone, timedelta
 st.set_page_config(page_title="社会 - RIA", page_icon="🗺️", layout="wide")
 render_subject_page("social", "社会", "🗺️")
 
+# ========== alp / alm インポート
+try:
+    from modules import answer_log_pivot as alp
+    ALP_AVAILABLE = True
+except Exception:
+    ALP_AVAILABLE = False
+
+try:
+    from modules import answer_log_manager as alm
+    ALM_AVAILABLE = True
+except Exception:
+    ALM_AVAILABLE = False
+
 # ========== JST ヘルパー
 _JST = timezone(timedelta(hours=9))
 def _now_jst():
@@ -18,6 +31,311 @@ def _now_jst():
 
 # ========== GitHub CSV ロード
 GITHUB_RAW = "https://raw.githubusercontent.com/rebale-minobe/RIA/main"
+
+# ========== ワーク読み込み（Excelから）
+_GENRE_SHEET_MAP = {
+    "history": "歴史", "geography": "地理", "civics": "公民",
+}
+
+@st.cache_data(ttl=300)
+def _load_workbook_excel():
+    import openpyxl, io
+    url = f"{GITHUB_RAW}/data/social_data.xlsx"
+    try:
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            return openpyxl.load_workbook(io.BytesIO(r.content), data_only=True)
+    except Exception:
+        pass
+    return None
+
+def load_workbook_answers_social(genre_key="history"):
+    wb = _load_workbook_excel()
+    if wb is None:
+        return None
+    genre_jp = _GENRE_SHEET_MAP.get(genre_key, "歴史")
+    sheet_name = f"ワーク{genre_jp}_解答"
+    if sheet_name not in wb.sheetnames:
+        return None
+    ws = wb[sheet_name]
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    pages_dict = {}
+    for row in rows:
+        if not any(row):
+            continue
+        r = (row + (None,) * 13)[:13]
+        (page_num, ch_num, ch_title, lesson_title,
+         sec_code, sec_name, tb_ref, wb_ref,
+         group_label, q, a, note, context) = r
+        if page_num is None or q is None or a is None:
+            continue
+        page_num = int(page_num)
+        if page_num not in pages_dict:
+            pages_dict[page_num] = {
+                "page_number": page_num, "workbook_ref": wb_ref or "",
+                "chapter_title": ch_title or "", "lesson_title": lesson_title or "",
+                "sections": []
+            }
+        pg = pages_dict[page_num]
+        sec = next((s for s in pg["sections"]
+                    if s["code"] == str(sec_code or "") and s.get("textbook_ref") == (tb_ref or "")), None)
+        if sec is None:
+            sec = {"code": str(sec_code) if sec_code else "", "name": str(sec_name) if sec_name else "",
+                   "textbook_ref": tb_ref or "", "groups": []}
+            pg["sections"].append(sec)
+        grp = next((g for g in sec["groups"] if g["label"] == (group_label or "")), None)
+        if grp is None:
+            grp = {"label": group_label or "", "answers": []}
+            sec["groups"].append(grp)
+        grp["answers"].append({"q": str(q), "a": str(a),
+                                "note": str(note) if note else None,
+                                "context": str(context) if context else None})
+    if not pages_dict:
+        return None
+    return {"workbook_title": f"{genre_jp}ワーク", "pages": list(pages_dict.values())}
+
+def flatten_wb_questions(page):
+    flat = []
+    for section in page["sections"]:
+        for group in section["groups"]:
+            for ans in group["answers"]:
+                flat.append({
+                    "page_number": page["page_number"],
+                    "lesson_title": page.get("lesson_title", ""),
+                    "chapter_title": page.get("chapter_title", ""),
+                    "workbook_ref": page.get("workbook_ref", ""),
+                    "section_code": section["code"],
+                    "section_name": section["name"],
+                    "textbook_ref": section.get("textbook_ref", ""),
+                    "group_label": group.get("label", ""),
+                    "q": ans["q"], "a": ans["a"],
+                    "note": ans.get("note"), "context": ans.get("context"),
+                })
+    return flat
+
+# ========== フラッシュカード CSS
+st.markdown("""
+<style>
+.wb-flashcard {
+    background: white; border-radius: 18px; padding: 20px 24px 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 2px solid #FF9500; margin: 12px 0 16px;
+}
+.wb-fc-meta { font-size: 11px; color: #8E8E93; font-weight: 600; letter-spacing: 0.04em; }
+.wb-fc-lesson { font-size: 14px; font-weight: 700; color: #1c1c1e; margin-top: 2px; }
+.wb-fc-q { font-size: 30px; font-weight: 800; color: #FF9500; text-align: center; line-height: 1.0; margin: 10px 0 6px; }
+.wb-fc-divider { border-top: 1px dashed #e5e5ea; margin: 14px -10px; }
+.wb-fc-a-area { text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; padding: 12px 0; }
+.wb-fc-a-shown { font-size: 38px; font-weight: 700; color: #1c1c1e; line-height: 1.4; word-break: break-word; }
+.wb-progress-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin: 12px 0 4px; }
+.st-key-soc_wb_nav button {
+    font-size: 20px !important; min-height: 60px !important; font-weight: 700 !important;
+    border: none !important; border-radius: 16px !important;
+}
+.st-key-soc_wb_nav [data-testid="stHorizontalBlock"] > div:nth-child(1) button { background: #E5E5EA !important; color: #3a3a3c !important; }
+.st-key-soc_wb_nav [data-testid="stHorizontalBlock"] > div:nth-child(2) button { background: white !important; color: #FF3B30 !important; border: 2px solid #FF3B30 !important; }
+.st-key-soc_wb_nav [data-testid="stHorizontalBlock"] > div:nth-child(3) button { background: #E8F8EE !important; color: #1a8a3c !important; border: 2px solid #34C759 !important; }
+.st-key-soc_wb_nav [data-testid="stHorizontalBlock"] > div:nth-child(4) button { background: linear-gradient(160deg,#007AFF 0%,#0055d4 100%) !important; color: white !important; }
+</style>
+""", unsafe_allow_html=True)
+
+# ========== 📋 ワーク（フラッシュカード）セクション
+st.markdown("---")
+st.subheader("📋 ワーク解答（フラッシュカード）")
+
+_wb_data = load_workbook_answers_social("history")
+
+if not _wb_data or not _wb_data.get("pages"):
+    st.info("ワークデータが見つかりません（social_data.xlsx / ワーク歴史_解答 シート）")
+else:
+    _wb_pages = _wb_data["pages"]
+    _page_labels = [f"P.{p['page_number']}" for p in _wb_pages]
+
+    _sel_page = st.pills("📄 ページを選択", _page_labels,
+                         key="soc_wb_page_sel", default=_page_labels[0])
+    if not _sel_page:
+        _sel_page = _page_labels[0]
+    _page_idx = _page_labels.index(_sel_page)
+    _page = _wb_pages[_page_idx]
+    _page_num = _page["page_number"]
+
+    st.markdown(
+        f"<div style='font-size:16px;font-weight:600;margin:6px 0 14px;color:#1d1d1f;'>"
+        f"📖 {_page.get('lesson_title','')}</div>",
+        unsafe_allow_html=True
+    )
+
+    _questions = flatten_wb_questions(_page)
+    _total = len(_questions)
+
+    if _total == 0:
+        st.warning("このページに問題が登録されていません")
+    else:
+        # Let's Start!! 画面
+        _start_key = f"soc_wb_started_{_sel_page}"
+        _last_key = f"soc_wb_last_page"
+        if st.session_state.get(_last_key) != _sel_page:
+            st.session_state[_start_key] = False
+            st.session_state[_last_key] = _sel_page
+
+        if not st.session_state.get(_start_key, False):
+            st.markdown(f"""
+            <div style='background:white; border:2px solid #FF9500; border-radius:20px;
+                        padding:48px 24px; text-align:center; margin:16px 0;
+                        box-shadow:0 4px 20px rgba(0,0,0,.06);'>
+                <div style='font-size:52px; margin-bottom:12px;'>📖</div>
+                <div style='font-size:28px; font-weight:800; color:#FF9500; margin-bottom:8px;'>Let's Start!!</div>
+                <div style='font-size:15px; color:#8E8E93;'>{_page.get('lesson_title','')}　全 {_total} 問</div>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("NEXT ▶", type="primary", use_container_width=True, key=f"soc_wb_start_{_sel_page}"):
+                st.session_state[_start_key] = True
+                st.rerun()
+        else:
+            # モード
+            _mode_key = f"soc_wb_mode_{_page_num}"
+            _mode = st.session_state.get(_mode_key, "normal")
+            if _mode == "normal":
+                _active = list(range(_total))
+            else:
+                _active = [i for i in range(_total)
+                           if st.session_state.get(f"soc_wb_result_{_page_num}_{i}") == "batsu"]
+                if not _active:
+                    st.session_state[_mode_key] = "normal"
+                    _active = list(range(_total))
+                    _mode = "normal"
+
+            _n_active = len(_active)
+            _idx_key = f"soc_wb_idx_{_page_num}_{_mode}"
+            if _idx_key not in st.session_state:
+                st.session_state[_idx_key] = 0
+            _cur_pos = max(0, min(st.session_state[_idx_key], _n_active - 1))
+            st.session_state[_idx_key] = _cur_pos
+            _orig_idx = _active[_cur_pos]
+            _cur_q = _questions[_orig_idx]
+            _result = st.session_state.get(f"soc_wb_result_{_page_num}_{_orig_idx}")
+
+            if _mode == "retest":
+                st.markdown("<div style='display:inline-block;background:#FF6B00;color:white;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:8px;'>🔄 再テストモード</div>", unsafe_allow_html=True)
+
+            # 進捗
+            _wrong = sum(1 for i in range(_total) if st.session_state.get(f"soc_wb_result_{_page_num}_{i}") == "batsu")
+            _wrong_label = f"❌ {_wrong} 問" if _wrong else ""
+            st.markdown(f"<div class='wb-progress-row'><span>問題 <b>{_cur_pos+1}</b> / {_n_active}</span><span style='color:#FF3B30;font-weight:700;'>{_wrong_label}</span></div>", unsafe_allow_html=True)
+            st.progress((_cur_pos + 1) / _n_active)
+
+            # フラッシュカード
+            _border = "#FF3B30" if _result == "batsu" else "#FF9500"
+            _meta = " ／ ".join(filter(None, [
+                f"{_cur_q.get('section_code','')} {_cur_q.get('section_name','')}".strip(),
+                _cur_q.get("group_label",""), _cur_q.get("workbook_ref","")
+            ]))
+            st.markdown(f"""
+            <div class='wb-flashcard' style='border-color:{_border};'>
+                <div style='text-align:center;margin-bottom:10px;'>
+                    <div class='wb-fc-meta'>{_meta}</div>
+                    <div class='wb-fc-lesson'>{_cur_q.get('lesson_title','')}</div>
+                </div>
+                <div class='wb-fc-q'>{_cur_q['q']}</div>
+                <div class='wb-fc-divider'></div>
+                <div class='wb-fc-a-area'>
+                    <div class='wb-fc-a-shown'>{_cur_q['a']}</div>
+                </div>
+                {'<div style="text-align:center;margin-top:8px;font-size:13px;color:#FF3B30;font-weight:700;">❌ もう一度</div>' if _result == "batsu" else ''}
+            </div>
+            """, unsafe_allow_html=True)
+
+            if _cur_q.get("note"): st.caption(f"※ {_cur_q['note']}")
+            if _cur_q.get("context"): st.caption(f"💭 {_cur_q['context']}")
+
+            # ナビボタン（◀ ❌ 💡 NEXT▶）
+            with st.container(key="soc_wb_nav"):
+                _nc = st.columns([1, 1.2, 1.2, 1.6])
+                with _nc[0]:
+                    if st.button("◀", key=f"soc_wb_prev_{_page_num}_{_orig_idx}",
+                                 disabled=(_cur_pos == 0), use_container_width=True):
+                        st.session_state[_idx_key] = _cur_pos - 1
+                        st.rerun()
+                with _nc[1]:
+                    _batsu_label = "❌ 消す" if _result == "batsu" else "❌"
+                    if st.button(_batsu_label, key=f"soc_wb_batsu_{_page_num}_{_orig_idx}", use_container_width=True):
+                        if _result == "batsu":
+                            st.session_state.pop(f"soc_wb_result_{_page_num}_{_orig_idx}", None)
+                        else:
+                            st.session_state[f"soc_wb_result_{_page_num}_{_orig_idx}"] = "batsu"
+                            if ALP_AVAILABLE:
+                                try:
+                                    _qd = _cur_q.copy()
+                                    _qd["page_num"] = _page_num
+                                    _qd["q_label"] = _cur_q["q"]
+                                    _qd["answer"] = _cur_q["a"]
+                                    alp.append_pivot_log("social", _qd, "batsu")
+                                except Exception:
+                                    pass
+                        st.rerun()
+                with _nc[2]:
+                    _exp_key = f"soc_wb_exp_{_page_num}_{_orig_idx}"
+                    _exp_label = "💡 隠す" if st.session_state.get(_exp_key) else "💡"
+                    if st.button(_exp_label, key=f"soc_wb_exp_btn_{_page_num}_{_orig_idx}", use_container_width=True):
+                        if st.session_state.get(_exp_key):
+                            del st.session_state[_exp_key]
+                        else:
+                            with st.spinner("解説生成中..."):
+                                st.session_state[_exp_key] = generate_workbook_explanation(_cur_q, "社会")
+                        st.rerun()
+                with _nc[3]:
+                    if _cur_pos < _n_active - 1:
+                        if st.button("NEXT ▶", key=f"soc_wb_next_{_page_num}_{_orig_idx}",
+                                     use_container_width=True, help="次の問題"):
+                            if _result != "batsu" and ALP_AVAILABLE:
+                                try:
+                                    _qd = _cur_q.copy()
+                                    _qd["page_num"] = _page_num
+                                    _qd["q_label"] = _cur_q["q"]
+                                    _qd["answer"] = _cur_q["a"]
+                                    alp.append_pivot_log("social", _qd, "maru")
+                                except Exception:
+                                    pass
+                            st.session_state[_idx_key] = _cur_pos + 1
+                            st.rerun()
+                    else:
+                        st.button("最後", key=f"soc_wb_next_{_page_num}_{_orig_idx}",
+                                  use_container_width=True, disabled=True)
+
+            # 解説表示
+            if st.session_state.get(f"soc_wb_exp_{_page_num}_{_orig_idx}"):
+                st.markdown(
+                    "<div style='background:#FFF8E1;border-left:4px solid #FFCC00;padding:14px 16px;"
+                    "border-radius:10px;margin-top:12px;font-size:15px;line-height:1.8;font-weight:500;'>"
+                    "💡 " + st.session_state[f"soc_wb_exp_{_page_num}_{_orig_idx}"] + "</div>",
+                    unsafe_allow_html=True
+                )
+
+            # ページ完了
+            if _cur_pos == _n_active - 1:
+                _wrong_indices = [i for i in range(_total)
+                                  if st.session_state.get(f"soc_wb_result_{_page_num}_{i}") == "batsu"]
+                st.markdown("---")
+                if _wrong_indices:
+                    st.warning(f"❌ {len(_wrong_indices)} 問にマークあり")
+                    if _mode == "normal":
+                        if st.button(f"🔄 ×の {len(_wrong_indices)} 問で再テスト",
+                                     use_container_width=True, type="primary", key=f"soc_wb_retest_{_page_num}"):
+                            st.session_state[_mode_key] = "retest"
+                            st.session_state[f"soc_wb_idx_{_page_num}_retest"] = 0
+                            st.rerun()
+                    else:
+                        if st.button("↩️ 通常モードに戻る", use_container_width=True, key=f"soc_wb_back_{_page_num}"):
+                            st.session_state[_mode_key] = "normal"
+                            st.rerun()
+                else:
+                    st.success("🎉 全問チェック完了！")
+                if st.button("🗑️ このページの×をリセット", key=f"soc_wb_reset_{_page_num}", use_container_width=True):
+                    for i in range(_total):
+                        st.session_state.pop(f"soc_wb_result_{_page_num}_{i}", None)
+                        st.session_state.pop(f"soc_wb_exp_{_page_num}_{i}", None)
+                    st.session_state[_mode_key] = "normal"
+                    st.session_state[f"soc_wb_idx_{_page_num}_normal"] = 0
+                    st.rerun()
 
 @st.cache_data(ttl=60)
 def _load_social_pivot_csv():
@@ -475,6 +793,12 @@ if quiz:
                 st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
                 result_val = "maru" if ch_text == correct_ans else "batsu"
                 st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
+                # ★ pivot CSV に再TEST結果を記録
+                if ALP_AVAILABLE:
+                    try:
+                        alp.append_pivot_log("social", tp_current, result_val)
+                    except Exception:
+                        pass
                 st.rerun()
 
 # ========== ナビゲーション（TOP と同じ 5列）
