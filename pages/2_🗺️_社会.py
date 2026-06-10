@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.16"""
-SOCIAL_VERSION = "v2026-06-09.16"
+"""社会ページ v2026-06-09.18"""
+SOCIAL_VERSION = "v2026-06-09.18"
 
 import streamlit as st
 import json, csv, requests, random
@@ -831,15 +831,19 @@ else:
                         color: #1c1c1e !important;
                         white-space: pre-line !important;
                         text-align: center !important;
+                        line-height: 1.0 !important;
+                    }
+                    [class*="st-key-social_choice_"] button p::first-line {
+                        font-size: 17px !important;
+                        font-weight: 700 !important;
+                        color: #1c1c1e !important;
                     }
                     </style>
                     """, unsafe_allow_html=True)
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        # ラベル：本文 + 改行 + 小さい読み仮名（white-space:pre-lineで改行表示）
-                        btn_label = (ch_text + "\n" + ch_yomi) if ch_yomi else ch_text
-                        if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
+                        if st.button(ch_text, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
                                      use_container_width=True):
                             st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
                             result_val = "maru" if ch_text == correct_ans else "batsu"
@@ -850,6 +854,12 @@ else:
                                 except Exception:
                                     pass
                             st.rerun()
+                        if ch_yomi:
+                            st.markdown(
+                                f"<div style='text-align:center;font-size:12px;color:#8E8E93;"
+                                f"font-weight:400;margin:-12px 0 4px;'>{ch_yomi}</div>",
+                                unsafe_allow_html=True
+                            )
 
             # ナビ
             st.markdown("")
