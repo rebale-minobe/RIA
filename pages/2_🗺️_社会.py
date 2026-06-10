@@ -403,30 +403,29 @@ _wb_data = load_workbook_social(_wb_genre_key)
 if not _wb_data or not _wb_data.get("pages"):
     st.info("ワークデータがありません（social_data.xlsx / ワーク歴史_解答 シート）")
 else:
-    # ── 表紙
-    _cover_col, _ = st.columns([1, 2])
-    with _cover_col:
-        try:
-            import base64
-            _cover_url = f"{GITHUB_RAW}/data/workbook_covers/social_{_wb_genre_key}.jpg"
-            _cr = requests.get(_cover_url, timeout=5)
-            if _cr.status_code == 200:
-                _b64 = base64.b64encode(_cr.content).decode()
-                st.markdown(
-                    f"<div style='text-align:center;padding:8px 0;'>"
-                    f"<img src='data:image/jpeg;base64,{_b64}' "
-                    f"style='width:180px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'>"
-                    f"</div>", unsafe_allow_html=True
-                )
-            else:
-                st.markdown(
-                    f"<div style='background:linear-gradient(135deg,#e0e0e0,#c0c0c0);height:160px;"
-                    f"border-radius:10px;display:flex;align-items:center;justify-content:center;"
-                    f"color:#888;font-size:14px;'>📝 {_wb_data.get('workbook_title','ワーク')}</div>",
-                    unsafe_allow_html=True
-                )
-        except Exception:
-            pass
+    # ── 表紙（中央表示）
+    import base64 as _b64wb
+    _cover_url = f"{GITHUB_RAW}/data/workbook_covers/social_{_wb_genre_key}.jpg"
+    try:
+        _cr = requests.get(_cover_url, timeout=5)
+        if _cr.status_code == 200:
+            _b64wb_img = _b64wb.b64encode(_cr.content).decode()
+            st.markdown(
+                f"<div style='text-align:center;padding:12px 0 8px;'>"
+                f"<img src='data:image/jpeg;base64,{_b64wb_img}' "
+                f"style='width:200px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);'>"
+                f"</div>", unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"<div style='text-align:center;background:linear-gradient(135deg,#e0e0e0,#c0c0c0);"
+                f"height:160px;border-radius:10px;display:flex;align-items:center;"
+                f"justify-content:center;color:#888;font-size:14px;margin:8px auto;max-width:220px;'>"
+                f"📝 {_wb_data.get('workbook_title','ワーク')}</div>",
+                unsafe_allow_html=True
+            )
+    except Exception:
+        pass
 
     # ── ページ選択
     _wb_pages = _wb_data["pages"]
