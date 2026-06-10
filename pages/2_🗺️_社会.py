@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.18"""
-SOCIAL_VERSION = "v2026-06-09.18"
+"""社会ページ v2026-06-09.20"""
+SOCIAL_VERSION = "v2026-06-09.20"
 
 import streamlit as st
 import json, csv, requests, random
@@ -777,17 +777,19 @@ else:
                     for ch in quiz["choices"]:
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        yomi_html = (f"<br><span style='font-size:13px;font-weight:500;opacity:0.65;'>{ch_yomi}</span>" if ch_yomi else "")
                         if ch_text == correct_ans:
                             s = _div_result + "background:#E5F8EE;border:2px solid #34C759;color:#1a8a3c;"
-                            lbl = "⭕ " + ch_text + yomi_html
+                            lbl = "⭕ " + ch_text
                         elif ch_text == selected:
                             s = _div_result + "background:#FFE5E2;border:2px solid #FF3B30;color:#c0392b;"
-                            lbl = "❌ " + ch_text + yomi_html
+                            lbl = "❌ " + ch_text
                         else:
                             s = _div_result + "background:#F9F9F9;border:1px solid #E5E5EA;color:#8E8E93;"
-                            lbl = ch_text + yomi_html
-                        html += f'<div style="{s}">{lbl}</div>'
+                            lbl = ch_text
+                        yomi_div = (f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
+                                    f"font-weight:400;margin:-6px 0 8px;'>{ch_yomi}</div>"
+                                    if ch_yomi else "")
+                        html += f'<div style="{s}">{lbl}</div>{yomi_div}'
                     st.markdown(html, unsafe_allow_html=True)
                     expl_key = f"social_explain_{selected_title}_{tp_pos}"
                     if st.session_state.get(expl_key):
@@ -856,8 +858,8 @@ else:
                             st.rerun()
                         if ch_yomi:
                             st.markdown(
-                                f"<div style='text-align:center;font-size:12px;color:#8E8E93;"
-                                f"font-weight:400;margin:-12px 0 4px;'>{ch_yomi}</div>",
+                                f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
+                                f"font-weight:400;margin:-6px 0 8px;'>{ch_yomi}</div>",
                                 unsafe_allow_html=True
                             )
 
