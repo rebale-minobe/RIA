@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.29"""
-SOCIAL_VERSION = "v2026-06-09.29"
+"""社会ページ v2026-06-09.30"""
+SOCIAL_VERSION = "v2026-06-09.30"
 
 import streamlit as st
 import json, csv, requests, random
@@ -222,12 +222,17 @@ def _generate_quiz(q_data):
                       {"role": "user", "content": prompt}]
         )
         data = json.loads(resp.choices[0].message.content)
+        import re as _re
+        def _strip_prefix(t):
+            return _re.sub('[A-Da-d][.．、。] *', '', str(t), count=1).strip()
         _norm = []
         for c in data.get("choices", []):
             if isinstance(c, dict):
-                _norm.append({"text": str(c.get("text","")), "yomi": str(c.get("yomi","") or "")})
+                _norm.append({"text": _strip_prefix(c.get("text","")), "yomi": str(c.get("yomi","") or "")})
             else:
-                _norm.append({"text": str(c), "yomi": ""})
+                _norm.append({"text": _strip_prefix(c), "yomi": ""})
+        # answerもプレフィックス除去
+        data["answer"] = _strip_prefix(data.get("answer",""))
         data["choices"] = _norm
         random.shuffle(data["choices"])
         return data
