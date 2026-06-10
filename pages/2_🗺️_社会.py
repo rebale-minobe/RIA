@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.24"""
-SOCIAL_VERSION = "v2026-06-09.24"
+"""社会ページ v2026-06-09.25"""
+SOCIAL_VERSION = "v2026-06-09.25"
 
 import streamlit as st
 import json, csv, requests, random
@@ -787,7 +787,8 @@ else:
                             s = _div_result + "background:#F9F9F9;border:1px solid #E5E5EA;color:#8E8E93;"
                             lbl = ch_text
                         yomi_div = (f"<div style='text-align:center;font-size:13px;color:#8E8E93;"
-                                    f"font-weight:400;margin:-6px 0 8px;min-height:20px;'>{ch_yomi}</div>")
+                                    f"font-weight:400;margin:2px 0 8px;'>{ch_yomi}</div>"
+                                    if ch_yomi else "")
                         html += f'<div style="{s}">{lbl}</div>{yomi_div}'
                     st.markdown(html, unsafe_allow_html=True)
                     expl_key = f"social_explain_{selected_title}_{tp_pos}"
@@ -798,36 +799,21 @@ else:
                             "💡 " + st.session_state[expl_key] + "</div>", unsafe_allow_html=True
                         )
                 else:
-                    # 未回答：query_params経由でクリック検知、HTMLで完全描画
-                    _qp = st.query_params.get("sc", "")
-                    if _qp:
-                        _chosen = _qp
-                        st.query_params.clear()
-                        st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = _chosen
-                        result_val = "maru" if _chosen == correct_ans else "batsu"
-                        st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
-                        if ALP_AVAILABLE:
-                            try:
-                                alp.append_pivot_log("social", tp_current, result_val)
-                            except Exception:
-                                pass
-                        st.rerun()
-
-                    import urllib.parse
-                    # スタイルはダブルクォート内に書く（シングルクォート混在を避ける）
-                    _s = 'width:100%;text-align:center;padding:14px 20px 6px;border-radius:14px;margin:8px 0 0;font-size:17px;font-weight:700;line-height:1.4;box-sizing:border-box;background:white;border:2px solid #E5E5EA;color:#1c1c1e;cursor:pointer;font-family:-apple-system,sans-serif;'
-                    _sy = 'font-size:13px;color:#8E8E93;font-weight:400;display:block;padding-bottom:8px;'
-                    html_choices = ""
                     for i, ch in enumerate(quiz["choices"]):
                         ch_text = ch["text"] if isinstance(ch,dict) else str(ch)
                         ch_yomi = ch.get("yomi","") if isinstance(ch,dict) else ""
-                        _enc = urllib.parse.quote(ch_text)
-                        yomi_part = f'<span style="{_sy}">{ch_yomi if ch_yomi else "&nbsp;"}</span>'
-                        html_choices += (
-                            f'<a href="?sc={_enc}" style="text-decoration:none;display:block;">'
-                            f'<div style="{_s}">{ch_text}{yomi_part}</div></a>'
-                        )
-                    st.markdown(html_choices, unsafe_allow_html=True)
+                        btn_label = (ch_text + "\n（" + ch_yomi + "）") if ch_yomi else ch_text
+                        if st.button(btn_label, key=f"social_choice_{selected_title}_{tp_pos}_{i}",
+                                     use_container_width=True):
+                            st.session_state[f"social_selected_{selected_title}_{tp_pos}"] = ch_text
+                            result_val = "maru" if ch_text == correct_ans else "batsu"
+                            st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
+                            if ALP_AVAILABLE:
+                                try:
+                                    alp.append_pivot_log("social", tp_current, result_val)
+                                except Exception:
+                                    pass
+                            st.rerun()
 
             # ナビ
             st.markdown("")
