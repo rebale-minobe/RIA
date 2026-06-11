@@ -1,5 +1,9 @@
-"""RIA Answer Log Pivot Manager v2026-06-08.1"""
-ALM_PIVOT_VERSION = "v2026-06-08.1"
+"""RIA Answer Log Pivot Manager v2026-06-11.2
+- append_pivot_logs_batch 追加（複数の○×を1回のpushで保存）
+- load_pivot_rows 追加（API経由の最新読込・raw CDNの5分遅れを回避する公開関数）
+- append_pivot_log は互換維持（内部でバッチを1件で呼ぶ）
+"""
+ALM_PIVOT_VERSION = "v2026-06-11.2"
 
 import csv
 import io
@@ -102,14 +106,18 @@ def _push_pivot_csv(subject_key, rows, fieldnames, message):
     return False
 
 
-def append_pivot_log(subject_key, q_data, result):
-    """pivot CSVの該当行に今日の日付のmaru/batsuを記録"""
-    today = _today_jst()
-    col_name = f"{today}_maru" if result == "maru" else f"{today}_batsu"
+def load_pivot_rows(subject_key):
+    """pivot CSVの行リストを返す（Contents API経由＝常に最新）。
+    ページ側が raw.githubusercontent（CDNで最大約5分古い）を直接読むのを
+    やめるための公開関数。"""
+    rows, _ = _load_pivot_csv(subject_key)
+    return rows
 
-    rows, fieldnames = _load_pivot_csv(subject_key)
-    if not rows:
-        return False
+
+def _apply_entry(rows, fieldnames, q_data, result, today):
+    """1件の○×を rows/fieldnames に反映する（push はしない）。
+    append_pivot_log にあった更新ロジックをそのまま抽出したもの。"""
+    col_name = f"{today}_maru" if result == "maru" else f"{today}_batsu"
 
     # 日付列を追加
     if col_name not in fieldnames:
@@ -152,7 +160,30 @@ def append_pivot_log(subject_key, q_data, result):
         })
         rows.append(new_row)
 
+
+def append_pivot_logs_batch(subject_key, entries):
+    """複数の○×をまとめて1回のpushで保存する。
+    entries: [{"q_data": dict, "result": "maru"|"batsu"}, ...]
+    フラッシュカードで1問ごとにGitHub往復（1〜3秒/コミット1個）が
+    発生していたのを、区切りで1往復・1コミットにするためのバッチ版。
+    Returns: True/False（空リストはTrue）
+    """
+    if not entries:
+        return True
+    rows, fieldnames = _load_pivot_csv(subject_key)
+    if not rows:
+        return False
+    today = _today_jst()
+    n_maru  = sum(1 for e in entries if e.get("result") == "maru")
+    n_batsu = len(entries) - n_maru
+    for e in entries:
+        _apply_entry(rows, fieldnames, e.get("q_data", {}), e.get("result", "batsu"), today)
     return _push_pivot_csv(
         subject_key, rows, fieldnames,
-        f"[{subject_key}] {result}: p{page_num} {sec_code} {q_label}"
+        f"[{subject_key}] batch: maru {n_maru} / batsu {n_batsu}"
     )
+
+
+def append_pivot_log(subject_key, q_data, result):
+    """pivot CSVの該当行に今日の日付のmaru/batsuを記録（1件版・互換維持）"""
+    return append_pivot_logs_batch(subject_key, [{"q_data": q_data, "result": result}])

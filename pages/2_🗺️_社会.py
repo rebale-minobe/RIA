@@ -1,5 +1,5 @@
-"""社会ページ v2026-06-09.33"""
-SOCIAL_VERSION = "v2026-06-09.33"
+"""社会ページ v2026-06-11.34 — ○×バッチ保存・pivot読込のAPI化"""
+SOCIAL_VERSION = "v2026-06-11.34"
 
 import streamlit as st
 import json, csv, requests, random
@@ -23,6 +23,61 @@ try:
     ALP_AVAILABLE = True
 except Exception:
     ALP_AVAILABLE = False
+
+# ========== ○×記録のバッチ保存（v34）
+# 従来は1問めくるたびに append_pivot_log がGitHubへ即push（1〜3秒待ち＋1コミット）。
+# session_state に貯めて、区切り（10件到達・ページ完了・再テスト切替・リセット）で
+# 1回だけ push する。カード送りが即座になり、コミット数も約1/10になる。
+_PENDING_KEY = "soc_pending_logs"
+
+def _pending():
+    return st.session_state.setdefault(_PENDING_KEY, [])
+
+def _flush_pending_logs():
+    """貯めた○×をまとめて1 pushし、pivot系キャッシュを破棄する。
+    未保存0件なら何もしない（完了画面で毎rerun呼んでも安全）。"""
+    pending = _pending()
+    if not pending or not ALP_AVAILABLE:
+        return True
+    try:
+        ok = alp.append_pivot_logs_batch("social", pending)
+    except Exception:
+        ok = False
+    if ok:
+        st.session_state[_PENDING_KEY] = []
+        # 保存後にキャッシュを破棄（定義前のものはスキップ＝ttlで追従）
+        for _fn_name in ("_load_social_pivot_csv", "_get_yomi_from_pivot",
+                         "_get_title_total_counts", "_get_title_latest_dates",
+                         "_load_csv_for_view"):
+            _fn = globals().get(_fn_name)
+            if _fn is not None:
+                try:
+                    _fn.clear()
+                except Exception:
+                    pass
+    else:
+        st.session_state["_soc_flush_failed"] = True
+    return ok
+
+def _queue_pivot_log(q_data, result):
+    """○×を1件バッファに積む。10件たまったら自動で保存する。"""
+    _pending().append({"q_data": q_data, "result": result})
+    if len(_pending()) >= 10:
+        _flush_pending_logs()
+
+def _unqueue_batsu(q_data):
+    """×を取り消した時、まだ未保存ならバッファから取り除く（保存済みなら従来同様そのまま）。"""
+    pending = _pending()
+    key = (str(q_data.get("page_num","")), str(q_data.get("section_code","")),
+           str(q_data.get("q_label", q_data.get("q",""))))
+    for i in range(len(pending) - 1, -1, -1):
+        e = pending[i]
+        qd = e.get("q_data", {})
+        ek = (str(qd.get("page_num","")), str(qd.get("section_code","")),
+              str(qd.get("q_label", qd.get("q",""))))
+        if e.get("result") == "batsu" and ek == key:
+            pending.pop(i)
+            return
 
 # ========== ページタイトル & 試験範囲
 st.title("🗺️ 社会")
@@ -242,6 +297,17 @@ def _generate_quiz(q_data):
 # ========== pivot CSV 読み込み
 @st.cache_data(ttl=60)
 def _load_social_pivot_csv():
+    # 【v34】Contents API経由（常に最新）に切替。
+    # 従来の raw.githubusercontent はCDNが最大約5分古い内容を返すため、
+    # ×を付けた直後の「×で再テスト」や読み仮名に反映されないことがあった。
+    if ALP_AVAILABLE:
+        try:
+            rows = alp.load_pivot_rows("social")
+            if rows:
+                return rows
+        except Exception:
+            pass
+    # フォールバック（alp不在時のみ・従来挙動）
     try:
         r = requests.get(f"{GITHUB_RAW}/data/answer_log_social_pivot.csv", timeout=10)
         if r.status_code == 200 and r.text.strip():
@@ -573,17 +639,15 @@ else:
                 with _nc[1]:
                     _bl = "❌ 消す" if _result == "batsu" else "❌"
                     if st.button(_bl, key=f"soc_wb_batsu_{_page_num}_{_orig_idx}", use_container_width=True):
+                        _qd = {**_cur_q, "page_num": _page_num,
+                               "q_label": _cur_q["q"], "answer": _cur_q["a"]}
                         if _result == "batsu":
                             st.session_state.pop(f"soc_wb_result_{_page_num}_{_orig_idx}", None)
+                            _unqueue_batsu(_qd)   # 未保存ならバッファから回収
                         else:
                             st.session_state[f"soc_wb_result_{_page_num}_{_orig_idx}"] = "batsu"
                             if ALP_AVAILABLE:
-                                try:
-                                    _qd = {**_cur_q, "page_num": _page_num,
-                                           "q_label": _cur_q["q"], "answer": _cur_q["a"]}
-                                    alp.append_pivot_log("social", _qd, "batsu")
-                                except Exception:
-                                    pass
+                                _queue_pivot_log(_qd, "batsu")
                         st.rerun()
                 with _nc[2]:
                     _ek = f"soc_wb_exp_{_page_num}_{_orig_idx}"
@@ -600,12 +664,9 @@ else:
                         if st.button("NEXT ▶", key=f"soc_wb_next_{_page_num}_{_orig_idx}",
                                      use_container_width=True):
                             if _result != "batsu" and ALP_AVAILABLE:
-                                try:
-                                    _qd = {**_cur_q, "page_num": _page_num,
-                                           "q_label": _cur_q["q"], "answer": _cur_q["a"]}
-                                    alp.append_pivot_log("social", _qd, "maru")
-                                except Exception:
-                                    pass
+                                _qd = {**_cur_q, "page_num": _page_num,
+                                       "q_label": _cur_q["q"], "answer": _cur_q["a"]}
+                                _queue_pivot_log(_qd, "maru")
                             st.session_state[_idx_key] = _cur_pos + 1
                             st.rerun()
                     else:
@@ -624,24 +685,31 @@ else:
                 _wi = [i for i in range(_total)
                        if st.session_state.get(f"soc_wb_result_{_page_num}_{i}") == "batsu"]
                 st.markdown("---")
+                # 【v34】最終カードに到達したら未保存の○×をまとめて1 push（0件なら何もしない）
+                _flush_pending_logs()
+                if st.session_state.pop("_soc_flush_failed", False):
+                    st.warning("⚠️ 記録の保存に失敗しました。通信を確認して、もう一度ボタンを押してください。")
                 if _wi:
                     st.warning(f"❌ {len(_wi)} 問にマークあり")
                     if _mode == "normal":
                         if st.button(f"🔄 ×の {len(_wi)} 問で再テスト",
                                      use_container_width=True, type="primary",
                                      key=f"soc_wb_retest_{_page_num}"):
+                            _flush_pending_logs()
                             st.session_state[_mode_key] = "retest"
                             st.session_state[f"soc_wb_idx_{_page_num}_retest"] = 0
                             st.rerun()
                     else:
                         if st.button("↩️ 通常モードに戻る", use_container_width=True,
                                      key=f"soc_wb_back_{_page_num}"):
+                            _flush_pending_logs()
                             st.session_state[_mode_key] = "normal"
                             st.rerun()
                 else:
                     st.success("🎉 全問チェック完了！")
                 if st.button("🗑️ このページの×をリセット", key=f"soc_wb_reset_{_page_num}",
                              use_container_width=True):
+                    _flush_pending_logs()
                     for i in range(_total):
                         st.session_state.pop(f"soc_wb_result_{_page_num}_{i}", None)
                         st.session_state.pop(f"soc_wb_exp_{_page_num}_{i}", None)
@@ -842,10 +910,7 @@ else:
                             result_val = "maru" if ch_text == correct_ans else "batsu"
                             st.session_state[f"social_result_{selected_title}_{tp_pos}"] = result_val
                             if ALP_AVAILABLE:
-                                try:
-                                    alp.append_pivot_log("social", tp_current, result_val)
-                                except Exception:
-                                    pass
+                                _queue_pivot_log(tp_current, result_val)
                             st.rerun()
                         if _show_yomi:
                             st.markdown(
@@ -886,8 +951,12 @@ else:
 
             if tp_pos == tp_total - 1 and tp_result is not None:
                 st.markdown("---")
+                _flush_pending_logs()   # 【v34】再TEST完了で未保存分をまとめて保存
+                if st.session_state.pop("_soc_flush_failed", False):
+                    st.warning("⚠️ 記録の保存に失敗しました。通信を確認してください。")
                 st.success(f"✅ {selected_title} {tp_total}問 再TEST完了！🎉")
                 if st.button("📖 タイトル一覧に戻る", use_container_width=True):
+                    _flush_pending_logs()
                     st.session_state.pop("selected_social_title", None)
                     st.rerun()
 
@@ -896,6 +965,15 @@ else:
 # ══════════════════════════════════════════════
 st.markdown("---")
 st.markdown('<div class="soc-section-title">📊 学習データ</div>', unsafe_allow_html=True)
+
+# 【v34】未保存の○×がある場合の表示と手動保存
+# （注意：このセクションは毎rerun実行されるため、ここでの自動flushは禁止＝バッチが無効化される）
+if _pending():
+    _pc1, _pc2 = st.columns([0.7, 0.3])
+    _pc1.caption(f"📝 未保存の記録 {len(_pending())}件（カードの区切りで自動保存されます）")
+    if _pc2.button("💾 今すぐ保存", key="soc_manual_flush", use_container_width=True):
+        _flush_pending_logs()
+        st.rerun()
 
 @st.cache_data(ttl=10)
 def _load_csv_for_view():
