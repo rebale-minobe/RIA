@@ -1815,6 +1815,8 @@ tp_questions = st.session_state["tp_questions_list"]
 # 教科で絞り込み（再TESTの教科ラジオ・デフォルト社会）
 _qsubj = st.session_state.get("tp_quiz_subj", "社会")
 tp_questions = [q for q in tp_questions if q.get("subject_name") == _qsubj]
+# 10問に切り詰め
+tp_questions = tp_questions[:10]
 tp_total = len(tp_questions)
 
 if tp_total == 0:
@@ -2267,7 +2269,7 @@ for p in NEXT_SCHOOL_TT:
             st.caption("まだ記録がありません。今日の時間割で範囲を記録すると、ここに次のテーマが自動で出ます。")
 
 # ===== Study (教科書/ワーク) =====
-st.markdown('<div class="section-title">📚 教科書/ワーク</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📚 教科書</div>', unsafe_allow_html=True)
 
 subject_keys = list(SUBJECTS.keys())
 subject_labels = [SUBJECTS[k]['name'] for k in subject_keys]
