@@ -1,4 +1,4 @@
-"""理科ページ v2026-06-12.3"""
+"""理科ページ v2026-06-12.4"""
 import streamlit as st
 import requests
 import io
@@ -8,7 +8,7 @@ from collections import OrderedDict
 
 st.set_page_config(page_title="理科 - RIA", page_icon="🔬", layout="wide")
 
-RIKA_VERSION = "v2026-06-12.3"
+RIKA_VERSION = "v2026-06-12.4"
 
 GH_RAW = "https://raw.githubusercontent.com/rebale-minobe/RIA/main"
 PRINT_XLSX_URL = f"{GH_RAW}/data/science_print_answers.xlsx"
@@ -106,6 +106,62 @@ def parse_sheet_label(sheet_name):
     return None, None, None, None
 
 
+@st.cache_data(ttl=60)
+def _load_science_pivot():
+    """answer_log_science_pivot.csv を読み込む"""
+    if ALP_AVAILABLE:
+        try:
+            rows = alp.load_pivot_rows("science")
+            if rows:
+                return rows
+        except Exception:
+            pass
+    try:
+        import csv
+        from io import StringIO
+        r = requests.get(f"{GH_RAW}/data/answer_log_science_pivot.csv", timeout=10)
+        if r.status_code == 200 and r.text.strip():
+            return list(csv.DictReader(StringIO(r.text)))
+    except Exception:
+        pass
+    return []
+
+
+def _get_science_batsu_set(sheet_name):
+    """指定シートで「最新がbatsu かつ 直近3回連続maruでない」問題のq_label集合を返す"""
+    rows = _load_science_pivot()
+    batsu_labels = []
+    for row in rows:
+        # page_num が "02-06_A_1" 形式。sheet_name で始まるものだけ対象
+        pn = str(row.get("page_num", ""))
+        if not pn.startswith(sheet_name + "_"):
+            continue
+        # 日付ごとの結果を集める
+        history = []  # [(date, "maru"/"batsu")]
+        for col_name in row.keys():
+            if col_name.endswith('_maru') or col_name.endswith('_batsu'):
+                val = row[col_name]
+                if not val:
+                    continue
+                try:
+                    if int(val) > 0:
+                        date = col_name.replace('_maru', '').replace('_batsu', '')
+                        result = 'maru' if col_name.endswith('_maru') else 'batsu'
+                        history.append((date, result))
+                except ValueError:
+                    pass
+        if not history:
+            continue
+        history.sort(key=lambda x: x[0])
+        latest_result = history[-1][1]
+        # 直近3回が全部maru → クリア（消す）
+        last3 = [h[1] for h in history[-3:]]
+        cleared = (len(last3) >= 3 and all(r == 'maru' for r in last3))
+        if latest_result == 'batsu' and not cleared:
+            batsu_labels.append(row.get("q_label", ""))
+    return batsu_labels
+
+
 sheets = load_print_sheets()
 
 if not sheets:
@@ -179,6 +235,20 @@ def render_section_flashcard(sheet_name, section, sec_questions):
     else:
         st.warning(f"画像が見つかりません: {sheet_name}_{section}.jpg")
 
+    # ❌問題リスト（このシート全体の未クリアbatsu）
+    _batsu_labels = _get_science_batsu_set(sheet_name)
+    # このセクションの問題ラベルだけに絞る
+    _sec_q_labels = [q.get("q_label", "") for q in sec_questions]
+    _sec_batsu = [lbl for lbl in _batsu_labels if lbl in _sec_q_labels]
+    if _sec_batsu:
+        _chips = " ｜ ".join(_sec_batsu)
+        st.markdown(
+            f"<div style='background:#FFF0F0;border:1px solid #FFD0D0;border-radius:10px;"
+            f"padding:8px 14px;margin:8px 0;font-size:14px;color:#c0392b;font-weight:600;'>"
+            f"❌問題：{_chips}</div>",
+            unsafe_allow_html=True
+        )
+
     _total = len(sec_questions)
     _start_key = f"rika_started_{sheet_name}_{section}"
     _idx_key = f"rika_idx_{sheet_name}_{section}"
@@ -246,15 +316,25 @@ def render_section_flashcard(sheet_name, section, sec_questions):
         st.session_state[_res_key] = "batsu"
         if ALP_AVAILABLE:
             try:
-                _qd = {
-                    "page_num": f"{sheet_name}_{section}",
-                    "section_code": sheet_name,
-                    "section_name": _section_title,
-                    "q_label": _q_label,
-                    "answer": _answer,
-                    "answer_yomi": _yomi,
-                }
-                alp.append_pivot_log("science", _qd, "batsu")
+                alp.append_pivot_log("science", _build_qd(), "batsu")
+            except Exception:
+                pass
+
+    def _build_qd():
+        return {
+            "page_num": f"{sheet_name}_{section}",
+            "section_code": sheet_name,
+            "section_name": _section_title,
+            "q_label": _q_label,
+            "answer": _answer,
+            "answer_yomi": _yomi,
+        }
+
+    def _record_maru_if_needed():
+        """❌が押されていなければmaruを記録（NEXT時）"""
+        if _result != "batsu" and ALP_AVAILABLE:
+            try:
+                alp.append_pivot_log("science", _build_qd(), "maru")
             except Exception:
                 pass
 
@@ -278,11 +358,14 @@ def render_section_flashcard(sheet_name, section, sec_questions):
             if _cur_pos < _total - 1:
                 if st.button("NEXT ▶", key=f"rika_next_{sheet_name}_{section}_{_cur_pos}",
                              type="primary", use_container_width=True):
+                    _record_maru_if_needed()
                     st.session_state[_idx_key] = _cur_pos + 1
                     st.rerun(scope="fragment")
             else:
                 if st.button("🎉 完了！もう一度", key=f"rika_done_{sheet_name}_{section}",
                              use_container_width=True):
+                    _record_maru_if_needed()
+                    st.cache_data.clear()
                     st.session_state[_start_key] = False
                     st.session_state[_idx_key] = 0
                     st.rerun(scope="fragment")
