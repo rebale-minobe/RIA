@@ -1,4 +1,4 @@
-"""理科ページ v2026-06-12.4"""
+"""理科ページ v2026-06-12.5"""
 import streamlit as st
 import requests
 import io
@@ -8,7 +8,7 @@ from collections import OrderedDict
 
 st.set_page_config(page_title="理科 - RIA", page_icon="🔬", layout="wide")
 
-RIKA_VERSION = "v2026-06-12.4"
+RIKA_VERSION = "v2026-06-12.5"
 
 GH_RAW = "https://raw.githubusercontent.com/rebale-minobe/RIA/main"
 PRINT_XLSX_URL = f"{GH_RAW}/data/science_print_answers.xlsx"
@@ -384,33 +384,6 @@ for section in sections:
     )
     render_section_flashcard(selected_sheet, section, sec_questions)
 
-
-# ========== 追加アップロード機能 ==========
-st.markdown("---")
-st.markdown('<div class="soc-section-title">➕ 問題を追加する</div>', unsafe_allow_html=True)
-st.caption("新しいプリントの問題画像と解答画像をアップロードできます")
-
-with st.expander("📤 アップロード", expanded=False):
-    up_sheet = st.text_input("プリント名（例: 02-08_A）", key="rika_up_sheet", placeholder="02-08_A")
-    up_section = st.text_input("セクション番号（例: 1）", key="rika_up_section", placeholder="1")
-    up_q_img = st.file_uploader("問題画像（JPG）", type=["jpg", "jpeg", "png"], key="rika_up_q_img")
-    up_a_img = st.file_uploader("解答画像（JPG）", type=["jpg", "jpeg", "png"], key="rika_up_a_img")
-    if up_q_img:
-        st.image(up_q_img, caption="問題画像プレビュー", width=400)
-    if up_a_img:
-        st.image(up_a_img, caption="解答画像プレビュー", width=400)
-    if st.button("💾 保存（準備中）", type="primary", key="rika_up_save"):
-        if not up_sheet or not up_section:
-            st.error("プリント名とセクション番号を入力してください")
-        elif not up_q_img:
-            st.error("問題画像をアップロードしてください")
-        else:
-            st.info(
-                f"📝 アップロード予定:\n\n"
-                f"- 問題画像: `{up_sheet}_{up_section}.jpg`\n"
-                f"- 保存先: `data/science_prints/`\n\n"
-                f"※ GitHub保存機能は次のステップで実装します"
-            )
 
 # ========== バージョン表示 ==========
 st.markdown("---")
