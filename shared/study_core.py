@@ -380,7 +380,7 @@ def render_point_box(text, color="yellow"):
     st.markdown(f"<div class='{cls}'>\n\n{text}\n\n</div>", unsafe_allow_html=True)
 
 
-def render_subject_study(subject_key):
+def render_subject_study(subject_key, textbook_only=False):
     """教科固定の教科書/ワーク表示（ジャンル選択→目次/ワーク）。
     TOPの教科選択を除いた共通版。各教科ページから呼ばれる。"""
     skey = subject_key
@@ -621,7 +621,7 @@ def render_subject_study(subject_key):
     # 教科書/ワーク 切替
     material_options = []
     if tb_data: material_options.append("📖 教科書")
-    if wb_data: material_options.append("📝 ワーク")
+    if wb_data and not textbook_only: material_options.append("📝 ワーク")
 
     sel_material = None
     if not material_options:

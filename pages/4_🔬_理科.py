@@ -1,4 +1,4 @@
-"""理科ページ v2026-06-12.1"""
+"""理科ページ v2026-06-12.2"""
 import streamlit as st
 import requests
 import io
@@ -8,11 +8,18 @@ from collections import OrderedDict
 
 st.set_page_config(page_title="理科 - RIA", page_icon="🔬", layout="wide")
 
-RIKA_VERSION = "v2026-06-12.1"
+RIKA_VERSION = "v2026-06-12.2"
 
 GH_RAW = "https://raw.githubusercontent.com/rebale-minobe/RIA/main"
 PRINT_XLSX_URL = f"{GH_RAW}/data/science_print_answers.xlsx"
 PRINT_IMG_BASE = f"{GH_RAW}/data/science_prints"
+
+# pivot記録（マル/バツ）
+try:
+    from modules import answer_log_pivot as alp
+    ALP_AVAILABLE = True
+except Exception:
+    ALP_AVAILABLE = False
 
 # ========== CSS ==========
 st.markdown("""
@@ -32,6 +39,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="soc-section-title">🔬 理科</div>', unsafe_allow_html=True)
+
+# ========== 教科書（共通モジュール・教科書のみ表示） ==========
+try:
+    from shared.study_core import render_subject_study
+    render_subject_study("science", textbook_only=True)
+except Exception as _e:
+    st.caption(f"（教科書の読み込みをスキップ: {_e}）")
 
 
 # ========== データ読み込み ==========
@@ -202,8 +216,13 @@ def render_section_flashcard(sheet_name, section, sec_questions):
     _yomi = _cur_q.get("answer_yomi", "")
     _meta = " ／ ".join(filter(None, [_section_title, f"問 {_q_label}"]))
 
+    # この問題の記録状態
+    _res_key = f"rika_result_{sheet_name}_{section}_{_cur_pos}"
+    _result = st.session_state.get(_res_key)
+    _border = "#FF3B30" if _result == "batsu" else ("#34C759" if _result == "maru" else "#FF9500")
+
     st.markdown(
-        f"<div class='wb-flashcard'>"
+        f"<div class='wb-flashcard' style='border-color:{_border};'>"
         f"<div style='text-align:center;margin-bottom:10px;'>"
         f"<div class='wb-fc-meta'>{_meta}</div>"
         f"</div>"
@@ -215,18 +234,58 @@ def render_section_flashcard(sheet_name, section, sec_questions):
         f"{_answer}</div>"
         + (f"<div style='font-size:16px;color:#8E8E93;font-weight:500;margin-top:4px;'>({_yomi})</div>"
            if _yomi else "")
-        + "</div></div></div>",
+        + "</div></div>"
+        + ("<div style='text-align:center;margin-top:8px;font-size:13px;color:#34C759;font-weight:700;'>⭕ 正解</div>"
+           if _result == "maru" else
+           "<div style='text-align:center;margin-top:8px;font-size:13px;color:#FF3B30;font-weight:700;'>❌ もう一度</div>"
+           if _result == "batsu" else "")
+        + "</div>",
         unsafe_allow_html=True
     )
 
+    def _record_rika(result_val):
+        """pivot CSVへ science として記録"""
+        st.session_state[_res_key] = result_val
+        if ALP_AVAILABLE:
+            try:
+                _qd = {
+                    "page_num": f"{sheet_name}_{section}",
+                    "section_code": sheet_name,
+                    "section_name": _section_title,
+                    "q_label": _q_label,
+                    "answer": _answer,
+                    "answer_yomi": _yomi,
+                }
+                alp.append_pivot_log("science", _qd, result_val)
+            except Exception:
+                pass
+
     with st.container(key=f"rika_nav_{sheet_name}_{section}"):
-        _nc = st.columns([1, 3])
+        _nc = st.columns([1, 1.2, 1.2, 1.6])
         with _nc[0]:
             if st.button("◀", key=f"rika_prev_{sheet_name}_{section}_{_cur_pos}",
                          disabled=(_cur_pos == 0), use_container_width=True):
                 st.session_state[_idx_key] = _cur_pos - 1
                 st.rerun(scope="fragment")
         with _nc[1]:
+            _ol = "⭕ 消す" if _result == "maru" else "⭕"
+            if st.button(_ol, key=f"rika_maru_{sheet_name}_{section}_{_cur_pos}",
+                         use_container_width=True):
+                if _result == "maru":
+                    st.session_state.pop(_res_key, None)
+                else:
+                    _record_rika("maru")
+                st.rerun(scope="fragment")
+        with _nc[2]:
+            _bl = "❌ 消す" if _result == "batsu" else "❌"
+            if st.button(_bl, key=f"rika_batsu_{sheet_name}_{section}_{_cur_pos}",
+                         use_container_width=True):
+                if _result == "batsu":
+                    st.session_state.pop(_res_key, None)
+                else:
+                    _record_rika("batsu")
+                st.rerun(scope="fragment")
+        with _nc[3]:
             if _cur_pos < _total - 1:
                 if st.button("NEXT ▶", key=f"rika_next_{sheet_name}_{section}_{_cur_pos}",
                              type="primary", use_container_width=True):
